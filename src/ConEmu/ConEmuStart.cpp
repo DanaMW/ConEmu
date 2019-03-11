@@ -1048,6 +1048,11 @@ bool CConEmuStart::ParseCommandLine(LPCWSTR pszCmdLine, int& iResult)
 					// This one has more weight than AutoUpdateOnStart
 					gpConEmu->opt.DisableAutoUpdate = true;
 				}
+				else if (szArg.IsSwitch(L"-NoHooksWarn"))
+				{
+					// Don't try to warn users about known problems with third-party detours
+					gpConEmu->opt.NoHooksWarn = true;
+				}
 				else if (szArg.OneOfSwitches(L"-NoKeyHook", L"-NoKeyHooks", L"-NoKeybHook", L"-NoKeybHooks"))
 				{
 					gpConEmu->DisableKeybHooks = true;
@@ -1267,6 +1272,16 @@ bool CConEmuStart::ParseCommandLine(LPCWSTR pszCmdLine, int& iResult)
 						gpConEmu->opt.Monitor.Exists = true;
 						gpConEmu->opt.Monitor.Type = sw_Int;
 						gpStartEnv->hStartMon = gpConEmu->opt.Monitor.Mon;
+					}
+				}
+				else if (szArg.IsSwitch(L"-Theme"))
+				{
+					const wchar_t* kDefaultTheme = L"DarkMode_Explorer";
+					bool bParm = false;
+					if (!cmdLineRest || (*cmdLineRest == L'-' || *cmdLineRest == L'/')
+						|| !GetCfgParm(cmdLineRest, bParm, gpConEmu->opt.WindowTheme, 128))
+					{
+						gpConEmu->opt.WindowTheme.SetStr(kDefaultTheme);
 					}
 				}
 				else if (szArg.OneOfSwitches(L"-Buffer", L"-BufferHeight"))

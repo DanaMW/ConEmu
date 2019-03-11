@@ -184,6 +184,7 @@ public:
 		CESwitch ForceUseRegistryPrm;
 		CESwitch LoadCfgFile; // sw_Str
 		CESwitch SaveCfgFile; // sw_Str
+		CESwitch NoHooksWarn; // sw_Simple /NoHooksWarn
 		CESwitch DisableAutoUpdate; // sw_Simple /noupdate
 		CESwitch AutoUpdateOnStart; // sw_Simple /update
 		CESwitch UpdateSrcSet; // sw_Str
@@ -194,6 +195,7 @@ public:
 		CESwitch DesktopMode; // sw_Simple
 		bool SizePosPrm; // -WndX -WndY -WndW[idth] -WndH[eight]
 		CESwitch sWndX, sWndY, sWndW, sWndH; // sw_Str
+		CESwitch WindowTheme; // swStr: -theme "DarkMode_Explorer"
 		CESwitch Monitor; // -Monitor <1 | x10001 | "\\.\DISPLAY1">
 		CESwitch SetUpDefaultTerminal; // sw_Simple
 		CESwitch FixZoneId; // sw_Simple

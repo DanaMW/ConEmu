@@ -83,6 +83,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DEBUGSTRTRUEMOD(s) //DEBUGSTR(s)
 #define DEBUGSTRLINK(s) //DEBUGSTR(s)
 #define DEBUGSTRSEL(s) //DEBUGSTR(s)
+#define DEBUGSTRTIMEOUTS(s) DEBUGSTR(s)
 
 // ANSI, without "\r\n"
 #define IFLOGCONSOLECHANGE gpSet->isLogging(2)
@@ -130,15 +131,9 @@ CRealBuffer::CRealBuffer(CRealConsole* apRCon, RealBufferType aType /*= rbt_Prim
 	mb_BuferModeChangeLocked = FALSE;
 	mcr_LastMousePos = MakeCoord(-1,-1);
 
-	RECT rcNil = MakeRect(-1,-1);
-	mr_LeftPanel = rcNil;
-	mr_LeftPanelFull = rcNil;
-	mr_RightPanel = rcNil;
-	mr_RightPanel = rcNil;
-
 	mb_LeftPanel = mb_RightPanel = FALSE;
-	ZeroStruct(mr_LeftPanel); ZeroStruct(mr_RightPanel);
-	ZeroStruct(mr_LeftPanelFull); ZeroStruct(mr_RightPanelFull);
+	mr_LeftPanel = mr_LeftPanelFull = RECT{};
+	mr_RightPanel = mr_RightPanelFull = RECT{};
 
 	ZeroStruct(dump);
 
@@ -190,7 +185,7 @@ void CRealBuffer::DumpConsole(HANDLE ahFile)
 		MSectionLock sc; sc.Lock(&csCON, FALSE);
 		DWORD cchMax = std::min((DWORD)(con.nTextWidth * con.nTextHeight), LODWORD(data->nMaxCells));
 		lbRc = WriteFile(ahFile, data->pConChar, cchMax*sizeof(*data->pConChar), &dw, NULL);
-		lbRc = WriteFile(ahFile, data->pConAttr, cchMax*sizeof(*data->pConAttr), &dw, NULL);
+		lbRc &= WriteFile(ahFile, data->pConAttr, cchMax*sizeof(*data->pConAttr), &dw, NULL);
 	}
 
 	UNREFERENCED_PARAMETER(lbRc);
@@ -593,51 +588,22 @@ bool CRealBuffer::LoadAlternativeConsole(LoadAltMode iMode /*= lam_Default*/)
 		}
 	}
 
-	if (iMode == lam_LastOutput)
+	if ((iMode == lam_LastOutput) || (iMode == lam_FullBuffer))
 	{
-		MFileMapping<CESERVER_CONSAVE_MAPHDR> StoredOutputHdr;
-		MFileMapping<CESERVER_CONSAVE_MAP> StoredOutputItem;
-
-		CESERVER_CONSAVE_MAPHDR* pHdr = NULL;
-		CESERVER_CONSAVE_MAP* pData = NULL;
-		CONSOLE_SCREEN_BUFFER_INFO storedSbi = {};
-		DWORD cchMaxBufferSize = 0;
-		size_t nMaxSize = 0;
-
-		StoredOutputHdr.InitName(CECONOUTPUTNAME, LODWORD(mp_RCon->hConWnd));
-		if (!(pHdr = StoredOutputHdr.Open()) || !pHdr->sCurrentMap[0])
-		{
-			DisplayLastError(L"Stored output mapping was not created!");
-			goto wrap;
-		}
-
-		cchMaxBufferSize = std::min(pHdr->MaxCellCount, (DWORD)(pHdr->info.dwSize.X * pHdr->info.dwSize.Y));
-
-		StoredOutputItem.InitName(pHdr->sCurrentMap); //-V205
-		nMaxSize = sizeof(*pData) + cchMaxBufferSize * sizeof(pData->Data[0]);
-		if (!(pData = StoredOutputItem.Open(FALSE,nMaxSize)))
-		{
-			DisplayLastError(L"Stored output data mapping was not created!");
-			goto wrap;
-		}
-
-		if ((pData->hdr.nVersion != CESERVER_REQ_VER) || (pData->hdr.cbSize <= sizeof(CESERVER_CONSAVE_MAP)))
-		{
-			DisplayLastError(L"Invalid data in mapping header", -1);
-			goto wrap;
-		}
-
-		storedSbi = pData->info;
-
-		lbRc = LoadDataFromDump(storedSbi, pData->Data, cchMaxBufferSize);
-	}
-	else if (iMode == lam_FullBuffer)
-	{
-		CESERVER_REQ *pIn = ExecuteNewCmd(CECMD_CONSOLEFULL, sizeof(CESERVER_REQ_HDR)+sizeof(DWORD));
+		CESERVER_REQ *pIn = ExecuteNewCmd(CECMD_CONSOLEFULL, sizeof(CESERVER_REQ_HDR) + 2 * sizeof(DWORD));
 		if (pIn)
 		{
 			int dynHeight = mp_RCon->mp_RBuf->GetDynamicHeight();
-			pIn->dwData[0] = (dynHeight > 0) ? dynHeight : 0;
+			if (iMode == lam_FullBuffer)
+			{
+				pIn->dwData[0] = (dynHeight > 0) ? dynHeight : 0;
+				pIn->dwData[1] = FALSE;
+			}
+			else
+			{
+				pIn->dwData[0] = 0;
+				pIn->dwData[1] = TRUE;
+			}
 			CESERVER_REQ *pOut = ExecuteSrvCmd(mp_RCon->GetServerPID(), pIn, ghWnd);
 			if (pOut && (pOut->hdr.cbSize > sizeof(CESERVER_CONSAVE_MAP)))
 			{
@@ -668,8 +634,9 @@ wrap:
 	{
 		wchar_t szLog[80];
 		swprintf_c(szLog, L"!!! CRealBuffer::LoadAlternativeConsole takes %u ms !!!", nDurationTick);
+		if (!mp_RCon->LogString(szLog))
+			DEBUGSTRTIMEOUTS(szLog);
 		_ASSERTE(!lbRc || (nDurationTick < 1000));
-		mp_RCon->LogString(szLog);
 	}
 	return lbRc;
 }
@@ -785,7 +752,7 @@ bool CRealBuffer::SetConsoleSizeSrv(USHORT sizeX, USHORT sizeY, USHORT sizeBuffe
 		}
 
 		// fin
-		if (lbSizeMatch && anCmdID != CECMD_CMDFINISHED)
+		if (lbSizeMatch && anCmdID != CECMD_CMDFINISHED)  // -V560
 		{
 			lbRc = TRUE; // менять ничего не нужно
 			goto wrap;
@@ -1167,7 +1134,7 @@ bool CRealBuffer::SetConsoleSize(SHORT sizeX, SHORT sizeY, USHORT sizeBuffer, DW
 	if (sizeY</*2*/MIN_CON_HEIGHT)
 		sizeY = /*2*/MIN_CON_HEIGHT;
 
-	_ASSERTE(con.bBufferHeight || (!con.bBufferHeight && !sizeBuffer));
+	_ASSERTE(con.bBufferHeight || (!con.bBufferHeight && !sizeBuffer));  // -V728
 
 	COORD crFixed = {};
 	if (mp_RCon->isFixAndCenter(&crFixed))
@@ -1668,7 +1635,7 @@ bool CRealBuffer::InitBuffers(DWORD anCellCount /*= 0*/, int anWidth /*= 0*/, in
 wrap:
 	HEAPVAL;
 
-	if (lbRc && ((size_t)(nNewWidth * nNewHeight) <= con.nConBufCells))
+	if (lbRc && ((nNewWidth * (size_t)nNewHeight) <= con.nConBufCells))
 	{
 		if ((con.nCreatedBufWidth != nNewWidth) || (con.nCreatedBufHeight != nNewHeight))
 		{
@@ -2376,7 +2343,7 @@ bool CRealBuffer::ApplyConsoleInfo()
 	if (mp_RCon->mb_DebugLocked)
 		return FALSE;
 	int nConNo = gpConEmu->isVConValid(mp_RCon->mp_VCon);
-	nConNo = nConNo;
+	nConNo = nConNo;  // -V570
 	#endif
 
 	if (!mp_RCon->isServerAvailable())
@@ -3615,7 +3582,7 @@ bool CRealBuffer::OnMouse(UINT messg, WPARAM wParam, int x, int y, COORD crMouse
 			// Skip LBtnUp
 			if ((messg == WM_LBUTTONUP)
 				// but allow LBtnDown if it's inside selection (double and triple clicks)
-				|| (!bInside && (messg == WM_LBUTTONDOWN) && !nModifierNoEmptyPressed))
+				|| (!bInside && (messg == WM_LBUTTONDOWN) && !nModifierNoEmptyPressed))  // -V560
 			{
 				// Anyway, clicks would be ignored
 				#ifdef _DEBUG
@@ -4110,7 +4077,7 @@ bool CRealBuffer::OnMouseSelection(UINT messg, WPARAM wParam, int x, int y)
 		if (!bDoPaste)
 		{
 			// While "Paste" was not requested - that means "Copy to Windows clipboard"
-			bool bDoCopy = bDoCopyWin || bDoPaste || (bAction == 3);
+			bool bDoCopy = bDoCopyWin || (bAction == 3);
 			DoSelectionFinalize(bDoCopy);
 		}
 		else
@@ -4127,9 +4094,9 @@ bool CRealBuffer::OnMouseSelection(UINT messg, WPARAM wParam, int x, int y)
 
 void CRealBuffer::DoCopyPaste(bool abCopy, bool abPaste)
 {
-	bool bDoCopyWin = abCopy && !abPaste;
+	const bool bDoCopyWin = abCopy && !abPaste;
 	bool bDoPaste = abPaste;
-	bool bClipOpen = bDoCopyWin ? MyOpenClipboard(L"Copy&Paste") : false;
+	const bool bClipOpen = bDoCopyWin ? MyOpenClipboard(L"Copy&Paste") : false;
 	HGLOBAL hUnicode = NULL;
 	bool bCopyOk = DoSelectionFinalize(abCopy, bDoCopyWin ? cm_CopySel : cm_CopyInt, 0, abPaste ? &hUnicode : NULL);
 
@@ -4163,7 +4130,7 @@ void CRealBuffer::DoCopyPaste(bool abCopy, bool abPaste)
 	if (bClipOpen)
 	{
 		MyCloseClipboard();
-	}
+	}  // -V1020
 }
 
 void CRealBuffer::MarkFindText(int nDirection, LPCWSTR asText, bool abCaseSensitive, bool abWholeWords)
@@ -5148,7 +5115,7 @@ bool CRealBuffer::DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int 
 			{
 				pszCon = pszDataStart + con.nTextWidth*(Y+srSelection_Y1) + srSelection_X1;
 			}
-			else if (pszDataStart && (Y < nTextHeight))
+			else if (pszDataStart && (Y < nTextHeight))  // -V560
 			{
 				WARNING("Проверить для режима с прокруткой!");
 				pszCon = pszDataStart + dump.crSize.X*(Y+srSelection_Y1) + srSelection_X1;
@@ -5224,7 +5191,7 @@ bool CRealBuffer::DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int 
 				pszCon = pszDataStart + con.nTextWidth*(Y+srSelection_Y1) + nX1;
 				pszNextLine = ((Y + 1) <= nSelHeight) ? (pszDataStart + con.nTextWidth*(Y+1+srSelection_Y1)) : NULL;
 			}
-			else if (pszDataStart && (Y < nTextHeight))
+			else if (pszDataStart && (Y < nTextHeight))  // -V560
 			{
 				WARNING("Проверить для режима с прокруткой!");
 				pszCon = pszDataStart + dump.crSize.X*(Y+srSelection_Y1) + nX1;
@@ -5267,7 +5234,7 @@ bool CRealBuffer::DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int 
 
 				if (bDetectLines && pszNextLine
 					// Allow maximum one space on the next line
-					&& ((pszNextLine[0] != L' ') || (pszNextLine[0] == L' ' && pszNextLine[1] != L' '))
+					&& ((pszNextLine[0] != L' ') || (pszNextLine[0] == L' ' && pszNextLine[1] != L' '))  // -V728
 					// If right or left edge of screen is "Frame" - force to line break!
 					&& !wcschr(sPreLineBreak, *(pch - 1))
 					&& !wcschr(sPreLineBreak, *pszNextLine))
@@ -5807,7 +5774,7 @@ bool CRealBuffer::GetConsoleLine(int nLine, /*[OUT]*/CRConDataGuard& data, Conso
 			return false;
 		}
 
-		if ((nLine < 0) || (nLine >= dump.crSize.Y))
+		if ((nLine < 0) || (nLine >= dump.crSize.Y))  // -V560
 		{
 			_ASSERTE((nLine >= 0) && (nLine < dump.crSize.Y));
 			return false;
@@ -6412,7 +6379,7 @@ void CRealBuffer::FindPanels()
 	#ifdef _DEBUG
 	if (bLeftPanel && !bRightPanel && rLeftPanelFull.right > 120)
 	{
-		bLeftPanel = bLeftPanel;
+		bLeftPanel = bLeftPanel;  // -V570
 	}
 	#endif
 

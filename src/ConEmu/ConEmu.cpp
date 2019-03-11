@@ -2063,7 +2063,6 @@ BOOL CConEmuMain::CreateMainWindow()
 		return FALSE;
 	}
 
-
 	// If created style differs from required?
 	DWORD dwStyle = GetWindowLong(ghWnd, GWL_STYLE);
 	DWORD dwNewStyle = FixWindowStyle(dwStyle, WindowMode);
@@ -2309,8 +2308,8 @@ void CConEmuMain::UpdateGuiInfoMapping()
 			}
 			else
 			{
-				if (csType == cst_Explicit)
-					csType = cst_AutoTccCmd;
+				_ASSERTE(csType == cst_Explicit);
+				csType = cst_AutoTccCmd;
 				m_GuiInfo.ComSpec.ComspecExplicit[0] = 0;
 			}
 		}
@@ -5134,7 +5133,7 @@ void CConEmuMain::UpdateProcessDisplay(bool abForce)
 	// Не совсем корректно это в статусе процессов показывать, но пока на вкладке Info больше негде
 	wchar_t szTile[32] = L"";
 	ConEmuWindowCommand tile = GetTileMode(false);
-	if (tile)
+	if (tile != cwc_Current)
 	{
 		FormatTileMode(tile, szTile, countof(szTile)-1);
 		if (szTile[0]) wcscat_c(szTile, L" ");
@@ -6602,6 +6601,9 @@ LRESULT CConEmuMain::OnCreate(HWND hWnd, LPCREATESTRUCT lpCreate)
 		(DWORD)(DWORD_PTR)hWnd, lpCreate->x, lpCreate->y, lpCreate->cx, lpCreate->cy, lpCreate->style, lpCreate->dwExStyle);
 	if (!LogString(szInfo)) { DEBUGSTRSIZE(szInfo); }
 
+	if (const auto theme = gpConEmu->opt.WindowTheme.GetStr())
+		gpConEmu->SetWindowTheme(hWnd, theme, nullptr);
+
 	RECT rcWndMin = {WINDOWS_ICONIC_POS, WINDOWS_ICONIC_POS, WINDOWS_ICONIC_POS+160, WINDOWS_ICONIC_POS+16};
 	SizeInfo::RequestRect(rcWndMin);
 
@@ -7131,28 +7133,25 @@ bool CConEmuMain::CreateStartupConsoles()
 		RConStartArgsEx args;
 		args.Detached = crb_Off;
 
-		if (args.Detached != crb_On)
+		SafeFree(args.pszSpecialCmd);
+		args.pszSpecialCmd = lstrdup(GetCmd());
+
+		CEStr lsLog(L"Creating console using command ", args.pszSpecialCmd);
+		LogString(lsLog);
+
+		if (!CreateCon(&args, TRUE))
 		{
-			SafeFree(args.pszSpecialCmd);
-			args.pszSpecialCmd = lstrdup(GetCmd());
-
-			CEStr lsLog(L"Creating console using command ", args.pszSpecialCmd);
-			LogString(lsLog);
-
-			if (!CreateCon(&args, TRUE))
+			CEStr szFailMsg(L"Can't create new virtual console!\n"
+				, L"{CConEmuMain::CreateStartupConsoles}\n"
+				, L"Command: ", GetCmd()
+				);
+			LogString(szFailMsg);
+			if (!isInsideInvalid())
 			{
-				CEStr szFailMsg(L"Can't create new virtual console!\n"
-					, L"{CConEmuMain::CreateStartupConsoles}\n"
-					, L"Command: ", GetCmd()
-					);
-				LogString(szFailMsg);
-				if (!isInsideInvalid())
-				{
-					DisplayLastError(szFailMsg, -1);
-				}
-				Destroy();
-				return false;
+				DisplayLastError(szFailMsg, -1);
 			}
+			Destroy();
+			return false;
 		}
 	}
 
@@ -7205,7 +7204,7 @@ void CConEmuMain::OnMainCreateFinished()
 
 	if (WindowStartMinimized)
 	{
-		_ASSERTE(!WindowStartNoClose || (WindowStartTsa && WindowStartNoClose));
+		_ASSERTE(!WindowStartNoClose || (WindowStartTsa && WindowStartNoClose));  // -V728
 
 		if (WindowStartTsa || ForceMinimizeToTray)
 		{
@@ -7885,7 +7884,7 @@ LRESULT CConEmuMain::OnFocus(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 		{
 			// Logging
 			bool bNeedLog = RELEASEDEBUGTEST((gpSet->isLogging(2)!=0),true);
-			if (bNeedLog)
+			if (bNeedLog)  // -V575
 			{
 				HWND hFocus = GetFocus();
 				wchar_t szInfo[128];
@@ -8545,7 +8544,7 @@ void CConEmuMain::OnSwitchGuiFocus(SwitchGuiFocusOp FocusOp)
 {
 	if (!((FocusOp > sgf_None) && (FocusOp < sgf_Last)))
 	{
-		Assert((FocusOp > sgf_None) && (FocusOp < sgf_Last));
+		Assert((FocusOp > sgf_None) && (FocusOp < sgf_Last));  // -V571
 		return;
 	}
 
@@ -14121,7 +14120,7 @@ LRESULT CConEmuMain::WndProc(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam
 			//}
 			else if (messg == this->mn_PostConsoleResize)
 			{
-				this->OnConsoleResize(TRUE);
+				this->OnConsoleResize();
 				return 0;
 			}
 			else if (messg == this->mn_ConsoleLangChanged)

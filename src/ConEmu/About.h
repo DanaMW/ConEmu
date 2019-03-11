@@ -61,6 +61,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	L"-ShowHide | -ShowHideTSA - Works like \"Minimize/Restore\" global hotkey.\r\n" \
 	L"-NoCascade - Disable ‘Cascade’ option may be set in the Settings.\r\n" \
 	L"-NoDefTerm - Don't start initialization procedure for setting up ConEmu as default terminal.\r\n" \
+	L"-NoHooksWarn - Don't show ‘hooks are detected’ warning in console.\r\n" \
 	L"-NoKeyHooks - Disable SetWindowsHookEx and global hotkeys.\r\n" \
 	L"-NoMacro - Disable GuiMacro hotkeys.\r\n" \
 	L"-NoHotkey - Disable all hotkeys.\r\n" \
@@ -78,6 +79,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	L"-Frame <value> - Set custom ‘Frame width’.\r\n" \
 	L"-Monitor <1 | x10001 | \"\\\\.\\DISPLAY1\"> - Place window on the specified monitor.\r\n" \
 	L"-Palette <name> - Choose named color palette.\r\n" \
+	L"-Theme [<name>] - Use specified Windows theme or ‘DarkMode_Explorer’.\r\n" \
 	L"-Log[1|2] - Used to create debug log files.\r\n" \
 	L"-Demote -run <command> - Run command de-elevated.\r\n" \
 	L"-Bypass -run <command> - Just execute the command detached.\r\n" \

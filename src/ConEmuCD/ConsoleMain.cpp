@@ -154,6 +154,9 @@ FGetConsoleDisplayMode pfnGetConsoleDisplayMode = NULL;
 /* Console Handles */
 //MConHandle ghConIn ( L"CONIN$" );
 MConHandle ghConOut(L"CONOUT$");
+//Used to store and restore console screen buffers in cmd_AltBuffer
+MConHandle gPrimaryBuffer(NULL), gAltBuffer(NULL);
+USHORT gnPrimaryBufferLastRow = 0; // last detected written row in gPrimaryBuffer
 
 // Время ожидания завершения консольных процессов, когда юзер нажал крестик в КОНСОЛЬНОМ окне
 // The system also displays this dialog box if the process does not respond within a certain time-out period
@@ -247,13 +250,6 @@ bool gbIsDBCS = false;
 
 SrvInfo* gpSrv = NULL;
 
-
-//#pragma pack(push, 1)
-//CESERVER_CONSAVE* gpStoredOutput = NULL;
-//#pragma pack(pop)
-//MSection* gpcsStoredOutput = NULL;
-
-//CmdInfo* gpSrv = NULL;
 
 COORD gcrVisibleSize = {80,25}; // gcrBufferSize переименован в gcrVisibleSize
 BOOL  gbParmVisibleSize = FALSE;
@@ -1165,6 +1161,9 @@ bool CheckAndWarnHookers()
 		return false;
 	}
 
+	MPerfCounter perf(2);
+	PerfCounter c_scan{0}, c_write{1};
+
 	bool bHooked = false;
 	struct CheckModules {
 		LPCWSTR Title, File;
@@ -1184,18 +1183,25 @@ bool CheckAndWarnHookers()
 
 	for (INT_PTR i = 0; modules[i].Title; i++)
 	{
+		perf.Start(c_scan);
 		pszTitle = modules[i].Title;
 		pszName = modules[i].File;
 
 		hModule = GetModuleHandle(pszName);
-		if (hModule)
+		if (!hModule)
+		{
+			perf.Stop(c_scan);
+		}
+		else
 		{
 			bHooked = true;
 			if (!GetModuleFileName(hModule, szPath, countof(szPath)))
 			{
 				wcscpy_c(szPath, pszName); // Must not get here, but show a name at least on errors
 			}
+			perf.Stop(c_scan);
 
+			perf.Start(c_write);
 			if (!bConOutChecked)
 			{
 				bConOutChecked = true;
@@ -1222,6 +1228,8 @@ bool CheckAndWarnHookers()
 			_wprintf(szMessage);
 			_wprintf(szPath);
 			_wprintf(pszTail);
+
+			perf.Stop(c_write);
 		}
 	}
 
@@ -1230,6 +1238,13 @@ bool CheckAndWarnHookers()
 	if (bColorChanged)
 		SetConsoleTextAttribute(hOut, sbi.wAttributes);
 	#endif
+
+	wchar_t szLog[120];
+	const auto scan_stat = perf.GetStats(c_scan.ID);
+	const auto write_stat = perf.GetStats(c_write.ID);
+	swprintf_c(szLog, L"CheckAndWarnHookers finished, Scan(%u%%, %ums), Write(%u%%, %ums)",
+		scan_stat.Percentage, scan_stat.MilliSeconds, write_stat.Percentage, write_stat.MilliSeconds);
+	LogString(szLog);
 
 	return bHooked;
 }
@@ -2509,6 +2524,7 @@ int __stdcall ConsoleMain2(int anWorkMode/*0-Server&ComSpec,1-AltServer,2-Reserv
 	return ConsoleMain3(anWorkMode, GetCommandLineW());
 }
 
+// if Parm->ppConOutBuffer is set, it HAVE TO BE GLOBAL SCOPE variable!
 int WINAPI RequestLocalServer(/*[IN/OUT]*/RequestLocalServerParm* Parm)
 {
 	//_ASSERTE(FALSE && "ConEmuCD. Continue to RequestLocalServer");
@@ -2534,7 +2550,7 @@ int WINAPI RequestLocalServer(/*[IN/OUT]*/RequestLocalServerParm* Parm)
 	// Хэндл обновим сразу
 	if (Parm->Flags & slsf_SetOutHandle)
 	{
-		ghConOut.SetBufferPtr(Parm->ppConOutBuffer);
+		ghConOut.SetHandlePtr(Parm->ppConOutBuffer);
 	}
 
 	if (gnRunMode != RM_ALTSERVER)
@@ -6729,9 +6745,10 @@ void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, WORD OldTe
 
 	free(pnAttrs);
 
-	ULONG l_read_p, l_read = perf.GetCounter(c_read.ID, &l_read_p, NULL, NULL);
-	ULONG l_fill_p, l_fill = perf.GetCounter(c_fill.ID, &l_fill_p, NULL, NULL);
-	swprintf_c(szLog, L"RefillConsoleAttributes finished, Reads(%u, %u%%), Fills(%u, %u%%)", l_read, l_read_p, l_fill, l_fill_p);
+	ULONG l_read_ms, l_read_p, l_read = perf.GetCounter(c_read.ID, &l_read_p, &l_read_ms, NULL);
+	ULONG l_fill_ms, l_fill_p, l_fill = perf.GetCounter(c_fill.ID, &l_fill_p, &l_fill_ms, NULL);
+	swprintf_c(szLog, L"RefillConsoleAttributes finished, Reads(%u, %u%%, %ums), Fills(%u, %u%%, %ums)",
+		l_read, l_read_p, l_read_ms, l_fill, l_fill_p, l_fill_ms);
 	LogString(szLog);
 }
 

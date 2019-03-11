@@ -4823,7 +4823,9 @@ bool CRealConsole::StartProcessInt(LPCWSTR& lpszCmd, wchar_t*& psCurCmd, LPCWSTR
 		_wcscat_c(psCurCmd, nLen, L" /ADMIN");
 	}
 
-	if (!bIsFirstConsole)
+	// Run CheckAndWarnHookers() only for the first console
+	// and if the switch `-NoHooksWars` was not specified
+	if (!bIsFirstConsole || gpConEmu->opt.NoHooksWarn)
 	{
 		_wcscat_c(psCurCmd, nLen, L" /OMITHOOKSWARN");
 	}
@@ -12226,6 +12228,7 @@ bool CRealConsole::PrepareOutputFile(bool abUnicodeText, wchar_t* pszFilePathNam
 	CESERVER_CONSAVE_MAPHDR* pHdr = NULL;
 	CESERVER_CONSAVE_MAP* pData = NULL;
 
+	// #AltBuffer Load alt buffer from Console Server (CECMD_GETOUTPUT / cmd_GetOutput)
 	StoredOutputHdr.InitName(CECONOUTPUTNAME, LODWORD(hConWnd)); //-V205
 	if (!(pHdr = StoredOutputHdr.Open()) || !pHdr->sCurrentMap[0])
 	{

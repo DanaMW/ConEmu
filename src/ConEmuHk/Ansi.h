@@ -115,7 +115,7 @@ public:
 	static void OnReadConsoleBefore(HANDLE hConOut, const CONSOLE_SCREEN_BUFFER_INFO& csbi);
 	static void OnReadConsoleAfter(bool bFinal, bool bNoLineFeed);
 
-	static void InitAnsiLog(LPCWSTR asFilePath);
+	static void InitAnsiLog(LPCWSTR asFilePath, const bool LogAnsiCodes);
 	static void DoneAnsiLog(bool bFinal);
 
 	static void GetFeatures(bool* pbAnsiAllowed, bool* pbSuppressBells);
@@ -123,6 +123,7 @@ public:
 	static SHORT GetDefaultTextAttr();
 
 	static HANDLE ghAnsiLogFile /*= NULL*/;
+	static bool   gbAnsiLogCodes /*= false*/;
 	static LONG   gnEnterPressed /*= 0*/;
 	static bool   gbAnsiLogNewLine /*= false*/;
 	static bool   gbAnsiWasNewLine /*= false*/;
@@ -185,6 +186,7 @@ protected:
 	void ReportTerminalCharSize(HANDLE hConsoleOutput, int code);
 	void ReportCursorPosition(HANDLE hConsoleOutput);
 	static BOOL WriteAnsiLogUtf8(const char* lpBuffer, DWORD nChars);
+	static void WriteAnsiLogTime();
 public:
 	static UINT GetCodePage();
 	static void WriteAnsiLogA(LPCSTR lpBuffer, DWORD nChars);
@@ -194,7 +196,10 @@ public:
 	static void WriteAnsiLogFormat(const char* format, ...);
 protected:
 	static void XTermSaveRestoreCursor(bool bSaveCursor, HANDLE hConsoleOutput = NULL);
-	static HANDLE XTermAltBuffer(bool bSetAltBuffer);
+	static HANDLE XTermAltBuffer(const bool bSetAltBuffer, const int mode = 1049);
+	static HANDLE XTermBufferConEmuAlternative();
+	static HANDLE XTermBufferConEmuPrimary();
+	//static HANDLE XTermBufferWin10(const int mode, const bool bSetAltBuffer);
 public:
 
 	void ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply);
@@ -240,6 +245,7 @@ protected:
 		private: t _##n; \
 		public: t get##n() const { return _##n; }; \
 		public: void set##n(const t val);
+public:
 	enum cbit { clr4b = 0, clr8b, clr24b };
 	struct DisplayParm
 	{
@@ -258,11 +264,11 @@ protected:
 		DP_PROP(cbit, Back256);          // 48
 	}; // gDisplayParm = {};
 	#undef DP_PROP
+	static const DisplayParm& getDisplayParm();
+
+protected:
 	// Bad thing... Thought, it must be synced between thread, but when?
 	static DisplayParm gDisplayParm;
-
-	friend BOOL WINAPI OnWriteConsoleOutputCharacterA(HANDLE hConsoleOutput, LPCSTR lpCharacter, DWORD nLength, COORD dwWriteCoord, LPDWORD lpNumberOfCharsWritten);
-	friend BOOL WINAPI OnWriteConsoleOutputCharacterW(HANDLE hConsoleOutput, LPCWSTR lpCharacter, DWORD nLength, COORD dwWriteCoord, LPDWORD lpNumberOfCharsWritten);
 
 	struct DisplayCursorPos
 	{

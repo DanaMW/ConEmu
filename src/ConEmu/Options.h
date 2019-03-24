@@ -72,7 +72,7 @@ enum CEFontStyles
 
 #define RUNQUEUE_CREATE_LAG_DEF 100
 #define RUNQUEUE_CREATE_LAG_MIN 10 // 10 ms
-#define RUNQUEUE_CREATE_LAG_MAX 10*1000 // 10 sec
+#define RUNQUEUE_CREATE_LAG_MAX (10*1000) // 10 sec
 
 enum FarMacroVersion
 {
@@ -1068,6 +1068,8 @@ struct Settings
 
 		//reg->Load(L"AnsiLog", isAnsiLog);
 		bool isAnsiLog; // Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+		//reg->Load(L"AnsiLogCodes", isAnsiLogCodes);
+		bool isAnsiLogCodes; // Write to logfile ANSI sequences (from app and our internals)
 		//reg->Load(L"AnsiLogPath", &pszAnsiLog);
 		wchar_t* pszAnsiLog;
 		//reg->Load(L"KillSshAgent", isKillSshAgent)
@@ -1080,7 +1082,7 @@ struct Settings
 		bool isProcessCtrlZ; // Treat Ctrl-Z as ‘EndOfStream’. On new line press Ctrl-Z and Enter. Refer to the gh#465 for details (Go input streams).
 		//reg->Load(L"UseClink", mb_UseClink);
 		bool mb_UseClink; // использовать расширение командной строки (ReadConsole)
-		DWORD isUseClink(bool abCheckVersion = false);
+		DWORD isUseClink();
 		//reg->Load(L"PortableReg", isPortableReg);
 		bool isPortableReg;
 		//reg->Load(L"SuppressBells", isSuppressBells);

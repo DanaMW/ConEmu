@@ -1070,7 +1070,7 @@ int ServerInit()
 			{
 				DumpInitStatus("\nServerInit: CreateThread(SetOemCpProc)");
 				DWORD nTID;
-				HANDLE h = apiCreateThread(SetOemCpProc, (LPVOID)nOemCP, &nTID, "SetOemCpProc");
+				HANDLE h = apiCreateThread(SetOemCpProc, (LPVOID)(DWORD_PTR)nOemCP, &nTID, "SetOemCpProc");
 				if (h && (h != INVALID_HANDLE_VALUE))
 				{
 					DWORD nWait = WaitForSingleObject(h, 5000);
@@ -1531,7 +1531,7 @@ int ServerInit()
 	{
 		// Его нужно дернуть, чтобы инициализировать цикл аттача во вкладку ConEmu
 		CESERVER_REQ* pIn = ExecuteNewCmd(CECMD_ATTACHGUIAPP, sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_ATTACHGUIAPP));
-		_ASSERTE(((DWORD)gpSrv->hRootProcessGui)!=0xCCCCCCCC);
+		_ASSERTE(LODWORD(gpSrv->hRootProcessGui)!=0xCCCCCCCC);
 		_ASSERTE(IsWindow(ghConEmuWnd));
 		_ASSERTE(IsWindow(ghConEmuWndDC));
 		_ASSERTE(IsWindow(ghConEmuWndBack));
@@ -1982,11 +1982,6 @@ wrap:
 void CmdOutputStore(bool abCreateOnly /*= false*/)
 {
 	const bool reopen_allowed = isReopenHandleAllowed();
-	if (reopen_allowed)
-	{
-		// Nothing to do, in this mode we utilize conhost screen buffers
-		return;
-	}
 
 	LogFunction(L"CmdOutputStore");
 
@@ -1997,7 +1992,6 @@ void CmdOutputStore(bool abCreateOnly /*= false*/)
 	// Need to block all requests to output buffer in other threads
 	MSectionLockSimple csRead; csRead.Lock(&gpSrv->csReadConsoleInfo, LOCK_READOUTPUT_TIMEOUT);
 
-	// Just in case we change the logic somehow
 	if (reopen_allowed)
 		ConOutCloseHandle();
 
@@ -2128,7 +2122,7 @@ void CmdOutputRestore(bool abSimpleMode)
 
 	CONSOLE_SCREEN_BUFFER_INFO storedSbi = pData->info;
 	COORD crOldBufSize = pData->info.dwSize; // Может быть шире или уже чем текущая консоль!
-	SMALL_RECT rcWrite = {0, 0, std::min<int>(crOldBufSize.X,lsbi.dwSize.X)-1, std::min<int>(crOldBufSize.Y,lsbi.dwSize.Y)-1};
+	SMALL_RECT rcWrite = MakeSmallRect(0, 0, std::min<int>(crOldBufSize.X,lsbi.dwSize.X)-1, std::min<int>(crOldBufSize.Y,lsbi.dwSize.Y)-1);
 	COORD crBufPos = {0,0};
 
 	if (!abSimpleMode)
@@ -2379,17 +2373,17 @@ void CheckConEmuHwnd()
 			// ghConEmuWndDC по идее уже должен быть получен из GUI через пайпы
 			LogFunction(L"Warning, ghConEmuWndDC still not initialized");
 			_ASSERTE(ghConEmuWndDC!=NULL);
-			HWND hBack = NULL, hDc = NULL;
 			wchar_t szClass[128];
 			while (!ghConEmuWndDC)
 			{
-				hBack = FindWindowEx(ghConEmuWnd, hBack, VirtualConsoleClassBack, NULL);
+				const HWND hBack = FindWindowEx(ghConEmuWnd, hBack, VirtualConsoleClassBack, NULL);
 				if (!hBack)
 					break;
-				if (GetWindowLong(hBack, 0) == LOLONG(ghConWnd))
+				if (GetWindowLong(hBack, WindowLongBack_ConWnd) == LOLONG(ghConWnd))
 				{
-					hDc = (HWND)(DWORD)GetWindowLong(hBack, 4);
-					if (IsWindow(hDc) && GetClassName(hDc, szClass, countof(szClass) && !lstrcmp(szClass, VirtualConsoleClass)))
+					const HWND2 hDc{(DWORD)GetWindowLong(hBack, WindowLongBack_DCWnd)};
+					if (IsWindow(hDc) && GetClassName(hDc, szClass, countof(szClass)
+						&& (0 == lstrcmp(szClass, VirtualConsoleClass))))
 					{
 						SetConEmuWindows(ghConEmuWnd, hDc, hBack);
 						break;
@@ -3641,8 +3635,7 @@ void InitAnsiLog(const ConEmuAnsiLog& AnsiLog)
 	LogFunction(L"InitAnsiLog");
 	// Reset first
 	SetEnvironmentVariable(ENV_CONEMUANSILOG_VAR_W, L"");
-	gpSrv->AnsiLog.Enabled = FALSE;
-	gpSrv->AnsiLog.Path[0] = 0;
+	gpSrv->AnsiLog = {};
 	// Enabled?
 	if (!AnsiLog.Enabled || !*AnsiLog.Path)
 	{
@@ -3650,44 +3643,44 @@ void InitAnsiLog(const ConEmuAnsiLog& AnsiLog)
 		return;
 	}
 	// May contains variables
-	wchar_t* pszExp = ExpandEnvStr(AnsiLog.Path);
-	// Max path = (MAX_PATH - "ConEmu-yyyy-mm-dd-p12345.log")
-	wchar_t szPath[MAX_PATH] = L"", szName[40] = L"";
-	SYSTEMTIME st = {}; GetLocalTime(&st);
-	msprintf(szName, countof(szName), CEANSILOGNAMEFMT, st.wYear, st.wMonth, st.wDay, GetCurrentProcessId());
-	int nNameLen = lstrlen(szName);
-	lstrcpyn(szPath, pszExp ? pszExp : AnsiLog.Path, countof(szPath)-nNameLen);
-	int nLen = lstrlen(szPath);
-	if ((nLen >= 1) && (szPath[nLen-1] != L'\\'))
-		szPath[nLen++] = L'\\';
-	if (!DirectoryExists(szPath))
+	CEStr log_file(ExpandEnvStr(AnsiLog.Path));
+	if (log_file.IsEmpty())
+		log_file.Set(AnsiLog.Path);
+	const wchar_t* ptr_name = PointToName(log_file.c_str());
+	if (!ptr_name)
 	{
-		if (!MyCreateDirectory(szPath))
+		_ASSERTE(ptr_name != nullptr);
+		return;
+	}
+	const ssize_t idx_name = ptr_name - log_file.c_str();
+	const wchar_t name_chr = log_file.SetAt(idx_name, 0);
+	if (!DirectoryExists(log_file))
+	{
+		if (!MyCreateDirectory(log_file.ms_Val))
 		{
 			DWORD dwErr = GetLastError();
 			_printf("Failed to create AnsiLog-files directory:\n");
-			_wprintf(szPath);
+			_wprintf(log_file);
 			print_error(dwErr);
 			return;
 		}
 	}
-	// Prepare path
-	wcscat_c(szPath, szName);
+	log_file.SetAt(idx_name, name_chr);
 	// Try to create
-	HANDLE hLog = CreateFile(szPath, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hLog == INVALID_HANDLE_VALUE)
+	HANDLE hLog = CreateFile(log_file, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (!hLog || hLog == INVALID_HANDLE_VALUE)
 	{
 		DWORD dwErr = GetLastError();
 		_printf("Failed to create new AnsiLog-file:\n");
-		_wprintf(szPath);
+		_wprintf(log_file);
 		print_error(dwErr);
 		return;
 	}
 	CloseHandle(hLog);
 	// OK!
-	gpSrv->AnsiLog.Enabled = TRUE;
-	wcscpy_c(gpSrv->AnsiLog.Path, szPath);
-	SetEnvironmentVariable(ENV_CONEMUANSILOG_VAR_W, szPath);
+	gpSrv->AnsiLog = AnsiLog;
+	wcscpy_c(gpSrv->AnsiLog.Path, log_file);
+	SetEnvironmentVariable(ENV_CONEMUANSILOG_VAR_W, log_file);
 }
 
 #if 0

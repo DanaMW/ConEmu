@@ -205,7 +205,7 @@ public:
 		} taskbarLocation;
 	};
 protected:
-	MSectionSimple mcs_monitors = MSectionSimple(true);
+	mutable MSectionSimple mcs_monitors = MSectionSimple(true);
 	MArray<MonitorInfoCache> monitors;
 	// Save preferred monitor to restore
 	HMONITOR mh_MinFromMonitor = NULL;
@@ -216,8 +216,8 @@ protected:
 public:
 	void ReloadMonitorInfo();
 	void SetRequestedMonitor(HMONITOR hNewMon);
-	MonitorInfoCache NearestMonitorInfo(HMONITOR hNewMon);
-	MonitorInfoCache NearestMonitorInfo(const RECT& rcWnd);
+	MonitorInfoCache NearestMonitorInfo(HMONITOR hNewMon) const;
+	MonitorInfoCache NearestMonitorInfo(const RECT& rcWnd) const;
 
 public:
 	CConEmuSize();
@@ -245,13 +245,13 @@ public:
 	bool SetQuakeMode(BYTE NewQuakeMode, ConEmuWindowMode nNewWindowMode = wmNotChanging, bool bFromDlg = false);
 
 	static LPCWSTR FormatTileMode(ConEmuWindowCommand Tile, wchar_t* pchBuf, size_t cchBufMax);
-	bool ChandeTileMode(ConEmuWindowCommand Tile);
+	bool ChangeTileMode(ConEmuWindowCommand Tile);
 	ConEmuWindowCommand GetTileMode(bool Estimate, MONITORINFO* pmi = NULL);
 	ConEmuWindowCommand EvalTileMode(const RECT& rcWnd, MONITORINFO* pmi = NULL);
-	RECT GetTileRect(ConEmuWindowCommand Tile, const MONITORINFO& mi);
-	ConEmuWindowMode GetWindowMode();
-	ConEmuWindowMode GetChangeFromWindowMode();
-	bool IsWindowModeChanging();
+	RECT GetTileRect(ConEmuWindowCommand Tile, const MONITORINFO& mi) const;
+	ConEmuWindowMode GetWindowMode() const;
+	ConEmuWindowMode GetChangeFromWindowMode() const;
+	bool IsWindowModeChanging() const;
 	bool SetWindowMode(ConEmuWindowMode inMode, bool abForce = false, bool abFirstShow = false);
 	bool SetWindowPosSize(LPCWSTR asX, LPCWSTR asY, LPCWSTR asW, LPCWSTR asH);
 	void SetWindowPosSizeParam(wchar_t acType, LPCWSTR asValue);
@@ -318,9 +318,10 @@ public:
 	HRGN CreateWindowRgn();
 	HRGN CreateWindowRgn(bool abRoundTitle, int anX, int anY, int anWndWidth, int anWndHeight);
 
-	bool isCaptionHidden(ConEmuWindowMode wmNewMode = wmCurrent);
-	bool isSelfFrame();
-	UINT GetSelfFrameWidth();
+	bool isCaptionHidden(ConEmuWindowMode wmNewMode = wmCurrent) const;
+	bool isWin10InvisibleFrame(const ConEmuWindowMode wmNewMode = wmCurrent) const;
+	bool isSelfFrame(const ConEmuWindowMode wmNewMode = wmCurrent) const;
+	UINT GetSelfFrameWidth() const;
 	void StartForceShowFrame();
 	void StopForceShowFrame();
 	void DisableThickFrame(bool flag);
@@ -337,14 +338,14 @@ public:
 	};
 
 protected:
-	RECT CalcMargins_Win10Frame();
-	RECT CalcMargins_FrameCaption(DWORD/*enum ConEmuMargins*/ mg, ConEmuWindowMode wmNewMode = wmCurrent);
-	RECT CalcMargins_TabBar(DWORD/*enum ConEmuMargins*/ mg);
-	RECT CalcMargins_StatusBar();
-	RECT CalcMargins_Padding();
-	RECT CalcMargins_Scrolling();
-	RECT CalcMargins_VisibleFrame(LPRECT prcFrame = NULL);
-	RECT CalcMargins_InvisibleFrame();
+	RECT CalcMargins_Win10Frame() const;
+	RECT CalcMargins_FrameCaption(DWORD/*enum ConEmuMargins*/ mg, ConEmuWindowMode wmNewMode = wmCurrent) const;
+	RECT CalcMargins_TabBar(DWORD/*enum ConEmuMargins*/ mg) const;
+	RECT CalcMargins_StatusBar() const;
+	RECT CalcMargins_Padding() const;
+	RECT CalcMargins_Scrolling() const;
+	RECT CalcMargins_VisibleFrame(LPRECT prcFrame = NULL) const;
+	RECT CalcMargins_InvisibleFrame() const;
 	static LRESULT OnDpiChangedCall(LPARAM lParam);
 	bool FixWindowRect(RECT& rcWnd, ConEmuBorders nBorders, bool bPopupDlg = false);
 	bool FixPosByStartupMonitor(const HMONITOR hStartMon);

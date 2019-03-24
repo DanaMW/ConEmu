@@ -91,6 +91,7 @@ private:
 protected:
 	// #condata Replace with MLogFile?
 	HANDLE ghAnsiLogFile = NULL;
+	bool   gbAnsiLogCodes = false;
 	LONG   gnEnterPressed = 0;
 	bool   gbAnsiLogNewLine = false;
 	bool   gbAnsiWasNewLine = false;
@@ -228,6 +229,8 @@ protected:
 	} gXTermAltBuffer = {};
 	/* ************ Globals for xTerm/ViM ************ */
 
+	DWORD last_write_tick_ = 0;
+
 protected:
 
 	/// Codepage set for OurWriteConsoleA
@@ -235,10 +238,11 @@ protected:
 
 	/// ANSI functions
 	void FirstAnsiCall(const BYTE* lpBuf, DWORD nNumberOfBytes);
-	void InitAnsiLog(LPCWSTR asFilePath);
+	void InitAnsiLog(LPCWSTR asFilePath, const bool LogAnsiCodes);
 	void DoneAnsiLog(bool bFinal);
 	void WriteAnsiLogW(LPCWSTR lpBuffer, DWORD nChars);
 	void WriteAnsiLogFormat(const char* format, ...);
+	void WriteAnsiLogTime();
 	bool WriteAnsiLogUtf8(const char* lpBuffer, DWORD nChars);
 	void DebugStringUtf8(LPCWSTR asMessage);
 	void DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown);

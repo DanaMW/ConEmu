@@ -541,7 +541,7 @@ CConEmuMain::CConEmuMain()
 	}
 	NonPortable:
 
-	ZeroStruct(m_DbgInfo);
+	m_DbgInfo = {};
 	if (IsDebuggerPresent())
 	{
 		wchar_t szDebuggers[32];
@@ -1715,34 +1715,21 @@ DWORD CConEmuMain::FixWindowStyle(DWORD dwStyle, ConEmuWindowMode wmNewMode /*= 
 		dwStyle &= ~(WS_CAPTION|WS_THICKFRAME);
 		dwStyle |= WS_CHILD|WS_SYSMENU;
 	}
-	else if (gpConEmu->isCaptionHidden(wmNewMode))
+	else if (isCaptionHidden(wmNewMode))
 	{
 		dwStyle &= ~WS_CAPTION;
 
-		bool noThickFrame = false;
-			// NO frame in FullScreen at all
-		if ((wmNewMode == wmFullScreen)
-			// mb_DisableThickFrame - to eliminate glitches during quake animation
-			|| (mb_DisableThickFrame))
-		{
-			noThickFrame = true;
-		}
-			// gh-1539: Bypass Windows problem with region and hidden taskbar
-		else if ((wmNewMode == wmMaximized) && isCaptionHidden())
-		{
-			auto mi = NearestMonitorInfo(NULL);
-			if (mi.isTaskbarHidden)
-			{
-				noThickFrame = true;
-			}
-		}
+		const bool noThickFrame = isSelfFrame(wmNewMode)
+			|| mb_DisableThickFrame  // eliminate glitches during quake animation
+			;
 
 		if (noThickFrame)
 		{
 			dwStyle &= ~(WS_THICKFRAME);
 		}
+
 		// m_ForceShowFrame - to bypass strange MS limitation "not resizing borderless windows with WS_SYSMENU"
-		else if (m_ForceShowFrame == fsf_Show)
+		if (m_ForceShowFrame == fsf_Show)
 		{
 			dwStyle &= ~(WS_THICKFRAME|WS_SYSMENU);
 		}
@@ -1750,11 +1737,12 @@ DWORD CConEmuMain::FixWindowStyle(DWORD dwStyle, ConEmuWindowMode wmNewMode /*= 
 		// in favor of borderless or self-drawn-border window
 		else if (gpSet->HideCaptionAlwaysFrame() >= 0)
 		{
+			_ASSERTE(!(dwStyle & WS_THICKFRAME)); // should already be cleared, just ensure...
 			dwStyle &= ~(WS_THICKFRAME); // remove standard (DWM) frame and shadows
 			dwStyle |= (WS_SYSMENU); // but allow system menu!
 		}
 		// Normal mode for caption-less window, allow resize using standard (DWM) frame
-		else
+		else if (!noThickFrame)
 		{
 			dwStyle |= (WS_THICKFRAME|WS_SYSMENU);
 		}
@@ -6300,7 +6288,7 @@ bool CConEmuMain::isMeForeground(bool abRealAlso/*=false*/, bool abDialogsAlso/*
 
 bool CConEmuMain::isMouseOverFrame(bool abReal)
 {
-	if (m_ForceShowFrame && isSizing())
+	if ((m_ForceShowFrame != fsf_Hide) && isSizing())
 	{
 		if (!isPressed(VK_LBUTTON))
 		{
@@ -11456,7 +11444,7 @@ BOOL CConEmuMain::OnMouse_NCBtnDblClk(HWND hWnd, UINT& messg, WPARAM wParam, LPA
 			return FALSE;
 		}
 
-		ChandeTileMode((wParam == HTLEFT || wParam == HTRIGHT) ? cwc_TileWidth : cwc_TileHeight);
+		ChangeTileMode((wParam == HTLEFT || wParam == HTRIGHT) ? cwc_TileWidth : cwc_TileHeight);
 
 		return TRUE;
 	}
@@ -11606,20 +11594,15 @@ void CConEmuMain::CheckFocus(LPCWSTR asFrom)
 							else
 							{
 								DEBUGSTRFOREGROUND(L"Activating ConEmu on desktop by mouse click\n");
-								mouse.bForceSkipActivation = TRUE; // не пропускать этот клик в консоль!
-								// Запомнить, где курсор сейчас. Вернуть надо будет
+								mouse.bForceSkipActivation = true;  // don't pass this click into the console!
+								// Remember, where was the cursor. Revert the position later
 								POINT ptCur; GetCursorPos(&ptCur);
-								SetCursorPos(pt.x,pt.y); // мышку обязательно "подвинуть", иначе mouse_event не сработает
-								// "кликаем"
+								SetCursorPos(pt.x,pt.y);  // Need to "move" the mouse, otherwise mouse_event will not work
+								// "clicking"
 								mouse_event(MOUSEEVENTF_ABSOLUTE+MOUSEEVENTF_LEFTDOWN, pt.x,pt.y, 0,0);
 								mouse_event(MOUSEEVENTF_ABSOLUTE+MOUSEEVENTF_LEFTUP, pt.x,pt.y, 0,0);
-								// Вернуть курсор
+								// Revert the cursor position
 								SetCursorPos(ptCur.x,ptCur.y);
-								//
-								//#ifdef _DEBUG -- очередь еще не обработана системой...
-								//HWND hPost = GetForegroundWindow();
-								//DEBUGSTRFOREGROUND((hPost==ghWnd) ? L"ConEmu on desktop activation Succeeded\n" : L"ConEmu on desktop activation FAILED\n");
-								//#endif
 							}
 						}
 					}
@@ -12482,7 +12465,7 @@ void CConEmuMain::OnTimer_Main(CVirtualConsole* pVCon)
 	{
 		if (!bForeground)
 		{
-			if (m_ForceShowFrame)
+			if (m_ForceShowFrame != fsf_Hide)
 			{
 				StopForceShowFrame();
 			}
@@ -12524,7 +12507,7 @@ void CConEmuMain::OnTimer_Main(CVirtualConsole* pVCon)
 			}
 		}
 	}
-	else if (m_ForceShowFrame)
+	else if (m_ForceShowFrame != fsf_Hide)
 	{
 		StopForceShowFrame();
 	}
@@ -13452,7 +13435,7 @@ LRESULT CConEmuMain::OnActivateByMouse(HWND hWnd, UINT messg, WPARAM wParam, LPA
 	//return MA_ACTIVATEANDEAT; -- ест все подряд, а LBUTTONUP пропускает :(
 	this->mouse.nSkipEvents[0] = 0;
 	this->mouse.nSkipEvents[1] = 0;
-	this->mouse.bTouchActivation = FALSE;
+	this->mouse.bTouchActivation = false;
 
 	bool bSkipActivation = false;
 
@@ -13473,17 +13456,15 @@ LRESULT CConEmuMain::OnActivateByMouse(HWND hWnd, UINT messg, WPARAM wParam, LPA
 		}
 	}
 
-	if (this->mouse.bForceSkipActivation  // принудительная активация окна, лежащего на Desktop
+	if (this->mouse.bForceSkipActivation  // force activation of the Windows which is a child of Desktop
 		|| bSkipActivation
 		|| (gpSet->isMouseSkipActivation
 			&& (LOWORD(lParam) == HTCLIENT)
 			&& (bTouchActivation || !(m_Foreground.ForegroundState & (fgf_ConEmuMain|fgf_InsideParent))))
 		)
 	{
-		this->mouse.bForceSkipActivation = FALSE; // Однократно
+		this->mouse.bForceSkipActivation = false; // Once
 		POINT ptMouse = {0}; GetCursorPos(&ptMouse);
-		//RECT  rcDC = {0}; GetWindowRect('ghWnd DC', &rcDC);
-		//if (PtInRect(&rcDC, ptMouse))
 		if (IsGesturesEnabled() || CVConGroup::GetVConFromPoint(ptMouse))
 		{
 			DEBUGSTRFOCUS(L"!Skipping mouse activation message!");
@@ -13502,7 +13483,7 @@ LRESULT CConEmuMain::OnActivateByMouse(HWND hWnd, UINT messg, WPARAM wParam, LPA
 			else if (HIWORD(lParam) == 0x0246/*WM_POINTERDOWN*/)
 			{
 				// Following real WM_LBUTTONDOWN activation is expected
-				this->mouse.bTouchActivation = TRUE;
+				this->mouse.bTouchActivation = true;
 			}
 			else
 			{

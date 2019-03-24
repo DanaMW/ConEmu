@@ -303,8 +303,10 @@ void SrvAnsi::FirstAnsiCall(const BYTE* lpBuf, DWORD nNumberOfBytes)
 #endif
 }
 
-void SrvAnsi::InitAnsiLog(LPCWSTR asFilePath)
+void SrvAnsi::InitAnsiLog(LPCWSTR asFilePath, const bool LogAnsiCodes)
 {
+	gbAnsiLogCodes = LogAnsiCodes;
+
 	// Already initialized?
 	if (ghAnsiLogFile)
 		return;
@@ -356,20 +358,43 @@ void SrvAnsi::WriteAnsiLogFormat(const char* format, ...)
 	if (!ghAnsiLogFile || !format)
 		return;
 	ScopedObject(CLastErrorGuard);
+
+	WriteAnsiLogTime();
+
 	va_list argList;
 	va_start(argList, format);
 	char func_buffer[200] = "";
 	if (S_OK == StringCchVPrintfA(func_buffer, countof(func_buffer), format, argList))
 	{
+		// #Connector Detect active executable
 		char s_ExeName[80] = "connector";
 		//if (!*s_ExeName)
 		//	WideCharToMultiByte(CP_UTF8, 0, gsExeName, -1, s_ExeName, countof(s_ExeName)-1, nullptr, nullptr);
 
 		char log_string[300] = "";
-		msprintf(log_string, countof(log_string), "\x1B]9;11;\"%s: %s\"\x1B\\", s_ExeName, func_buffer);
+		msprintf(log_string, countof(log_string), "\x1B]9;11;\"%s: %s\"\x7", s_ExeName, func_buffer);
 		WriteAnsiLogUtf8(log_string, (DWORD)strlen(log_string));
 	}
 	va_end(argList);
+}
+
+void SrvAnsi::WriteAnsiLogTime()
+{
+	const DWORD min_diff = 500;
+	const DWORD cur_tick = GetTickCount();
+	const DWORD cur_diff = cur_tick - last_write_tick_;
+
+	if (!last_write_tick_ || (cur_diff >= min_diff))
+	{
+		last_write_tick_ = cur_tick;
+		SYSTEMTIME st = {};
+		GetLocalTime(&st);
+		char time_str[40];
+		// We should NOT use WriteAnsiLogFormat here!
+		msprintf(time_str, std::size(time_str), "\x1B]9;11;\"%02u:%02u:%02u.%03u\"\x7",
+			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+		WriteAnsiLogUtf8(time_str, strlen(time_str));
+	}
 }
 
 bool SrvAnsi::WriteAnsiLogUtf8(const char* lpBuffer, DWORD nChars)
@@ -393,6 +418,8 @@ void SrvAnsi::WriteAnsiLogW(LPCWSTR lpBuffer, DWORD nChars)
 		return;
 
 	ScopedObject(CLastErrorGuard);
+
+	WriteAnsiLogTime();
 
 	// Cygwin (in RealConsole mode, not connector) don't write CR+LF to screen,
 	// it uses SetConsoleCursorPosition instead after receiving '\n' from readline

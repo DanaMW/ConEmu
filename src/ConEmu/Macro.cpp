@@ -1806,10 +1806,10 @@ LPWSTR ConEmuMacro::WindowMaximize(GuiMacro* p, CRealConsole* apRCon, bool abFro
 	{
 	case 1:
 		// By width
-		gpConEmu->ChandeTileMode(cwc_TileWidth); break;
+		gpConEmu->ChangeTileMode(cwc_TileWidth); break;
 	case 2:
 		// By height
-		gpConEmu->ChandeTileMode(cwc_TileHeight); break;
+		gpConEmu->ChangeTileMode(cwc_TileHeight); break;
 	default:
 		gpConEmu->DoMaximizeRestore();
 	}
@@ -1914,7 +1914,7 @@ LPWSTR ConEmuMacro::WindowMode(GuiMacro* p, CRealConsole* apRCon, bool abFromPlu
 	case cwc_TileRight:
 	case cwc_TileHeight:
 	case cwc_TileWidth:
-		gpConEmu->ChandeTileMode(Cmd);
+		gpConEmu->ChangeTileMode(Cmd);
 		break;
 	case cwc_PrevMonitor:
 	case cwc_NextMonitor:
@@ -2418,6 +2418,7 @@ LPWSTR ConEmuMacro::Keys(GuiMacro* p, CRealConsole* apRCon, bool abFromPlugin)
 
 	LPWSTR pszKey = NULL;
 	int iKeyNo = 0;
+	wchar_t szSeq[4];
 
 	while (p->GetStrArg(iKeyNo++, pszKey))
 	{
@@ -2474,7 +2475,6 @@ LPWSTR ConEmuMacro::Keys(GuiMacro* p, CRealConsole* apRCon, bool abFromPlugin)
 		}
 		if (VK || (iScanCode != -1))
 		{
-			wchar_t szSeq[4];
 			if (pszKey[1] != 0)
 				pszKey = NULL;
 

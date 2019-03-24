@@ -47,6 +47,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/WErrGuard.h"
 #include "../ConEmu/version.h"
 
+#include "Connector.h"
 #include "ExtConsole.h"
 #include "hlpConsole.h"
 #include "SetHook.h"
@@ -110,6 +111,7 @@ BOOL WINAPI OnCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LP
 
 // These handles must be registered and released in OnCloseHandle.
 HANDLE CEAnsi::ghAnsiLogFile = NULL;
+bool CEAnsi::gbAnsiLogCodes = false;
 LONG CEAnsi::gnEnterPressed = 0;
 bool CEAnsi::gbAnsiLogNewLine = false;
 bool CEAnsi::gbAnsiWasNewLine = false;
@@ -227,8 +229,10 @@ void DebugStringUtf8(LPCWSTR asMessage)
 	#endif
 }
 
-void CEAnsi::InitAnsiLog(LPCWSTR asFilePath)
+void CEAnsi::InitAnsiLog(LPCWSTR asFilePath, const bool LogAnsiCodes)
 {
+	gbAnsiLogCodes = LogAnsiCodes;
+
 	// Already initialized?
 	if (ghAnsiLogFile)
 		return;
@@ -280,9 +284,12 @@ UINT CEAnsi::GetCodePage()
 // Intended to log some WinAPI functions
 void CEAnsi::WriteAnsiLogFormat(const char* format, ...)
 {
-	if (!ghAnsiLogFile || !format)
+	if (!ghAnsiLogFile || !gbAnsiLogCodes || !format)
 		return;
 	ScopedObject(CLastErrorGuard);
+
+	WriteAnsiLogTime();
+
 	va_list argList;
 	va_start(argList, format);
 	char func_buffer[200] = "";
@@ -293,15 +300,38 @@ void CEAnsi::WriteAnsiLogFormat(const char* format, ...)
 			WideCharToMultiByte(CP_UTF8, 0, gsExeName, -1, s_ExeName, countof(s_ExeName)-1, nullptr, nullptr);
 
 		char log_string[300] = "";
-		msprintf(log_string, countof(log_string), "\x1B]9;11;\"%s: %s\"\x1B\\", s_ExeName, func_buffer);
+		msprintf(log_string, countof(log_string), "\x1B]9;11;\"%s: %s\"\x7", s_ExeName, func_buffer);
 		WriteAnsiLogUtf8(log_string, (DWORD)strlen(log_string));
 	}
 	va_end(argList);
 }
 
+void CEAnsi::WriteAnsiLogTime()
+{
+	if (!ghAnsiLogFile || !gbAnsiLogCodes)
+		return;
+	static DWORD last_write_tick_ = 0;
+
+	const DWORD min_diff = 500;
+	const DWORD cur_tick = GetTickCount();
+	const DWORD cur_diff = cur_tick - last_write_tick_;
+
+	if (!last_write_tick_ || (cur_diff >= min_diff))
+	{
+		last_write_tick_ = cur_tick;
+		SYSTEMTIME st = {};
+		GetLocalTime(&st);
+		char time_str[40];
+		// We should NOT use WriteAnsiLogFormat here!
+		msprintf(time_str, std::size(time_str), "\x1B]9;11;\"%02u:%02u:%02u.%03u\"\x7",
+			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+		WriteAnsiLogUtf8(time_str, strlen(time_str));
+	}
+}
+
 BOOL CEAnsi::WriteAnsiLogUtf8(const char* lpBuffer, DWORD nChars)
 {
-	if (!lpBuffer || !nChars)
+	if (!ghAnsiLogFile || !lpBuffer || !nChars)
 		return FALSE;
 	BOOL bWrite; DWORD nWritten;
 	// Handle multi-thread writers
@@ -341,6 +371,8 @@ void CEAnsi::WriteAnsiLogA(LPCSTR lpBuffer, DWORD nChars)
 			}
 		}
 
+		WriteAnsiLogTime();
+
 		WriteAnsiLogUtf8(lpBuffer, nChars);
 
 		SafeFree(pszBuf);
@@ -374,6 +406,8 @@ void CEAnsi::WriteAnsiLogW(LPCWSTR lpBuffer, DWORD nChars)
 		return;
 
 	ScopedObject(CLastErrorGuard);
+
+	WriteAnsiLogTime();
 
 	// Cygwin (in RealConsole mode, not connector) don't write CR+LF to screen,
 	// it uses SetConsoleCursorPosition instead after receiving '\n' from readline
@@ -645,6 +679,12 @@ static const wchar_t szAnalogues[32] =
 		| (Con2Ansi[CONBACKCOLOR(csbi.wAttributes)] << 4);
 
 	return clrDefault;
+}
+
+
+const CEAnsi::DisplayParm& CEAnsi::getDisplayParm()
+{
+	return gDisplayParm;
 }
 
 
@@ -1904,34 +1944,6 @@ BOOL CEAnsi::ScrollScreen(HANDLE hConsoleOutput, int nDir)
 	return lbRc;
 }
 
-//BOOL CEAnsi::PadAndScroll(HANDLE hConsoleOutput, CONSOLE_SCREEN_BUFFER_INFO& csbi)
-//{
-//	BOOL lbRc = FALSE;
-//	COORD crFrom = {csbi.dwCursorPosition.X, csbi.dwCursorPosition.Y};
-//	DEBUGTEST(DWORD nCount = csbi.dwSize.X - csbi.dwCursorPosition.X);
-//
-//	/*
-//	lbRc = FillConsoleOutputAttribute(hConsoleOutput, GetDefaultTextAttr(), nCount, crFrom, &nWritten)
-//		&& FillConsoleOutputCharacter(hConsoleOutput, L' ', nCount, crFrom, &nWritten);
-//	*/
-//
-//	if ((csbi.dwCursorPosition.Y + 1) >= csbi.dwSize.Y)
-//	{
-//		lbRc = ScrollScreen(hConsoleOutput, -1);
-//		crFrom.X = 0;
-//	}
-//	else
-//	{
-//		crFrom.X = 0; crFrom.Y++;
-//		lbRc = TRUE;
-//	}
-//
-//	csbi.dwCursorPosition = crFrom;
-//	SetConsoleCursorPosition(hConsoleOutput, crFrom);
-//
-//	return lbRc;
-//}
-
 BOOL CEAnsi::FullReset(HANDLE hConsoleOutput)
 {
 	CONSOLE_SCREEN_BUFFER_INFO csbi = {};
@@ -3016,9 +3028,6 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 				ExtFillOutputParm fill = {sizeof(fill), efof_Current|efof_Attribute|efof_Character,
 					hConsoleOutput, {}, L' ', cr0, (DWORD)nChars };
 				ExtFillOutput(&fill);
-				//DWORD nWritten = 0;
-				//FillConsoleOutputAttribute(hConsoleOutput, GetDefaultTextAttr(), nChars, cr0, &nWritten);
-				//FillConsoleOutputCharacter(hConsoleOutput, L' ', nChars, cr0, &nWritten);
 			}
 		} // case L'K':
 		break;
@@ -3246,7 +3255,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 						: (Code.ArgV[0] == 1004) ? tmm_FOCUS
 						: (Code.ArgV[0] == 1005) ? tmm_UTF8
 						: (Code.ArgV[0] == 1006) ? tmm_XTERM
-						: (Code.ArgV[0] == 1000) ? tmm_URXVT
+						: (Code.ArgV[0] == 1015) ? tmm_URXVT
 						: tmm_None;
 					DWORD Mode = (Code.Action == L'h')
 						? (LastMode | ModeMask)
@@ -3288,7 +3297,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 						XTermSaveRestoreCursor(true, hConsoleOutput);
 					// h: switch to alternative buffer without backscroll
 					// l: restore saved scrollback buffer
-					hConsoleOutput = XTermAltBuffer((Code.Action == L'h'));
+					hConsoleOutput = XTermAltBuffer((Code.Action == L'h'), Code.ArgV[0]);
 					// \e[?1049l - restore cursor pos
 					if ((Code.ArgV[0] == 1049) && (Code.Action == L'l'))
 						XTermSaveRestoreCursor(false, hConsoleOutput);
@@ -3537,6 +3546,18 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 			}
 		}
 		break; // "[...m"
+
+	case L'p':
+		if (Code.ArgC == 0 && Code.PvtLen == 1 && Code.Pvt[0] == L'!')
+		{
+			FullReset(hConsoleOutput);
+			lbApply = FALSE;
+		}
+		else
+		{
+			DumpUnknownEscape(Code.pszEscStart,Code.nTotalLen);
+		}
+		break; // "[!p"
 
 	case L'q':
 		if ((Code.PvtLen == 1) && (Code.Pvt[0] == L' '))
@@ -4037,12 +4058,165 @@ void CEAnsi::XTermSaveRestoreCursor(bool bSaveCursor, HANDLE hConsoleOutput /*= 
 	}
 }
 
+HANDLE CEAnsi::XTermBufferConEmuAlternative()
+{
+	CONSOLE_SCREEN_BUFFER_INFO csbi1 = {}, csbi2 = {};
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
+	ghStdOut.SetHandle(hOut, MConHandle::StdMode::Output);
+	ghStdErr.SetHandle(hErr, MConHandle::StdMode::Output);
+	if (GetConsoleScreenBufferInfoCached(hOut, &csbi1, TRUE))
+	{
+		// -- Turn on "alternative" buffer even if not scrolling exist now
+		//if (csbi.dwSize.Y > (csbi.srWindow.Bottom - csbi.srWindow.Top + 1))
+		{
+			CESERVER_REQ *pIn = NULL, *pOut = NULL;
+			pIn = ExecuteNewCmd(CECMD_ALTBUFFER,sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_ALTBUFFER));
+			if (pIn)
+			{
+				pIn->AltBuf.AbFlags = abf_BufferOff | abf_SaveContents;
+				if (isConnectorStarted())
+					pIn->AltBuf.AbFlags |= abf_Connector;
+				// support "virtual" dynamic console buffer height
+				if (CESERVER_CONSOLE_APP_MAPPING* pAppMap = gpAppMap ? gpAppMap->Ptr() : NULL)
+					pIn->AltBuf.BufferHeight = std::max((SHORT)pAppMap->nLastConsoleRow, csbi1.srWindow.Bottom);
+				else
+					pIn->AltBuf.BufferHeight = csbi1.srWindow.Bottom;
+				pOut = ExecuteSrvCmd(gnServerPID, pIn, ghConWnd);
+				if (pOut)
+				{
+					if (!IsWin7Eql())
+					{
+						ghConOut.Close();
+						HANDLE hNewOut = ghConOut.GetHandle();
+						if (hNewOut && hNewOut != INVALID_HANDLE_VALUE)
+						{
+							hOut = hNewOut;
+							SetStdHandle(STD_OUTPUT_HANDLE, hNewOut);
+							SetStdHandle(STD_ERROR_HANDLE, hNewOut);
+						}
+					}
+
+					// Ensure we have fresh information (size was changed)
+					GetConsoleScreenBufferInfoCached(hOut, &csbi2, TRUE);
+
+					// Clear current screen contents, don't move cursor position
+					COORD cr0 = {};
+					DWORD nChars = csbi2.dwSize.X * csbi2.dwSize.Y;
+					ExtFillOutputParm fill = {sizeof(fill), efof_Current|efof_Attribute|efof_Character,
+						hOut, {}, L' ', cr0, (DWORD)nChars};
+					ExtFillOutput(&fill);
+
+					TODO("BufferWidth");
+					if (!(gXTermAltBuffer.Flags & xtb_AltBuffer))
+					{
+						// Backscroll length
+						gXTermAltBuffer.BufferSize = (csbi1.dwSize.Y > (csbi1.srWindow.Bottom - csbi1.srWindow.Top + 1))
+							? csbi1.dwSize.Y : 0;
+						gXTermAltBuffer.Flags = xtb_AltBuffer;
+						// Stored cursor pos
+						if (gDisplayCursor.bCursorPosStored)
+						{
+							gXTermAltBuffer.CursorPos = gDisplayCursor.StoredCursorPos;
+							gXTermAltBuffer.Flags |= xtb_StoredCursor;
+						}
+						// Stored scroll region
+						if (gDisplayOpt.ScrollRegion)
+						{
+							gXTermAltBuffer.ScrollStart = gDisplayOpt.ScrollStart;
+							gXTermAltBuffer.ScrollEnd = gDisplayOpt.ScrollEnd;
+							gXTermAltBuffer.Flags |= xtb_StoredScrollRegion;
+						}
+					}
+				}
+				ExecuteFreeResult(pIn);
+				ExecuteFreeResult(pOut);
+			}
+		}
+	}
+	return hOut;
+}
+
+HANDLE CEAnsi::XTermBufferConEmuPrimary()
+{
+	// Сброс расширенных атрибутов!
+	CONSOLE_SCREEN_BUFFER_INFO csbi = {};
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (GetConsoleScreenBufferInfoCached(hOut, &csbi, TRUE))
+	{
+		WORD nDefAttr = GetDefaultTextAttr();
+		// Сброс только расширенных атрибутов
+		ExtFillOutputParm fill = {sizeof(fill), /*efof_ResetExt|*/efof_Attribute/*|efof_Character*/, hOut,
+			{CECF_NONE, CONFORECOLOR(nDefAttr), CONBACKCOLOR(nDefAttr)},
+			L' ', {0,0}, (DWORD)(csbi.dwSize.X * csbi.dwSize.Y)};
+		ExtFillOutput(&fill);
+		CEAnsi* pObj = CEAnsi::Object();
+		if (pObj)
+			pObj->ReSetDisplayParm(hOut, TRUE, TRUE);
+		else
+			SetConsoleTextAttribute(hOut, nDefAttr);
+	}
+
+	if (!IsWin7Eql() && ghStdOut.HasHandle())
+	{
+		SetStdHandle(STD_OUTPUT_HANDLE, ghStdOut);
+		SetStdHandle(STD_ERROR_HANDLE, ghStdErr);
+		hOut = ghStdOut.Release();
+		ghConOut.Close();
+	}
+
+	// Восстановление прокрутки и данных
+	CESERVER_REQ *pIn = NULL, *pOut = NULL;
+	pIn = ExecuteNewCmd(CECMD_ALTBUFFER,sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_ALTBUFFER));
+	if (pIn)
+	{
+		TODO("BufferWidth");
+		pIn->AltBuf.AbFlags = abf_BufferOn | abf_RestoreContents;
+		if (!gXTermAltBuffer.BufferSize)
+			pIn->AltBuf.AbFlags |= abf_BufferOff;
+		if (isConnectorStarted())
+			pIn->AltBuf.AbFlags |= abf_Connector;
+		pIn->AltBuf.BufferHeight = gXTermAltBuffer.BufferSize;
+		// Async - is not allowed. Otherwise current application (cmd.exe for example)
+		// may start printing before server finishes buffer restoration
+		pOut = ExecuteSrvCmd(gnServerPID, pIn, ghConWnd);
+		ExecuteFreeResult(pIn);
+		ExecuteFreeResult(pOut);
+		// Restore saved states
+		if ((gDisplayCursor.bCursorPosStored = !!(gXTermAltBuffer.Flags & xtb_StoredCursor)))
+		{
+			gDisplayCursor.StoredCursorPos = gXTermAltBuffer.CursorPos;
+		}
+		if ((gDisplayOpt.ScrollRegion = !!(gXTermAltBuffer.Flags & xtb_StoredScrollRegion)))
+		{
+			gDisplayOpt.ScrollStart = gXTermAltBuffer.ScrollStart;
+			gDisplayOpt.ScrollEnd = gXTermAltBuffer.ScrollEnd;
+		}
+	}
+	return hOut;
+}
+
+#if 0
+HANDLE CEAnsi::XTermBufferWin10(const int mode, const bool bSetAltBuffer)
+{
+	ORIGINAL_KRNL(WriteFile);
+	const HANDLE std_out = GetStdHandle(STD_OUTPUT_HANDLE);
+	char ansi_seq[32];
+	sprintf_c(ansi_seq, "\x1b[?%i%c", mode, bSetAltBuffer ? 'h' : 'l');
+	const DWORD write_len = static_cast<DWORD>(strlen(ansi_seq));
+	DWORD written = 0;
+	const auto rc = F(WriteFile)(std_out, ansi_seq, write_len, &written, nullptr);
+	_ASSERTEX(rc && written == write_len);
+	return std_out;
+}
+#endif
+
 /// Change current buffer
 /// Alternative buffer in XTerm is used to "fullscreen"
 /// applications like Vim. There is no scrolling and this
 /// mode is used to save current backscroll contents and
 /// restore it when application exits
-HANDLE CEAnsi::XTermAltBuffer(bool bSetAltBuffer)
+HANDLE CEAnsi::XTermAltBuffer(const bool bSetAltBuffer, const int mode)
 {
 	if (bSetAltBuffer)
 	{
@@ -4050,141 +4224,32 @@ HANDLE CEAnsi::XTermAltBuffer(bool bSetAltBuffer)
 		if ((gXTermAltBuffer.Flags & xtb_AltBuffer))
 			return GetStdHandle(STD_OUTPUT_HANDLE);
 
-		CONSOLE_SCREEN_BUFFER_INFO csbi1 = {}, csbi2 = {};
-		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-		HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
-		ghStdOut.SetHandle(hOut, MConHandle::StdMode::Output);
-		ghStdErr.SetHandle(hErr, MConHandle::StdMode::Output);
-		if (GetConsoleScreenBufferInfoCached(hOut, &csbi1, TRUE))
+		#if 0
+		// Can utilize Conhost V2 ANSI?
+		if (gbIsSshProcess && IsWin10())
 		{
-			// -- Turn on "alternative" buffer even if not scrolling exist now
-			//if (csbi.dwSize.Y > (csbi.srWindow.Bottom - csbi.srWindow.Top + 1))
-			{
-				CESERVER_REQ *pIn = NULL, *pOut = NULL;
-				pIn = ExecuteNewCmd(CECMD_ALTBUFFER,sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_ALTBUFFER));
-				if (pIn)
-				{
-					pIn->AltBuf.AbFlags = abf_BufferOff|abf_SaveContents;
-					// support "virtual" dynamic console buffer height
-					if (CESERVER_CONSOLE_APP_MAPPING* pAppMap = gpAppMap ? gpAppMap->Ptr() : NULL)
-						pIn->AltBuf.BufferHeight = std::max<SHORT>(pAppMap->nLastConsoleRow, csbi1.srWindow.Bottom);
-					else
-						pIn->AltBuf.BufferHeight = csbi1.srWindow.Bottom;
-					pOut = ExecuteSrvCmd(gnServerPID, pIn, ghConWnd);
-					if (pOut)
-					{
-						if (!IsWin7Eql())
-						{
-							ghConOut.Close();
-							HANDLE hNewOut = ghConOut.GetHandle();
-							if (hNewOut && hNewOut != INVALID_HANDLE_VALUE)
-							{
-								hOut = hNewOut;
-								SetStdHandle(STD_OUTPUT_HANDLE, hNewOut);
-								SetStdHandle(STD_ERROR_HANDLE, hNewOut);
-							}
-						}
-
-						// Ensure we have fresh information (size was changed)
-						GetConsoleScreenBufferInfoCached(hOut, &csbi2, TRUE);
-
-						// Clear current screen contents, don't move cursor position
-						COORD cr0 = {};
-						DWORD nChars = csbi2.dwSize.X * csbi2.dwSize.Y;
-						ExtFillOutputParm fill = {sizeof(fill), efof_Current|efof_Attribute|efof_Character,
-							hOut, {}, L' ', cr0, (DWORD)nChars};
-						ExtFillOutput(&fill);
-
-						TODO("BufferWidth");
-						if (!(gXTermAltBuffer.Flags & xtb_AltBuffer))
-						{
-							// Backscroll length
-							gXTermAltBuffer.BufferSize = (csbi1.dwSize.Y > (csbi1.srWindow.Bottom - csbi1.srWindow.Top + 1))
-								? csbi1.dwSize.Y : 0;
-							gXTermAltBuffer.Flags = xtb_AltBuffer;
-							// Stored cursor pos
-							if (gDisplayCursor.bCursorPosStored)
-							{
-								gXTermAltBuffer.CursorPos = gDisplayCursor.StoredCursorPos;
-								gXTermAltBuffer.Flags |= xtb_StoredCursor;
-							}
-							// Stored scroll region
-							if (gDisplayOpt.ScrollRegion)
-							{
-								gXTermAltBuffer.ScrollStart = gDisplayOpt.ScrollStart;
-								gXTermAltBuffer.ScrollEnd = gDisplayOpt.ScrollEnd;
-								gXTermAltBuffer.Flags |= xtb_StoredScrollRegion;
-							}
-						}
-					}
-					ExecuteFreeResult(pIn);
-					ExecuteFreeResult(pOut);
-				}
-			}
+			gXTermAltBuffer.Flags |= xtb_AltBuffer;
+			return XTermBufferWin10(mode, bSetAltBuffer);
 		}
-		return hOut;
+		#endif
+
+		return XTermBufferConEmuAlternative();
 	}
 	else
 	{
 		if (!(gXTermAltBuffer.Flags & xtb_AltBuffer))
 			return GetStdHandle(STD_OUTPUT_HANDLE);
 
-		// Однократно
+		// Once!
 		gXTermAltBuffer.Flags &= ~xtb_AltBuffer;
 
-		// Сброс расширенных атрибутов!
-		CONSOLE_SCREEN_BUFFER_INFO csbi = {};
-		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-		if (GetConsoleScreenBufferInfoCached(hOut, &csbi, TRUE))
-		{
-			WORD nDefAttr = GetDefaultTextAttr();
-			// Сброс только расширенных атрибутов
-			ExtFillOutputParm fill = {sizeof(fill), /*efof_ResetExt|*/efof_Attribute/*|efof_Character*/, hOut,
-				{CECF_NONE, CONFORECOLOR(nDefAttr), CONBACKCOLOR(nDefAttr)},
-				L' ', {0,0}, (DWORD)(csbi.dwSize.X * csbi.dwSize.Y)};
-			ExtFillOutput(&fill);
-			CEAnsi* pObj = CEAnsi::Object();
-			if (pObj)
-				pObj->ReSetDisplayParm(hOut, TRUE, TRUE);
-			else
-				SetConsoleTextAttribute(hOut, nDefAttr);
-		}
+		#if 0
+		// Can utilize Conhost V2 ANSI?
+		if (gbIsSshProcess && IsWin10())
+			return XTermBufferWin10(mode, bSetAltBuffer);
+		#endif
 
-		if (!IsWin7Eql() && ghStdOut.HasHandle())
-		{
-			SetStdHandle(STD_OUTPUT_HANDLE, ghStdOut);
-			SetStdHandle(STD_ERROR_HANDLE, ghStdErr);
-			hOut = ghStdOut.Release();
-			ghConOut.Close();
-		}
-
-		// Восстановление прокрутки и данных
-		CESERVER_REQ *pIn = NULL, *pOut = NULL;
-		pIn = ExecuteNewCmd(CECMD_ALTBUFFER,sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_ALTBUFFER));
-		if (pIn)
-		{
-			TODO("BufferWidth");
-			pIn->AltBuf.AbFlags = abf_BufferOn|abf_RestoreContents;
-			if (!gXTermAltBuffer.BufferSize)
-				pIn->AltBuf.AbFlags |= abf_BufferOff;
-			pIn->AltBuf.BufferHeight = gXTermAltBuffer.BufferSize;
-			// Async - is not allowed. Otherwise current application (cmd.exe for example)
-			// may start printing before server finishes buffer restoration
-			pOut = ExecuteSrvCmd(gnServerPID, pIn, ghConWnd);
-			ExecuteFreeResult(pIn);
-			ExecuteFreeResult(pOut);
-			// Restore saved states
-			if ((gDisplayCursor.bCursorPosStored = !!(gXTermAltBuffer.Flags & xtb_StoredCursor)))
-			{
-				gDisplayCursor.StoredCursorPos = gXTermAltBuffer.CursorPos;
-			}
-			if ((gDisplayOpt.ScrollRegion = !!(gXTermAltBuffer.Flags & xtb_StoredScrollRegion)))
-			{
-				gDisplayOpt.ScrollStart = gXTermAltBuffer.ScrollStart;
-				gDisplayOpt.ScrollEnd = gXTermAltBuffer.ScrollEnd;
-			}
-		}
-		return hOut;
+		return XTermBufferConEmuPrimary();
 	}
 }
 

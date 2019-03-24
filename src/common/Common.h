@@ -88,6 +88,12 @@ typedef struct _CONSOLE_SELECTION_INFO
 #define WineConsoleClass L"WineConsoleClass"
 // functions isConsoleClass & isConsoleWindow are defined in ConEmuCheck.cpp
 
+// GetWindowLong for VirtualConsoleClassBack
+#define WindowLongBack_ConWnd 0  // 4 bytes data
+#define WindowLongBack_DCWnd  4  // 4 bytes data
+// GetWindowLongPtr for VirtualConsoleClass (DC window)
+#define WindowLongDCWnd_ConWnd 0 // 4/8 bytes (depends on bitness)
+
 // Some ANSI & Controls
 #define DSC 0x90
 #define ESC 0x1B
@@ -354,7 +360,7 @@ enum CONSOLE_KEY_ID
 	ID_CTRLESC,
 };
 
-#define EvalBufferTurnOnSize(Now) (2*Now+32)
+#define EvalBufferTurnOnSize(Now) (2 * (Now) + 32)
 
 enum RealBufferScroll
 {
@@ -1391,7 +1397,7 @@ struct CESERVER_REQ_HDR
 	HANDLE2  hModule;
 };
 
-#define CHECK_CMD_SIZE(pCmd,data_size) ((pCmd)->hdr.cbSize >= (sizeof(CESERVER_REQ_HDR) + data_size))
+#define CHECK_CMD_SIZE(pCmd,data_size) ((pCmd)->hdr.cbSize >= (sizeof(CESERVER_REQ_HDR) + (data_size)))
 
 
 struct CESERVER_CHAR_HDR
@@ -1525,6 +1531,7 @@ struct CEFAR_INFO_MAPPING
 struct ConEmuAnsiLog
 {
 	BOOL    Enabled;
+	BOOL    LogAnsiCodes;
 	// Full path with name of log-file
 	wchar_t Path[MAX_PATH];
 };
@@ -2247,6 +2254,7 @@ enum ALTBUFFER_FLAGS
 	abf_RestoreContents = 0x0002,
 	abf_BufferOn        = 0x0004,
 	abf_BufferOff       = 0x0008,
+	abf_Connector       = 0x0010,
 };
 
 struct CESERVER_REQ_ALTBUFFER

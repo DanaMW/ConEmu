@@ -1733,7 +1733,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 						: (Code.ArgV[0] == 1004) ? tmm_FOCUS
 						: (Code.ArgV[0] == 1005) ? tmm_UTF8
 						: (Code.ArgV[0] == 1006) ? tmm_XTERM
-						: (Code.ArgV[0] == 1000) ? tmm_URXVT
+						: (Code.ArgV[0] == 1015) ? tmm_URXVT
 						: tmm_None;
 					DWORD Mode = (Code.Action == L'h')
 						? (LastMode | ModeMask)
@@ -2014,6 +2014,17 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 			}
 		}
 		break; // "[...m"
+
+	case L'p':
+		if (Code.ArgC == 0 && Code.PvtLen == 1 && Code.Pvt[0] == L'!')
+		{
+			FullReset();
+		}
+		else
+		{
+			DumpUnknownEscape(Code.pszEscStart,Code.nTotalLen);
+		}
+		break; // "[!p"
 
 	case L'q':
 		if ((Code.PvtLen == 1) && (Code.Pvt[0] == L' '))

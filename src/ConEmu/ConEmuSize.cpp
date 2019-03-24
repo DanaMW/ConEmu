@@ -134,7 +134,7 @@ RECT CConEmuSize::CalcMargins(DWORD/*enum ConEmuMargins*/ mg, ConEmuWindowMode w
 	DEBUGTEST(ConEmuWindowMode wm = (wmNewMode == wmCurrent) ? WindowMode : wmNewMode);
 
 	// Windows 10 breaks desktop coordinate system
-	if ((mg & ((DWORD)CEM_WIN10FRAME)) && IsWin10())
+	if ((mg & ((DWORD)CEM_WIN10FRAME)) && isWin10InvisibleFrame())
 	{
 		RECT rcHiddenFrame = CalcMargins_Win10Frame();
 		AddMargins(rc, rcHiddenFrame, rcop_MathAdd);
@@ -190,19 +190,15 @@ RECT CConEmuSize::CalcMargins(DWORD/*enum ConEmuMargins*/ mg, ConEmuWindowMode w
 	return rc;
 }
 
-RECT CConEmuSize::CalcMargins_Win10Frame()
+RECT CConEmuSize::CalcMargins_Win10Frame() const
 {
 	RECT rc = {};
 
-	if (IsWin10())
+	if (isWin10InvisibleFrame())
 	{
-		DWORD dwStyle = mp_ConEmu->FixWindowStyle(0);
-		if (dwStyle & WS_THICKFRAME)
-		{
-			const MonitorInfoCache mi = CConEmuSize::NearestMonitorInfo(NULL);
-			const auto& fi = isCaptionHidden() ? mi.noCaption : mi.withCaption;
-			rc = fi.Win10Stealthy;
-		}
+		const MonitorInfoCache mi = NearestMonitorInfo(NULL);
+		const auto& fi = isCaptionHidden() ? mi.noCaption : mi.withCaption;
+		rc = fi.Win10Stealthy;
 	}
 
 	return rc;
@@ -211,7 +207,7 @@ RECT CConEmuSize::CalcMargins_Win10Frame()
 // CEM_FRAMECAPTION : Difference between whole window size and its client area (frame + caption)
 // CEM_CAPTION      : only window title bar (height), if applicable
 // CEM_FRAMEONLY    : only frame borders, if applicable
-RECT CConEmuSize::CalcMargins_FrameCaption(DWORD/*enum ConEmuMargins*/ mg, ConEmuWindowMode wmNewMode /*= wmCurrent*/)
+RECT CConEmuSize::CalcMargins_FrameCaption(DWORD/*enum ConEmuMargins*/ mg, ConEmuWindowMode wmNewMode /*= wmCurrent*/) const
 {
 	RECT rc = {};
 	if (!(mg & ((DWORD)CEM_FRAMECAPTION)) || mp_ConEmu->mp_Inside)
@@ -297,7 +293,7 @@ RECT CConEmuSize::CalcMargins_FrameCaption(DWORD/*enum ConEmuMargins*/ mg, ConEm
 	return rc;
 }
 
-RECT CConEmuSize::CalcMargins_TabBar(DWORD/*enum ConEmuMargins*/ mg)
+RECT CConEmuSize::CalcMargins_TabBar(DWORD/*enum ConEmuMargins*/ mg) const
 {
 	RECT rc = {};
 
@@ -313,7 +309,7 @@ RECT CConEmuSize::CalcMargins_TabBar(DWORD/*enum ConEmuMargins*/ mg)
 		#endif
 
 		// Check tabs condition - if they are enabled (1==always show) their size must be taken into account
-		SizeInfo temp(*static_cast<SizeInfo*>(this));
+		SizeInfo temp(*static_cast<const SizeInfo*>(this));
 		temp.RequestSize(600, 300);
 		// #SIZE_TODO get dpi and coordinates for destination monitor?
 		RECT rcTabs = temp.RebarRect();
@@ -332,7 +328,7 @@ RECT CConEmuSize::CalcMargins_TabBar(DWORD/*enum ConEmuMargins*/ mg)
 	return rc;
 }
 
-RECT CConEmuSize::CalcMargins_StatusBar()
+RECT CConEmuSize::CalcMargins_StatusBar() const
 {
 	RECT rc = {};
 
@@ -345,7 +341,7 @@ RECT CConEmuSize::CalcMargins_StatusBar()
 	return rc;
 }
 
-RECT CConEmuSize::CalcMargins_Padding()
+RECT CConEmuSize::CalcMargins_Padding() const
 {
 	RECT rc = {};
 
@@ -360,7 +356,7 @@ RECT CConEmuSize::CalcMargins_Padding()
 	return rc;
 }
 
-RECT CConEmuSize::CalcMargins_Scrolling()
+RECT CConEmuSize::CalcMargins_Scrolling() const
 {
 	RECT rc = {};
 
@@ -373,7 +369,7 @@ RECT CConEmuSize::CalcMargins_Scrolling()
 	return rc;
 }
 
-RECT CConEmuSize::CalcMargins_VisibleFrame(LPRECT prcFrame /*= NULL*/)
+RECT CConEmuSize::CalcMargins_VisibleFrame(LPRECT prcFrame /*= NULL*/) const
 {
 	RECT rcFrameOnly = {};
 	if (mp_ConEmu->isInside())
@@ -393,10 +389,8 @@ RECT CConEmuSize::CalcMargins_VisibleFrame(LPRECT prcFrame /*= NULL*/)
 	{
 		rcFrameOnly = rcReal;
 
-		DWORD dwStyle = mp_ConEmu->FixWindowStyle(0);
-
 		// Windows 10 DWM hides portions of the actual frame
-		if ((dwStyle & WS_THICKFRAME) && IsWin10())
+		if (isWin10InvisibleFrame())
 		{
 			// BUGBUG: During m_ForceShowFrame DwmGetWindowAttribute returns yet old values (fixed frame), but we need estimated values for changes styles
 			const RECT rcWin10 = CalcMargins_Win10Frame();
@@ -424,7 +418,7 @@ RECT CConEmuSize::CalcMargins_VisibleFrame(LPRECT prcFrame /*= NULL*/)
 	return rcFrameOnly;
 }
 
-RECT CConEmuSize::CalcMargins_InvisibleFrame()
+RECT CConEmuSize::CalcMargins_InvisibleFrame() const
 {
 	RECT rcFrameOnly = {};
 	if (mp_ConEmu->isInside())
@@ -450,7 +444,7 @@ RECT CConEmuSize::CalcRect(enum ConEmuRect tWhat, CVirtualConsole* pVCon /*= NUL
 		if (!mp_ConEmu->mp_Inside->GetInsideRect(&rcMain))
 		{
 			_ASSERTE(FALSE && "GetInsideRect failed");
-			ZeroStruct(rcMain);
+			rcMain = {};
 			return rcMain;
 		}
 	}
@@ -690,7 +684,7 @@ RECT CConEmuSize::CalcRect(enum ConEmuRect tWhat, const RECT &rFrom, enum ConEmu
 				break;
 			default:
 				_ASSERTE((tFrom==tWhat) && "Unhandled tFrom/tWhat");
-				ZeroStruct(rcShift);
+				rcShift = {};
 			}
 			AddMargins(rc, rcShift);
 			tFromNow = CER_MAINCLIENT;
@@ -1151,7 +1145,8 @@ SIZE CConEmuSize::GetDefaultSize(bool bCells, const CESize* pSizeW /*= NULL*/, c
 HMONITOR CConEmuSize::FindInitialMonitor(MONITORINFO* pmi /*= NULL*/)
 {
 	// Too large or too small values may cause wrong monitor detection if on the edge of screen
-	int iWidth = 100, iHeight = 100;
+	const int kSizeDefault = 100;
+	int iWidth, iHeight;
 
 	TODO("CConEmuSize::GetInitialDpi -> ss_Percents");
 
@@ -1163,6 +1158,8 @@ HMONITOR CConEmuSize::FindInitialMonitor(MONITORINFO* pmi /*= NULL*/)
 	case ss_Percents:
 		iWidth = WndWidth.Value;
 		break;
+	default:
+		iWidth = kSizeDefault;
 	}
 
 	switch (WndHeight.Style)
@@ -1171,8 +1168,10 @@ HMONITOR CConEmuSize::FindInitialMonitor(MONITORINFO* pmi /*= NULL*/)
 		iHeight = WndHeight.Value * gpSet->FontSizeY;
 		break;
 	case ss_Percents:
-		iWidth = WndHeight.Value;
+		iHeight = WndHeight.Value;
 		break;
+	default:
+		iHeight = kSizeDefault;
 	}
 
 	// No need to get strict coordinates, just find the default monitor
@@ -1313,16 +1312,10 @@ bool CConEmuSize::CheckQuakeRect(LPRECT prcWnd)
 
 	bool bChange = false;
 
-	RECT rcFrameOnly = CalcMargins(CEM_FRAMECAPTION);
-	int iVisibleFrameWidth = gpSet->HideCaptionAlwaysFrame();
-	if (iVisibleFrameWidth > 0)
-	{
-		rcFrameOnly.left = std::max<int>(0, (rcFrameOnly.left - iVisibleFrameWidth));
-		rcFrameOnly.right = std::max<int>(0, (rcFrameOnly.right - iVisibleFrameWidth));
-		rcFrameOnly.bottom = std::max<int>(0, (rcFrameOnly.bottom - iVisibleFrameWidth));
-	}
-	int iLeftShift = (iVisibleFrameWidth == -1) ? 0 : rcFrameOnly.left;
-	int iRightShift = (iVisibleFrameWidth == -1) ? 0 : rcFrameOnly.right;
+	const RECT rcInvidisbleFrame = CalcMargins(CEM_INVISIBLE_FRAME);
+	const RECT rcFrameOnly = CalcMargins(CEM_FRAMECAPTION);
+	const auto& iLeftShift = rcInvidisbleFrame.left;
+	const auto& iRightShift = rcInvidisbleFrame.right;
 
 	// Если успешно - подгоняем по экрану
 	if (mi.rcWork.right > mi.rcWork.left)
@@ -1743,7 +1736,7 @@ void CConEmuSize::SetRequestedMonitor(HMONITOR hNewMon)
 	SizeInfo::RequestDpi({mi.Xdpi, mi.Ydpi});
 }
 
-CConEmuSize::MonitorInfoCache CConEmuSize::NearestMonitorInfo(const RECT& rcWnd)
+CConEmuSize::MonitorInfoCache CConEmuSize::NearestMonitorInfo(const RECT& rcWnd) const
 {
 	HMONITOR hMon = MonitorFromRect(&rcWnd, MONITOR_DEFAULTTONEAREST);
 	return NearestMonitorInfo(hMon);
@@ -1751,13 +1744,13 @@ CConEmuSize::MonitorInfoCache CConEmuSize::NearestMonitorInfo(const RECT& rcWnd)
 
 // Pass hNewMon=NULL to get default/recommended monitor for our window
 // Pass hNewMon=HMONITOR(-1) to get primary monitor
-CConEmuSize::MonitorInfoCache CConEmuSize::NearestMonitorInfo(HMONITOR hNewMon)
+CConEmuSize::MonitorInfoCache CConEmuSize::NearestMonitorInfo(HMONITOR hNewMon) const
 {
 	// Must be filled already!
 	if (monitors.empty())
 	{
 		_ASSERTEX(!monitors.empty());
-		ReloadMonitorInfo();
+		const_cast<CConEmuSize*>(this)->ReloadMonitorInfo();
 		// Function always fills 'monitors' with at least one item
 	}
 
@@ -1840,7 +1833,9 @@ RECT CConEmuSize::GetIdealRect()
 		rcIdeal = GetDefaultRect();
 	}
 
-	if (!mp_ConEmu->isInside() && (m_TileMode == cwc_TileLeft || m_TileMode == cwc_TileRight || m_TileMode == cwc_TileHeight || m_TileMode == cwc_TileWidth))
+	if (!mp_ConEmu->isInside()
+		&& (m_TileMode == cwc_TileLeft || m_TileMode == cwc_TileRight
+			|| m_TileMode == cwc_TileHeight || m_TileMode == cwc_TileWidth))
 	{
 		auto mi = NearestMonitorInfo(rcIdeal);
 		rcIdeal = GetTileRect(m_TileMode, mi.mi);
@@ -3416,7 +3411,7 @@ LRESULT CConEmuSize::OnMoving(LPRECT prcWnd /*= NULL*/, bool bWmMove /*= false*/
 	POINT ptCur = {};
 	bool drag_by_mouse = false;
 
-	if (!gpSet->isSnapToDesktopEdges && !m_TileMode)
+	if (!gpSet->isSnapToDesktopEdges && (m_TileMode != cwc_Current))
 		goto wrap;
 
 	if (isIconic() || isZoomed() || isFullScreen())
@@ -3742,7 +3737,7 @@ bool CConEmuSize::SetQuakeMode(BYTE NewQuakeMode, ConEmuWindowMode nNewWindowMod
 	return true;
 }
 
-ConEmuWindowMode CConEmuSize::GetWindowMode()
+ConEmuWindowMode CConEmuSize::GetWindowMode() const
 {
 	ConEmuWindowMode wndMode = gpSet->isQuakeStyle ? ((ConEmuWindowMode)gpSet->_WindowMode) : WindowMode;
 
@@ -3759,12 +3754,12 @@ ConEmuWindowMode CConEmuSize::GetWindowMode()
 	return wndMode;
 }
 
-ConEmuWindowMode CConEmuSize::GetChangeFromWindowMode()
+ConEmuWindowMode CConEmuSize::GetChangeFromWindowMode() const
 {
 	return changeFromWindowMode;
 }
 
-bool CConEmuSize::IsWindowModeChanging()
+bool CConEmuSize::IsWindowModeChanging() const
 {
 	_ASSERTE(mn_IgnoreSizeChange>=0);
 	return (changeFromWindowMode != wmNotChanging) || m_JumpMonitor.bInJump || mn_IgnoreSizeChange;
@@ -3837,7 +3832,7 @@ void CConEmuSize::SetTileMode(ConEmuWindowCommand Tile)
 	}
 }
 
-bool CConEmuSize::ChandeTileMode(ConEmuWindowCommand Tile)
+bool CConEmuSize::ChangeTileMode(ConEmuWindowCommand Tile)
 {
 	// While debugging - low-level keyboard hooks almost lock DevEnv
 	HooksUnlocker;
@@ -3986,7 +3981,7 @@ bool CConEmuSize::ChandeTileMode(ConEmuWindowCommand Tile)
 	return true;
 }
 
-RECT CConEmuSize::GetTileRect(ConEmuWindowCommand Tile, const MONITORINFO& mi)
+RECT CConEmuSize::GetTileRect(ConEmuWindowCommand Tile, const MONITORINFO& mi) const
 {
 	RECT rcNewWnd;
 
@@ -3997,7 +3992,7 @@ RECT CConEmuSize::GetTileRect(ConEmuWindowCommand Tile, const MONITORINFO& mi)
 	{
 	case cwc_Current:
 		// Вернуться из Tile-режима в нормальный
-		rcNewWnd = GetDefaultRect();
+		rcNewWnd = const_cast<CConEmuSize*>(this)->GetDefaultRect();
 		break;
 
 	case cwc_TileLeft:
@@ -4017,20 +4012,20 @@ RECT CConEmuSize::GetTileRect(ConEmuWindowCommand Tile, const MONITORINFO& mi)
 		break;
 
 	case cwc_TileHeight:
-		rcNewWnd = GetDefaultRect();
+		rcNewWnd = const_cast<CConEmuSize*>(this)->GetDefaultRect();
 		rcNewWnd.top = mi.rcWork.top - rcWin10.top;
 		rcNewWnd.bottom = mi.rcWork.bottom + rcWin10.bottom;
 		break;
 
 	case cwc_TileWidth:
-		rcNewWnd = GetDefaultRect();
+		rcNewWnd = const_cast<CConEmuSize*>(this)->GetDefaultRect();
 		rcNewWnd.left = mi.rcWork.left - rcWin10.left;
 		rcNewWnd.right = mi.rcWork.right + rcWin10.right;
 		break;
 
 	default:
 		AssertMsg(L"Must not get here");
-		rcNewWnd = GetDefaultRect();
+		rcNewWnd = const_cast<CConEmuSize*>(this)->GetDefaultRect();
 	}
 
 	return rcNewWnd;
@@ -4152,33 +4147,31 @@ wrap:
 
 ConEmuWindowCommand CConEmuSize::GetTileMode(bool Estimate, MONITORINFO* pmi/*=NULL*/)
 {
-	if (Estimate && IsSizePosFree()
-		// && !isFullScreen() && !isZoomed() -- gh#142
-		&& !isIconic()
-		&& IsWindowVisible(ghWnd)
-		)
+	if (Estimate)
 	{
-		RECT rcWnd = {};
-		ConEmuWindowCommand CurTile = cwc_Current;
+		ConEmuWindowCommand CurTile = m_TileMode;
 
-		// Если окно развернуто - сбрасываем признак "Snap" (Tile)
 		if (isFullScreen() || isZoomed())
 		{
 			if (pmi)
 				GetNearestMonitorInfo(pmi, NULL, NULL, ghWnd);
-			goto done;
+			CurTile = cwc_Current;
+		}
+		else if (IsSizeFree()  // gh-622: Quake wmNormal, but 100% width
+			// && !isFullScreen() && !isZoomed() -- gh#142
+			&& !isIconic()
+			&& ((mp_ConEmu->GetStartupStage() < CConEmuMain::ss_Started)
+				|| IsWindowVisible(ghWnd))
+			)
+		{
+			RECT rcWnd = {};
+			GetWindowRect(ghWnd, &rcWnd);
+			_ASSERTE(IsWindowModeChanging() == false);
+			CurTile = EvalTileMode(rcWnd, pmi);
 		}
 
-		GetWindowRect(ghWnd, &rcWnd);
-
-		_ASSERTE(IsWindowModeChanging() == false);
-
-		CurTile = EvalTileMode(rcWnd, pmi);
-
-	done:
 		if (m_TileMode != CurTile)
 		{
-			// Сменился!
 			wchar_t szTile[255], szNewTile[32], szOldTile[32];
 			swprintf_c(szTile, L"Tile mode was changed externally: Our=%s, New=%s",
 				FormatTileMode(m_TileMode,szOldTile,countof(szOldTile)), FormatTileMode(CurTile,szNewTile,countof(szNewTile)));
@@ -5290,7 +5283,7 @@ struct OnDpiChangedArg
 		if (prc)
 			rcSuggested = *prc;
 		else
-			ZeroStruct(rcSuggested);
+			rcSuggested = {};
 		bResizeWindow = abResize;
 		src = asrc;
 	};
@@ -6203,7 +6196,7 @@ HRGN CConEmuSize::CreateWindowRgn(bool abRoundTitle, int anX, int anY, int anWnd
 	return hRgn;
 }
 
-bool CConEmuSize::isCaptionHidden(ConEmuWindowMode wmNewMode /*= wmCurrent*/)
+bool CConEmuSize::isCaptionHidden(ConEmuWindowMode wmNewMode /*= wmCurrent*/) const
 {
 	bool bCaptionHidden = gpSet->isHideCaptionAlways(); // <== Quake & UserScreen here.
 	if (!bCaptionHidden)
@@ -6217,22 +6210,38 @@ bool CConEmuSize::isCaptionHidden(ConEmuWindowMode wmNewMode /*= wmCurrent*/)
 	return bCaptionHidden;
 }
 
+// Determines if our window has "invisible" portion of WS_THICKFRAME
+// This was introduced in Windows 10 :(
+bool CConEmuSize::isWin10InvisibleFrame(const ConEmuWindowMode wmNewMode /*= wmCurrent*/) const
+{
+	if (!IsWin10())
+		return false;
+	if (isSelfFrame(wmNewMode))
+		return false;
+	return true;
+}
+
 // Return true if WS_THICKFRAME is not used
-bool CConEmuSize::isSelfFrame()
+bool CConEmuSize::isSelfFrame(const ConEmuWindowMode wmNewMode /*= wmCurrent*/) const
 {
 	if (mp_ConEmu->isInside())
 		return true;
-	if (!mp_ConEmu->isCaptionHidden())
+	const auto wm = (wmNewMode != wmCurrent) ? wmNewMode : GetWindowMode();
+	// Use standard Windows frame when caption is ON
+	if (!isCaptionHidden(wm))
 		return false;
+	// NO resizeable frame in FullScreen at all
+	if (wm == wmFullScreen)
+		return true;
 	// Take into account user setting but don't allow frame larger than system-defined
-	int iFrame = gpSet->HideCaptionAlwaysFrame();
+	const int iFrame = gpSet->HideCaptionAlwaysFrame();
 	if (iFrame >= 0)
 		return true;
 	// Even for standard frame (without caption) we shall hide it in maximized mode
-	// to avoid artefacts and TaskBar rollout problems
+	// to avoid artifacts and TaskBar rollout problems
 	_ASSERTE(iFrame == -1);
-	auto wm = GetWindowMode();
-	if (wm == wmFullScreen || wm == wmMaximized)
+	// gh-1539: Bypass Windows problem with region and hidden taskbar
+	if (wm == wmMaximized)
 	{
 		const MonitorInfoCache mi = CConEmuSize::NearestMonitorInfo(NULL);
 		if (mi.isTaskbarHidden)
@@ -6241,7 +6250,7 @@ bool CConEmuSize::isSelfFrame()
 	return false;
 }
 
-UINT CConEmuSize::GetSelfFrameWidth()
+UINT CConEmuSize::GetSelfFrameWidth() const
 {
 	if (mp_ConEmu->isInside())
 		return 0;
@@ -6719,7 +6728,7 @@ void CConEmuSize::DoMinimizeRestore(SingleInstanceShowHideType ShowHideType /*= 
 			}
 		}
 		mn_QuakePercent = 0; // 0 - отключен
-		ZeroStruct(m_QuakePrevSize.PreSlidedSize);
+		m_QuakePrevSize.PreSlidedSize = {};
 
 		disabler.Enable();
 
@@ -6775,7 +6784,7 @@ void CConEmuSize::DoMinimizeRestore(SingleInstanceShowHideType ShowHideType /*= 
 			else
 			{
 				_ASSERTE(FALSE && "Quake must not be slided up from hidden state");
-				ZeroStruct(m_QuakePrevSize.PreSlidedSize);
+				m_QuakePrevSize.PreSlidedSize = {};
 			}
 
 			if (bUseQuakeAnimation)
@@ -6851,7 +6860,7 @@ void CConEmuSize::DoMinimizeRestore(SingleInstanceShowHideType ShowHideType /*= 
 		}
 		else
 		{
-			ZeroStruct(m_QuakePrevSize.PreSlidedSize);
+			m_QuakePrevSize.PreSlidedSize = {};
 		}
 		mn_QuakePercent = 0; // 0 - отключен
 

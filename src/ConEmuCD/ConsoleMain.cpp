@@ -1672,6 +1672,7 @@ int __stdcall ConsoleMain3(int anWorkMode/*0-Server&ComSpec,1-AltServer,2-Reserv
 			ResetEvent(ghFarInExecuteEvent);
 		#endif
 
+		wchar_t szSelf[MAX_PATH*2] = L"";
 		LPCWSTR pszCurDir = NULL;
 		WARNING("The process handle must have the PROCESS_VM_OPERATION access right!");
 
@@ -1771,7 +1772,6 @@ int __stdcall ConsoleMain3(int anWorkMode/*0-Server&ComSpec,1-AltServer,2-Reserv
 			// Фикс для перемещения ConEmu.exe в подпапку фара. т.е. far.exe находится на одну папку выше
 			if (gsSelfExe[0] != 0)
 			{
-				wchar_t szSelf[MAX_PATH*2];
 				wcscpy_c(szSelf, gsSelfExe);
 
 				wchar_t* pszSlash = wcsrchr(szSelf, L'\\');
@@ -2967,9 +2967,8 @@ wchar_t* ParseConEmuSubst(LPCWSTR asCmd)
 
 	if (bExclSubst)
 	{
-		wchar_t* pszCmdCopy = lstrdup(asCmd);
-		if (!pszCmdCopy)
-			return NULL; // Ошибка выделения памяти вообще-то
+		if (!(pszCmdCopy = lstrdup(asCmd)))
+			return NULL;
 
 		for (size_t i = 0; i < countof(szNames); ++i)
 		{
@@ -3230,7 +3229,7 @@ wchar_t* ExpandTaskCmd(LPCWSTR asCmdLine)
 	pszNameEnd++;
 
 	size_t cchCount = (pszNameEnd - asCmdLine);
-	DWORD cbSize = sizeof(CESERVER_REQ_HDR) + sizeof(CESERVER_REQ_TASK) + cchCount*sizeof(asCmdLine[0]);
+	DWORD cbSize = DWORD(sizeof(CESERVER_REQ_HDR) + sizeof(CESERVER_REQ_TASK) + cchCount*sizeof(asCmdLine[0]));
 	CESERVER_REQ* pIn = ExecuteNewCmd(CECMD_GETTASKCMD, cbSize);
 	if (!pIn)
 		return NULL;
@@ -4413,7 +4412,7 @@ int ParseCommandLine(LPCWSTR asCmdLine)
 
 					GetCurrentDirectory(countof(pIn->NewCmd.szCurDir), pIn->NewCmd.szCurDir);
 					pIn->NewCmd.SetCommand(lsCmdLine);
-					pIn->NewCmd.SetEnvStrings(strs.ms_Strings, strs.mcch_Length);
+					pIn->NewCmd.SetEnvStrings(strs.ms_Strings, static_cast<DWORD>(strs.mcch_Length));
 
 					CESERVER_REQ* pOut = ExecuteGuiCmd(hConEmu, pIn, hConWnd);
 					if (pOut)
@@ -5722,72 +5721,6 @@ void LogModeChange(LPCWSTR asName, DWORD oldVal, DWORD newVal)
 	LogString(lsInfo);
 }
 
-int CLogFunction::m_FnLevel = 0; // Simple, without per-thread devision
-CLogFunction::CLogFunction() : mb_Logged(false)
-{
-}
-CLogFunction::CLogFunction(const char* asFnName) : mb_Logged(false)
-{
-	int nLen = MultiByteToWideChar(CP_ACP, 0, asFnName, -1, NULL, 0);
-	wchar_t sBuf[80] = L"";
-	wchar_t *pszBuf = NULL;
-	if (nLen >= 80)
-		pszBuf = (wchar_t*)calloc(nLen+1,sizeof(*pszBuf));
-	else
-		pszBuf = sBuf;
-
-	MultiByteToWideChar(CP_ACP, 0, asFnName, -1, pszBuf, nLen+1);
-
-	DoLogFunction(pszBuf);
-
-	if (pszBuf != sBuf)
-		SafeFree(pszBuf);
-}
-CLogFunction::CLogFunction(const wchar_t* asFnName) : mb_Logged(false)
-{
-	DoLogFunction(asFnName);
-}
-void CLogFunction::DoLogFunction(const wchar_t* asFnName)
-{
-	if (mb_Logged)
-		return;
-
-	LONG lLevel = InterlockedIncrement((LONG*)&m_FnLevel);
-	mb_Logged = true;
-
-	if (!gpLogSize) return;
-
-	if (lLevel > 20) lLevel = 20;
-	wchar_t cFnInfo[120];
-	wchar_t* pc = cFnInfo;
-	for (LONG l = 1; l < lLevel; l++)
-	{
-		*(pc++) = L' '; *(pc++) = L' '; *(pc++) = L' ';
-	}
-	*pc = 0;
-
-	INT_PTR nPrefix = (pc - cFnInfo);
-	INT_PTR nFnLen = lstrlen(asFnName);
-
-	if (nFnLen < ((INT_PTR)countof(cFnInfo) - nPrefix))
-	{
-		lstrcpyn(pc, asFnName, countof(cFnInfo) - (pc - cFnInfo));
-		LogString(cFnInfo);
-	}
-	else
-	{
-		wchar_t* pszMrg = lstrmerge(cFnInfo, asFnName);
-		LogString(pszMrg);
-		SafeFree(pszMrg);
-	}
-}
-CLogFunction::~CLogFunction()
-{
-	if (!mb_Logged)
-		return;
-	InterlockedDecrement((LONG*)&m_FnLevel);
-}
-
 
 
 
@@ -5933,7 +5866,7 @@ void static CorrectDBCSCursorPosition(HANDLE ahConOut, CONSOLE_SCREEN_BUFFER_INF
 				: (CHAR_INFO*)calloc(cchMax, sizeof(*pCharsEx));
 			if (pCharsEx)
 			{
-				COORD bufSize = {cchMax, 1}; COORD bufCoord = {0,0};
+				COORD bufSize = {MakeShort(cchMax), 1}; COORD bufCoord = {0,0};
 				SMALL_RECT rgn = MakeSmallRect(0, csbi.dwCursorPosition.Y, cchMax-1, csbi.dwCursorPosition.Y);
 				BOOL bRead = ReadConsoleOutputW(ahConOut, pCharsEx, bufSize, bufCoord, &rgn);
 				if (bRead)

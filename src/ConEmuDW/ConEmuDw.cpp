@@ -58,6 +58,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/Common.h"
 #include "../common/ConEmuCheck.h"
 #include "../common/HkFunc.h"
+#include "../common/MModule.h"
 #include "../common/UnicodeChars.h"
 #include "../common/WThreads.h"
 #include "../ConEmu/version.h"
@@ -1087,6 +1088,9 @@ BOOL WINAPI ReadOutput(FAR_CHAR_INFO* Buffer, COORD BufferSize, COORD BufferCoor
 
 BOOL WINAPI WriteOutput(const FAR_CHAR_INFO* Buffer, COORD BufferSize, COORD BufferCoord, SMALL_RECT* WriteRegion)
 {
+	if (!Buffer || !WriteRegion)
+		return FALSE;
+
 	#ifdef _DEBUG
 	wchar_t szCall[100]; swprintf_c(szCall, L"ExtCon::WriteOutput({%i,%i}-{%i,%i})\n", WriteRegion->Left, WriteRegion->Top, WriteRegion->Right, WriteRegion->Bottom);
 	DEBUGSTRCALL(szCall);
@@ -1122,6 +1126,22 @@ BOOL WINAPI WriteOutput(const FAR_CHAR_INFO* Buffer, COORD BufferSize, COORD Buf
 	if (!GetBufferInfo(h, csbi, srWork))
 		return FALSE;
 
+	// A sign that Far starts command execution?
+	if (WriteRegion->Left == 0 && WriteRegion->Right > 0
+		&& WriteRegion->Top == -1 && WriteRegion->Bottom == -1)
+	{
+		SrvLogString_t fnSrvLogString;
+		MModule srv_dll(GetModuleHandle(ConEmuCD_DLL_3264));
+		if (srv_dll.GetProcAddress("PrivateEntry2", fnSrvLogString))
+		{
+			wchar_t log_info[120];
+			msprintf(log_info, std::size(log_info),
+				L"Far.exe: Start command execution? buffer={%ix%i} rect={%i,%i}-{%i,%i}",
+				csbi.dwSize.X, csbi.dwSize.Y, LogSRectCoords(srWork));
+			fnSrvLogString(log_info);
+		}
+	}
+
 	CHAR_INFO cDefWriteBuf[256];
 	CHAR_INFO *pcWriteBuf = NULL;
 	int nWindowWidth  = srWork.Right - srWork.Left + 1;
@@ -1144,10 +1164,11 @@ BOOL WINAPI WriteOutput(const FAR_CHAR_INFO* Buffer, COORD BufferSize, COORD Buf
 	SMALL_RECT rcWrite = *WriteRegion;
 	COORD MyBufferSize = {BufferSize.X, 1};
 	COORD MyBufferCoord = {BufferCoord.X, 0};
-	SHORT YShift = gbFarBufferMode ? (csbi.dwSize.Y - (srWork.Bottom - srWork.Top + 1)) : 0;
-	SHORT Y1 = WriteRegion->Top + YShift;
-	SHORT Y2 = WriteRegion->Bottom + YShift;
-	SHORT BufferShift = WriteRegion->Top + YShift;
+	const int YShift = gbFarBufferMode
+		? (static_cast<int>(csbi.dwSize.Y) - (srWork.Bottom - srWork.Top + 1)) : 0;
+	SHORT Y1 = static_cast<SHORT>(WriteRegion->Top + YShift);
+	SHORT Y2 = static_cast<SHORT>(WriteRegion->Bottom + YShift);
+	const SHORT BufferShift = static_cast<SHORT>(WriteRegion->Top + YShift);
 
 	if (Y2 >= csbi.dwSize.Y)
 	{

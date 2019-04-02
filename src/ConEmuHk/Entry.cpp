@@ -1677,6 +1677,7 @@ void DoDllStop(bool bFinal, ConEmuHkDllState bFromTerminate)
 
 	if (bFinal)
 	{
+		gfnSrvLogString = nullptr;
 		DLOG1("HeapDeinitialize",0);
 		gnDllState |= ds_HeapDeinitialized;
 		HeapDeinitialize();
@@ -2944,7 +2945,7 @@ int WINAPI RequestLocalServer(/*[IN/OUT]*/RequestLocalServerParm* Parm)
 
 	if (!ghSrvDll || !gfRequestLocalServer)
 	{
-		LPCWSTR pszSrvName = WIN3264TEST(L"ConEmuCD.dll",L"ConEmuCD64.dll");
+		LPCWSTR pszSrvName = ConEmuCD_DLL_3264;
 
 		if (!ghSrvDll)
 		{
@@ -2981,10 +2982,13 @@ int WINAPI RequestLocalServer(/*[IN/OUT]*/RequestLocalServerParm* Parm)
 
 	iRc = gfRequestLocalServer(Parm);
 
-	if  ((iRc == 0) && (Parm->Flags & slsf_PrevAltServerPID))
+	if  (iRc == 0)
 	{
 		// nPrevAltServerPID is DWORD_PTR for struct aligning purposes
-		gnPrevAltServerPID = (DWORD)Parm->nPrevAltServerPID;
+		if (Parm->Flags & slsf_PrevAltServerPID)
+			gnPrevAltServerPID = (DWORD)Parm->nPrevAltServerPID;
+		// Server logging callback
+		gfnSrvLogString = Parm->fSrvLogString;
 	}
 wrap:
 	return iRc;

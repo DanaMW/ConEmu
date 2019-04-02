@@ -659,7 +659,7 @@ BOOL WINAPI DllMain(HINSTANCE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 			//_ASSERTE(FALSE && "DLL_PROCESS_ATTACH");
 
-			hkFunc.Init(WIN3264TEST(L"ConEmuCD.dll",L"ConEmuCD64.dll"), ghOurModule);
+			hkFunc.Init(ConEmuCD_DLL_3264, ghOurModule);
 
 			DWORD nImageBits = WIN3264TEST(32,64), nImageSubsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI;
 			GetImageSubsystem(nImageSubsystem,nImageBits);
@@ -2524,6 +2524,14 @@ int __stdcall ConsoleMain2(int anWorkMode/*0-Server&ComSpec,1-AltServer,2-Reserv
 	return ConsoleMain3(anWorkMode, GetCommandLineW());
 }
 
+
+int WINAPI LogHooksFunction(const wchar_t* str)
+{
+	if (!gpLogSize) return -1;
+	if (!str || !*str) return 0;
+	return LogString(str) ? 1 : 0;
+}
+
 // if Parm->ppConOutBuffer is set, it HAVE TO BE GLOBAL SCOPE variable!
 int WINAPI RequestLocalServer(/*[IN/OUT]*/RequestLocalServerParm* Parm)
 {
@@ -2656,6 +2664,8 @@ DoEvents:
 
 		ThawRefreshThread();
 	}
+
+	Parm->fSrvLogString = LogHooksFunction;
 
 wrap:
 	return iRc;
@@ -6600,11 +6610,11 @@ static bool ApplyConsoleSizeBuffer(const USHORT BufferHeight, const COORD& crNew
 
 // Read from the console current attributes (by line/block)
 // Cells with attr.color matching OldText rewrite with NewText
-void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, WORD OldText, WORD NewText)
+void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, const WORD wOldText, const WORD wNewText)
 {
 	// #AltBuffer No need to process rows below detected dynamic height, use ScrollBuffer instead
 	wchar_t szLog[140];
-	swprintf_c(szLog, L"RefillConsoleAttributes started Lines=%u Cols=%u Old=x%02X New=x%02X", csbi5.dwSize.Y, csbi5.dwSize.X, OldText, NewText);
+	swprintf_c(szLog, L"RefillConsoleAttributes started Lines=%u Cols=%u Old=x%02X New=x%02X", csbi5.dwSize.Y, csbi5.dwSize.X, wOldText, wNewText);
 	LogString(szLog);
 
 	DWORD nMaxLines = std::max<int>(1, std::min<int>((8000 / csbi5.dwSize.X), csbi5.dwSize.Y));
@@ -6615,11 +6625,13 @@ void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, WORD OldTe
 		return;
 	}
 
+	const BYTE OldText = LOBYTE(wOldText);
 	PerfCounter c_read = {0}, c_fill = {1};
 	MPerfCounter perf(2);
 
 	BOOL b;
 	COORD crRead = {0,0};
+	// #Refill Reuse DynamicHeight, just scroll-out contents outside of this height
 	while (crRead.Y < csbi5.dwSize.Y)
 	{
 		DWORD nReadLn = std::min<int>(nMaxLines, (csbi5.dwSize.Y-crRead.Y));
@@ -6636,7 +6648,7 @@ void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, WORD OldTe
 		DWORD i = 0, iStarted = 0, iWritten;
 		while (i < nReady)
 		{
-			if ((pnAttrs[i] & 0xFF) == OldText)
+			if (LOBYTE(pnAttrs[i]) == OldText)
 			{
 				if (!bStarted)
 				{
@@ -6655,7 +6667,7 @@ void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, WORD OldTe
 					if (iStarted < i)
 					{
 						perf.Start(c_fill);
-						FillConsoleOutputAttribute(ghConOut, NewText, i - iStarted, crFrom, &iWritten);
+						FillConsoleOutputAttribute(ghConOut, wNewText, i - iStarted, crFrom, &iWritten);
 						perf.Stop(c_fill);
 					}
 				}
@@ -6663,11 +6675,11 @@ void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, WORD OldTe
 			// Next cell checking
 			i++;
 		}
-		// Если хвост остался
+		// Fill the tail if required
 		if (bStarted && (iStarted < i))
 		{
 			perf.Start(c_fill);
-			FillConsoleOutputAttribute(ghConOut, NewText, i - iStarted, crFrom, &iWritten);
+			FillConsoleOutputAttribute(ghConOut, wNewText, i - iStarted, crFrom, &iWritten);
 			perf.Stop(c_fill);
 		}
 
@@ -7270,7 +7282,7 @@ bool IsKeyboardLayoutChanged(DWORD& pdwLayout, LPDWORD pdwErrCode /*= NULL*/)
 				if (gpLogSize)
 				{
 					char szInfo[128]; wchar_t szWide[128];
-					swprintf_c(szWide, L"ConsKeybLayout changed from %s to %s", gpSrv->szKeybLayout, szCurKeybLayout);
+					swprintf_c(szWide, L"ConsKeybLayout changed from '%s' to '%s'", gpSrv->szKeybLayout, szCurKeybLayout);
 					WideCharToMultiByte(CP_ACP,0,szWide,-1,szInfo,128,0,0);
 					LogFunction(szInfo);
 				}

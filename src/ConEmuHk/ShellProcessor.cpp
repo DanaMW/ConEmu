@@ -132,11 +132,39 @@ void TestShellProcessor()
 //int CShellProc::mn_InShellExecuteEx = 0;
 int gnInShellExecuteEx = 0;
 
-extern struct HookModeFar gFarMode;
-
 bool  CShellProc::mb_StartingNewGuiChildTab = 0;
 DWORD CShellProc::mn_LastStartedPID = 0;
 PROCESS_INFORMATION CShellProc:: m_WaitDebugVsThread = {};
+
+
+namespace {
+void LogFarExecCommand(
+	enum CmdOnCreateType aCmd,
+	LPCWSTR asAction, LPCWSTR asFile, LPCWSTR asParam, LPCWSTR asDir,
+	DWORD* /*anShellFlags*/, DWORD* /*anCreateFlags*/, DWORD* /*anStartFlags*/,
+	DWORD* /*anShowCmd*/, HANDLE* /*lphStdIn*/, HANDLE* /*lphStdOut*/, HANDLE* /*lphStdErr*/)
+{
+	if (!gfnSrvLogString)
+		return;
+	wchar_t far_info[120];
+	msprintf(far_info, std::size(far_info),
+		L", Version=%u.%u.%u%s x%u, LongConsoleOutput=%s",
+		gFarMode.FarVer.dwVerMajor, gFarMode.FarVer.dwVerMinor, gFarMode.FarVer.dwBuild,
+		gFarMode.FarVer.Bis ? L"bis" : L"", gFarMode.FarVer.dwBits,
+		gFarMode.bLongConsoleOutput ? L"yes" : L"no");
+	CEStr log_str(
+		L"Far.exe: action=",
+		(aCmd == eShellExecute)
+			? ((asAction && *asAction) ? asAction : L"<shell>")
+			: L"<create>",
+		(asFile && *asFile) ? L", file=" : nullptr, asFile,
+		(asParam && *asParam) ? L", parm=" : nullptr, asParam,
+		(asDir && *asDir) ? L", dir=" : nullptr, asDir,
+		far_info);
+	gfnSrvLogString(log_str);
+}
+}
+
 
 CShellProc::CShellProc()
 {
@@ -996,9 +1024,15 @@ BOOL CShellProc::ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode
 	nCchSize = (asFile ? lstrlen(asFile) : 0) + (asParam ? lstrlen(asParam) : 0) + 64;
 	if (lbUseDosBox)
 	{
-		// Может быть нужно экранирование кавычек или еще чего, зарезервируем буфер
-		// ну и сами параметры для DosBox
-		nCchSize = (nCchSize*2) + lstrlen(szDosBoxExe) + lstrlen(szDosBoxCfg) + 128 + MAX_PATH*2/*на cd и прочую фигню*/;
+		// Escaping of special symbols, dosbox arguments, etc.
+		nCchSize += (nCchSize)
+			+ lstrlen(szDosBoxExe) + lstrlen(szDosBoxCfg) + 128
+			+ (MAX_PATH * 2/*cd and others*/);
+	}
+
+	if (m_SrvMapping.nLogLevel)
+	{
+		nCchSize += 5; // + " /LOG"
 	}
 
 	if (!FileExists(pszOurExe))
@@ -1095,6 +1129,9 @@ BOOL CShellProc::ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode
 
 	if (lbUseDosBox)
 		_wcscat_c((*psParam), nCchSize, L" /DOSBOX");
+
+	if (m_SrvMapping.nLogLevel)
+		_wcscat_c((*psParam), nCchSize, L" /LOG");
 
 	if (gFarMode.cbSize && gFarMode.bFarHookMode)
 	{
@@ -1408,6 +1445,15 @@ int CShellProc::PrepareExecuteParms(
 
 	// Just in case of unexpected LastError changes
 	ScopedObject(CLastErrorGuard);
+
+	// Log with ConEmuCD when Far is working as Alternative Server
+	if (gFarMode.cbSize && gFarMode.bFarHookMode)
+	{
+		LogFarExecCommand(
+			aCmd, asAction, asFile, asParam, asDir,
+			anShellFlags, anCreateFlags, anStartFlags, anShowCmd,
+			lphStdIn, lphStdOut, lphStdErr);
+	}
 
 	CEStr szLnkExe, szLnkArg, szLnkDir;
 	if (asFile && (aCmd == eShellExecute))

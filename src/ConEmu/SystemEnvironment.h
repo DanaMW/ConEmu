@@ -1,6 +1,6 @@
 ﻿
 /*
-Copyright (c) 2014-present Maximus5
+Copyright (c) 2019-present Maximus5
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29,16 +29,24 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include "defines.h"
-#include "CmdLine.h"
+#include <set>
+#include <string>
+#include <unordered_map>
 
-typedef bool (WINAPI* RegEnumKeysCallback)(HKEY hk, LPCWSTR pszSubkeyName, LPARAM lParam);
-int RegEnumKeys(HKEY hkRoot, LPCWSTR pszParentPath, RegEnumKeysCallback fn, LPARAM lParam);
+// The class is not thread-safe
+struct SystemEnvironment
+{
+	void LoadFromRegistry();
+	std::set<std::wstring> GetKeys() const;
 
-typedef bool (WINAPI* RegEnumValuesCallback)(HKEY hk, LPCWSTR pszName, DWORD dwType, LPARAM lParam);
-int RegEnumValues(HKEY hkRoot, LPCWSTR pszParentPath, RegEnumValuesCallback fn, LPARAM lParam, const bool one_bitness_only = false);
+	static std::wstring MakeEnvName(const std::wstring& s);
+	static bool WINAPI SysEnvValueCallback(HKEY hk, LPCWSTR pszName, DWORD dwType, LPARAM lParam);
 
-int RegGetStringValue(HKEY hk, LPCWSTR pszSubKey, LPCWSTR pszValueName, CEStr& rszData, DWORD Wow64Flags = 0);
-LONG RegSetStringValue(HKEY hk, LPCWSTR pszSubKey, LPCWSTR pszValueName, LPCWSTR pszData, DWORD Wow64Flags = 0);
-
-bool RegDeleteKeyRecursive(HKEY hRoot, LPCWSTR asParent, LPCWSTR asName);
+	struct VariableData
+	{
+		bool expandable;   // for REG_EXPAND_SZ
+		std::wstring name; // original case
+		std::wstring data; // contents
+	};
+	std::unordered_map<std::wstring, VariableData> env_data;
+};

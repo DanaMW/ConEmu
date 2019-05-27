@@ -52,6 +52,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //typedef HRESULT(WINAPI* FDwmIsCompositionEnabled)(BOOL *pfEnabled);
 
+class CAltNumpad;
 class CAttachDlg;
 class CConEmuBack;
 class CConEmuChild;
@@ -60,6 +61,7 @@ class CConEmuMacro;
 class CConEmuMenu;
 class CDefaultTerminal;
 class CGestures;
+class CPushInfo;
 class CRecreateDlg;
 class CRunQueue;
 class CStatus;
@@ -68,14 +70,13 @@ class CToolTip;
 class CVConGroup;
 class CVConGuard;
 class MFileLogEx;
-struct MSectionSimple;
-struct MSectionLockSimple;
 enum ConEmuWindowMode;
 struct CEFindDlg;
-union CESize;
-class CPushInfo;
-class CAltNumpad;
 struct HandleMonitor;
+struct MSectionLockSimple;
+struct MSectionSimple;
+struct SystemEnvironment;
+union CESize;
 
 struct ConsoleInfoArg
 {
@@ -85,6 +86,9 @@ struct ConsoleInfoArg
 	CONSOLE_CURSOR_INFO cInfo;
 	TOPLEFTCOORD TopLeft;
 };
+
+#include <memory>
+#include <mutex>
 
 #include "DwmHelper.h"
 #include "TaskBar.h"
@@ -845,6 +849,13 @@ class CConEmuMain
 			MSectionLockSimple* pcsLock;
 			bool wait;
 		} m_LockConhostStart = {};
+
+	public:
+		void ReloadEnvironmentVariables();
+		std::shared_ptr<SystemEnvironment> GetEnvironmentVariables() const;
+	private:
+		std::shared_ptr<SystemEnvironment> saved_environment_;
+		mutable std::mutex saved_environment_mutex_;
 };
 
 // Message Logger

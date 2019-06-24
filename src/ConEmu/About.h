@@ -47,7 +47,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	L"-Config <configname> - Use alternative named configuration.\r\n" \
 	L"-Dir <workdir> - Set startup directory for ConEmu and consoles.\r\n" \
 	L"-Here - Force using of ‘inherited’ startup directory. An alternative to ‘-Dir’ switch.\r\n" \
-	L"-FS | -Max | -Min - (Full screen), (Maximized) or (Minimized) mode.\r\n" \
+	L"-FS | -Max | -Nor | -Min - (Full screen), (Maximized), (Normal) or (Minimized) mode.\r\n" \
 	L"-TSA - Override (enable) minimize to taskbar status area.\r\n" \
 	L"-MinTSA - start minimized in taskbar status area, hide to TSA after console close.\r\n" \
 	L"-StartTSA - start minimized in taskbar status area, exit after console close.\r\n" \
@@ -461,6 +461,7 @@ _DBGHLP(L"-ZoneId - Try to drop :Zone.Identifier without confirmation.\r\n") \
 	L"     Cmd==9: close active tab, same as Close(3)\r\n" \
 	L"     Cmd==10: switches visible split-panes, Parm=(1,-1)\r\n" \
 	L"     Cmd==11: activates tab by name, title or process name\r\n" \
+	L"     Cmd==12: return tabs list \"1: tab1\\n2: tab2\\n...\"\r\n" \
 	L"Task(Index[,\"Dir\"])\r\n" \
 	L"  - start task with 1-based index\r\n" \
 	L"Task(\"Name\"[,\"Dir\"])\r\n" \

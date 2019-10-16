@@ -43,12 +43,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Header.h"
 #include "AboutDlg.h"
 #include <Tlhelp32.h>
-#pragma warning(disable: 4091)
-#include <Shlobj.h>
-#pragma warning(default: 4091)
+
+#include "../common/shlobj.h"
 #include "ShObjIdl_Part.h"
-//#include <lm.h>
-//#include "../common/ConEmuCheck.h"
 
 #include "../common/execute.h"
 #include "../common/EnvVar.h"
@@ -3389,7 +3386,7 @@ CVirtualConsole* CConEmuMain::CreateConGroup(LPCWSTR apszScript, bool abForceAsA
 
 		if (apDefArgs)
 		{
-			args.AssignFrom(apDefArgs);
+			args.AssignFrom(*apDefArgs);
 
 			// If the caller has specified exact split configuration - use it only for the first creating pane
 			if (lbOneCreated && args.eSplit)
@@ -4568,7 +4565,7 @@ bool CConEmuMain::RecreateAction(RecreateActionParm aRecreate, BOOL abConfirm, R
 		if ((GetActiveVCon(&VCon) >= 0) && VCon->RCon())
 		{
 			const RConStartArgsEx& CurArgs = VCon->RCon()->GetArgs();
-			args.AssignFrom(&CurArgs);
+			args.AssignFrom(CurArgs);
 			//args.pszSpecialCmd = CurArgs.CreateCommandLine();
 		}
 	}

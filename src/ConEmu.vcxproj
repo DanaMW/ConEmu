@@ -159,7 +159,7 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -188,7 +188,7 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -211,7 +211,7 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -234,7 +234,7 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Remote|Win32'">
@@ -257,7 +257,7 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Remote|x64'">
@@ -280,7 +280,7 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>ConEmu/conemu.gcc.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -338,6 +338,7 @@
     <ClInclude Include="ConEmu\LngRc.h" />
     <ClInclude Include="ConEmu\LoadImg.h" />
     <ClInclude Include="ConEmu\Macro.h" />
+    <ClInclude Include="ConEmu\MacroImpl.h" />
     <ClInclude Include="ConEmu\Match.h" />
     <ClInclude Include="ConEmu\Menu.h" />
     <ClInclude Include="ConEmu\MenuIds.h" />
@@ -429,6 +430,7 @@
     <ClInclude Include="ConEmu\VirtualConsole.h" />
     <ClInclude Include="ConEmu\WinObjBase.h" />
     <ClInclude Include="ConEmu\globals.h" />
+    <ClInclude Include="ConEmu\helper.h" />
     <ClInclude Include="ConEmu\resource.h" />
     <ClInclude Include="ConEmu\version.h" />
     <ClInclude Include="ConEmu\version_macro.h" />
@@ -573,6 +575,7 @@
     <ClCompile Include="ConEmu\LngRc.cpp" />
     <ClCompile Include="ConEmu\LoadImg.cpp" />
     <ClCompile Include="ConEmu\Macro.cpp" />
+    <ClCompile Include="ConEmu\MacroImpl.cpp" />
     <ClCompile Include="ConEmu\Match.cpp" />
     <ClCompile Include="ConEmu\Menu.cpp" />
     <ClCompile Include="ConEmu\MyClipboard.cpp" />
@@ -658,6 +661,7 @@
     <ClCompile Include="ConEmu\VConText.cpp" />
     <ClCompile Include="ConEmu\VirtualConsole.cpp" />
     <ClCompile Include="ConEmu\WinObjBase.cpp" />
+    <ClCompile Include="ConEmu\helper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ConEmu\ConEmu.ico" />

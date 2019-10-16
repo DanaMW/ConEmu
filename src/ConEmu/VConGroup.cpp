@@ -421,7 +421,7 @@ void CVConGroup::OnVConDestroyed(CVirtualConsole* apVCon)
 	}
 }
 
-CVConGroup* CVConGroup::GetRootGroup()
+CVConGroup* CVConGroup::GetRootGroup() const
 {
 	if (!this)
 	{
@@ -429,14 +429,14 @@ CVConGroup* CVConGroup::GetRootGroup()
 		return NULL;
 	}
 
-	CVConGroup* p = this;
+	auto p = this;
 	while (p->mp_Parent)
 	{
 		p = p->mp_Parent;
 	}
 
 	_ASSERTE(p && (p->mp_Parent == NULL));
-	return p;
+	return const_cast<CVConGroup*>(p);
 }
 
 CVConGroup* CVConGroup::GetRootOfVCon(CVirtualConsole* apVCon)
@@ -459,7 +459,7 @@ CVConGroup* CVConGroup::GetRootOfVCon(CVirtualConsole* apVCon)
 	return p;
 }
 
-CVConGroup* CVConGroup::GetAnotherGroup()
+CVConGroup* CVConGroup::GetAnotherGroup() const
 {
 	if (!this)
 	{
@@ -472,9 +472,9 @@ CVConGroup* CVConGroup::GetAnotherGroup()
 		return NULL;
 	}
 
-	CVConGroup* p = (mp_Parent->mp_Grp1 == this) ? mp_Parent->mp_Grp2 : mp_Parent->mp_Grp1;
+	auto p = (mp_Parent->mp_Grp1 == this) ? mp_Parent->mp_Grp2 : mp_Parent->mp_Grp1;
 	_ASSERTE(p && p != this && p->mp_Parent == mp_Parent);
-	return p;
+	return const_cast<CVConGroup*>(p);
 }
 
 void CVConGroup::SetResizeFlags()
@@ -1004,7 +1004,7 @@ bool CVConGroup::ReSizeSplitter(CVirtualConsole* apVCon, int iHorz /*= 0*/, int 
 }
 
 // Разбиение в координатах DC (pixels)
-void CVConGroup::CalcSplitRect(UINT nSplitPercent10, RECT rcNewCon, RECT& rcCon1, RECT& rcCon2, RECT& rcSplitter)
+void CVConGroup::CalcSplitRect(UINT nSplitPercent10, RECT rcNewCon, RECT& rcCon1, RECT& rcCon2, RECT& rcSplitter) const
 {
 	rcCon1 = rcNewCon;
 	rcCon2 = rcNewCon;
@@ -1133,7 +1133,7 @@ void CVConGroup::CalcSplitRect(UINT nSplitPercent10, RECT rcNewCon, RECT& rcCon1
 }
 
 // Evaluate rect of exact group (pTarget) from root rectange (CER_WORKSPACE)
-void CVConGroup::CalcSplitRootRect(RECT rcAll, RECT& rcCon, CVConGroup* pTarget /*= NULL*/)
+void CVConGroup::CalcSplitRootRect(RECT rcAll, RECT& rcCon, const CVConGroup* pTarget /*= NULL*/) const
 {
 	if (!this)
 	{
@@ -3236,7 +3236,7 @@ HWND CVConGroup::DoSrvCreated(const DWORD nServerPID, const HWND hWndCon, const 
 	return hWndDC;
 }
 
-CVConGroup* CVConGroup::FindNextPane(const RECT& rcPrev, int nHorz /*= 0*/, int nVert /*= 0*/)
+CVConGroup* CVConGroup::FindNextPane(const RECT& rcPrev, int nHorz /*= 0*/, int nVert /*= 0*/) const
 {
 	CVConGroup* pNext = NULL;
 	int iMinDistance = 0;
@@ -3337,7 +3337,7 @@ CVConGroup* CVConGroup::FindNextPane(const RECT& rcPrev, int nHorz /*= 0*/, int 
 wrap:
 	FreePanesArray(Panes);
 	if (!pNext)
-		pNext = this;
+		pNext = const_cast<CVConGroup*>(this);
 	return pNext;
 }
 
@@ -5865,35 +5865,34 @@ bool CVConGroup::isGroup(CVirtualConsole* apVCon, CVConGroup** rpRoot /*= NULL*/
 	return true;
 }
 
-CVConGroup* CVConGroup::GetLeafLeft()
+CVConGroup* CVConGroup::GetLeafLeft() const
 {
 	_ASSERTE(this);
-	CVConGroup* p = this;
+	const CVConGroup* p = this;
 	while (p->mp_Grp1)
 		p = p->mp_Grp1;
-	return p;
+	return const_cast<CVConGroup*>(p);
 }
 
-CVConGroup* CVConGroup::GetLeafRight()
+CVConGroup* CVConGroup::GetLeafRight() const
 {
 	_ASSERTE(this);
 	CVConGroup* p = mp_Grp2;
 	if (!p)
-		return NULL;
+		return nullptr;
 	return p->GetLeafLeft();
 }
 
-void CVConGroup::PopulateSplitPanes(UINT nParent, UINT& nSplits, MArray<CVConGuard*>& VCons)
+void CVConGroup::PopulateSplitPanes(MArray<CVConGuard*>& VCons) const
 {
 	UINT nSecond = 0;
+	UINT nParent = VCons.size() + 1;
 
 	// Only for the root
 	// The code may be in the caller (before recursion starts),
 	// but it's here for simplification
-	if (nSplits == 0)
+	if (VCons.empty() || (this == GetRootGroup()))
 	{
-		nParent = nSplits = 1;
-
 		CVConGroup* pFirst = GetLeafLeft();
 		CVConGuard* pFirstVCon = pFirst ? new CVConGuard(pFirst->mp_Item) : NULL;
 		if (!pFirstVCon || !pFirstVCon->VCon())
@@ -5925,19 +5924,19 @@ void CVConGroup::PopulateSplitPanes(UINT nParent, UINT& nSplits, MArray<CVConGua
 		// Update split properties
 		_ASSERTE(m_SplitType != RConStartArgsEx::eSplitNone);
 		pSecondVCon->VCon()->RCon()->SetSplitProperties(m_SplitType, mn_SplitPercent10, nParent);
-		nSecond = ++nSplits;
 		// Remember we have processed
 		VCons.push_back(pSecondVCon);
+		nSecond = VCons.size();
 	}
 
 	if (mp_Grp1)
 	{
-		mp_Grp1->PopulateSplitPanes(nParent, nSplits, VCons);
+		mp_Grp1->PopulateSplitPanes(VCons);
 	}
 	if (mp_Grp2)
 	{
 		_ASSERTE(nSecond!=0);
-		mp_Grp2->PopulateSplitPanes(nSecond, nSplits, VCons);
+		mp_Grp2->PopulateSplitPanes(VCons);
 	}
 }
 
@@ -5976,8 +5975,7 @@ wchar_t* CVConGroup::GetTasks()
 		}
 		if (q == groups.size())
 		{
-			UINT nStart = 0;
-			pRoot->PopulateSplitPanes(0, nStart, addVCon);
+			pRoot->PopulateSplitPanes(addVCon);
 			// It's ready
 			groups.push_back(pRoot);
 		}

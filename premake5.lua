@@ -1,3 +1,7 @@
+-- ConEmu's solution generator script
+-- 1. Download premake5 from https://premake.github.io/download.html
+-- 2. Run `premake5 vs2017`
+
 workspace "CE"
   configurations { "Release", "Debug", "Remote" }
   platforms { "Win32", "x64" }
@@ -9,7 +13,8 @@ workspace "CE"
    
   startproject "ConEmu"
 
-  flags { "StaticRuntime", "Maps" }
+  staticruntime "On"
+  flags { "Maps" }
   filter "configurations:Release"
     flags { "NoIncrementalLink" }
 
@@ -109,6 +114,10 @@ local common_remove = {
   "**/_*.*",
 }
 
+local tests_remove = {
+  "**/*_test.cpp",
+}
+
 local common_kernel = {
   "src/common/CEHandle.*",
   "src/common/CEStr.*",
@@ -158,6 +167,7 @@ project "common-kernel"
   files (common_kernel)
 
   removefiles (common_remove)
+  removefiles (tests_remove)
 
   vpaths {
     ["Headers"] = {"**.h"},
@@ -191,6 +201,7 @@ project "common-user"
 
   removefiles (common_remove)
   removefiles (common_kernel)
+  removefiles (tests_remove)
 
   vpaths {
     ["Headers"] = {"**.h"},
@@ -205,7 +216,6 @@ project "common-user"
     targetsuffix "64"
   filter {}
 -- end of "common-user"
-
 
 
 
@@ -264,11 +274,13 @@ project "ConEmu"
   }
 
   removefiles (common_remove)
+  removefiles (tests_remove)
 
   vpaths {
     { ["Common"]    = {"src/common/*.h"} },
     { ["Resources"] = {"**/*.rc", "**/*.rc2", "**/*.manifest", "**/*.bmp", "**/*.cur", "**/*.ico"} },
     { ["Exports"]   = {"**.def"} },
+    { ["Macro"]     = {"**/Macro*.*"} },
     { ["Graphics"]  = {"**/GdiObjects.*", "**/Font*.*", "**/CustomFonts.*", "**/Background.*", "**/ColorFix.*",
                        "**/IconList.*", "**/ImgButton.*", "**/LoadImg.*", "**/ScreenDump.*", "**/ToolImg.*"} },
     { ["Settings"]  = {"**/SetPg*.*", "**/Options*.*"} },
@@ -831,3 +843,70 @@ project "Far.ExtendedConsole"
     targetsuffix "64"
   filter {}
 -- end of "Far.ExtendedConsole"
+
+
+
+-- ############################### --
+-- ############################### --
+-- ############################### --
+project "Tests"
+  kind "ConsoleApp"
+  language "C++"
+  exceptionhandling "On"
+
+  defines {"TESTS_MEMORY_MODE"}
+
+  files {
+    -- tests
+    "src/UnitTests/*_test.cpp",
+    "src/**/*_test.cpp",
+    -- common files
+    "src/common/*.cpp",
+    "src/common/*.h",
+    -- main sources
+    -- "src/ConEmu/helper.cpp",
+    -- "src/ConEmu/DynDialog.cpp",
+    -- "src/ConEmu/HotkeyChord.cpp",
+    -- "src/ConEmu/LngData.cpp",
+    -- "src/ConEmu/LngRc.cpp",
+    -- "src/ConEmu/Hotkeys.cpp",
+    -- "src/ConEmu/MacroImpl.cpp",
+    -- "src/ConEmu/Match.cpp",
+    -- "src/ConEmu/RConData.cpp",
+    -- "src/ConEmu/Registry.cpp",
+    -- "src/ConEmu/VConText.cpp",
+    -- googletest
+    "src/modules/googletest/googletest/src/gtest-all.cc",
+  }
+
+  removefiles (common_remove)
+
+  vpaths {
+    { ["tests"] = {"**/*_test.*"} },
+  }
+
+  includedirs {
+    "src/modules/googletest/googletest/include",
+    "src/modules/googletest/googletest",
+  }
+
+  targetname ("Tests_%{cfg.buildcfg}_%{cfg.platform}")
+  targetdir ("src/UnitTests")
+
+  links {
+    -- don't link "common-kernel" or  "common-user"!
+    "comctl32",
+    "shlwapi",
+    "version",
+    "gdiplus",
+    "winmm",
+    "netapi32",
+  }
+
+  objdir ("%{wks.location}/"..build_dir.."/%{cfg.buildcfg}/%{prj.name}_%{cfg.platform}")
+  implibdir ("%{cfg.objdir}")
+
+  -- postbuildcommands {"$(SolutionDir)UnitTests\\Tests_%{cfg.buildcfg}_%{cfg.platform}.exe"}
+
+  filter {}
+-- end of "Tests"

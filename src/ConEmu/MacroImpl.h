@@ -28,22 +28,63 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#define GUI_MACRO_VERSION 2
+#include "../common/defines.h"
 
-struct CESERVER_REQ_GUIMACRO;
+/* ********************************* */
+/* ****** Forward definitions ****** */
+/* ********************************* */
+class CRealConsole;
+
+struct GuiMacro;
+struct GuiMacroArg;
+
+enum GuiMacroArgType
+{
+	gmt_Int,
+	gmt_Hex,
+	gmt_Str,
+	gmt_VStr,
+	gmt_Fn, // Reserved
+};
+
+struct GuiMacroArg
+{
+	GuiMacroArgType Type;
+
+	#ifdef _WIN64
+	DWORD Pad;
+	#endif
+
+	int Int;
+	LPWSTR Str;
+	GuiMacro* Macro;
+};
+
+struct GuiMacro
+{
+	size_t  cbSize;
+	LPCWSTR szFunc;
+	wchar_t chFuncTerm; // L'(', L':', L' ' - delimiter between func name and arguments
+
+	size_t  argc;
+	GuiMacroArg* argv; // No need to release mem, buffer allocated for the full GuiMacro data
+
+	wchar_t* AsString();
+	bool GetIntArg(size_t idx, int& val);
+	bool GetStrArg(size_t idx, LPWSTR& val);
+	bool GetRestStrArgs(size_t idx, LPWSTR& val);
+	bool IsIntArg(size_t idx);
+	bool IsStrArg(size_t idx);
+};
 
 namespace ConEmuMacro
 {
-	// Общая функция, для обработки любого известного макроса
-	LPWSTR ExecuteMacro(LPWSTR asMacro, CRealConsole* apRCon, bool abFromPlugin = false, CESERVER_REQ_GUIMACRO* Opt = NULL);
-	// Конвертация из "старого" в "новый" формат
-	// Старые макросы хранились как "Verbatim" но без префикса
-	LPWSTR ConvertMacro(LPCWSTR asMacro, BYTE FromVersion, bool bShowErrorTip = true);
-	// Some functions must be executed in main thread
-	// but they may be called from console
-	LRESULT ExecuteMacroSync(WPARAM wParam, LPARAM lParam);
-	// Helper to concatenate macros.
-	// They must be ‘concatenatable’, example: Print("abc"); Print("Qqq")
-	// But following WILL NOT work: Print: Abd qqq
-	LPCWSTR ConcatMacro(LPWSTR& rsMacroList, LPCWSTR asAddMacro);
-};
+	/* ****************************** */
+	/* ****** Helper functions ****** */
+	/* ****************************** */
+	LPWSTR GetNextString(LPWSTR& rsArguments, LPWSTR& rsString, bool bColonDelim, bool& bEndBracket);
+	LPWSTR GetNextInt(LPWSTR& rsArguments, GuiMacroArg& rnValue);
+	void SkipWhiteSpaces(LPWSTR& rsString);
+	LPWSTR Int2Str(UINT nValue, bool bSigned);
+	GuiMacro* GetNextMacro(LPWSTR& asString, bool abConvert, wchar_t** rsErrMsg);
+}

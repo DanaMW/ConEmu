@@ -31,9 +31,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/EnvVar.h"
 #include "../common/WFiles.h"
 #include <lm.h>
-#pragma warning(disable: 4091)
-#include <ShlObj.h>
-#pragma warning(default: 4091)
+#include "../common/shlobj.h"
 #include "ConEmu.h"
 #include "DpiAware.h"
 #include "DynDialog.h"
@@ -192,8 +190,8 @@ INT_PTR CRecreateDlg::OnInitDialog(HWND hDlg, UINT messg, WPARAM wParam, LPARAM 
 	if (!mpsz_DefCmd && pArgs)
 	{
 		RConStartArgsEx tempArgs;
-		tempArgs.AssignFrom(pArgs);
-		tempArgs.CleanSecure();
+		tempArgs.AssignFrom(*pArgs);
+		tempArgs.CleanPermissions();
 		tempArgs.RunAsSystem = pArgs->RunAsSystem;
 		tempArgs.eSplit = RConStartArgsEx::eSplitNone;
 		SafeFree(tempArgs.pszSpecialCmd);

@@ -87,6 +87,9 @@
     <ClInclude Include="ConEmu\DlgItemHelper.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="ConEmu\DontEnable.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="ConEmu\DpiAware.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -243,9 +246,6 @@
     <ClInclude Include="ConEmu\RefRelease.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="ConEmu\Registry.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="ConEmu\RunQueue.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -386,6 +386,9 @@
     </ClInclude>
     <ClInclude Include="ConEmu\SetTypes.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ConEmu\SettingsStorage.h">
+      <Filter>Settings</Filter>
     </ClInclude>
     <ClInclude Include="ConEmu\ShObjIdl_Part.h">
       <Filter>Headers</Filter>
@@ -815,6 +818,9 @@
     <ClCompile Include="ConEmu\DlgItemHelper.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="ConEmu\DontEnable.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="ConEmu\DpiAware.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -942,9 +948,6 @@
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="ConEmu\Recreate.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="ConEmu\Registry.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="ConEmu\RunQueue.cpp">
@@ -1083,6 +1086,9 @@
       <Filter>Settings</Filter>
     </ClCompile>
     <ClCompile Include="ConEmu\SetPgViews.cpp">
+      <Filter>Settings</Filter>
+    </ClCompile>
+    <ClCompile Include="ConEmu\SettingsStorage.cpp">
       <Filter>Settings</Filter>
     </ClCompile>
     <ClCompile Include="ConEmu\SizeInfo.cpp">

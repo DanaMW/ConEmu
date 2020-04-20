@@ -231,8 +231,7 @@ bool GetDlgItemSigned(HWND hDlg, WORD nID, int& nValue, int nMin = 0, int nMax =
 bool GetDlgItemUnsigned(HWND hDlg, WORD nID, DWORD& nValue, DWORD nMin = 0, DWORD nMax = 0);
 wchar_t* GetDlgItemTextPtr(HWND hDlg, WORD nID);
 template <size_t size> bool MyGetDlgItemText(HWND hDlg, WORD nID, wchar_t (&rszText)[size]);
-size_t MyGetDlgItemText(HWND hDlg, WORD nID, size_t& cchMax, wchar_t*& pszText/*, bool bEscapes = false*/);
-BOOL MySetDlgItemText(HWND hDlg, int nIDDlgItem, LPCTSTR lpString/*, bool bEscapes = false*/);
+size_t MyGetDlgItemText(HWND hDlg, WORD nID, size_t& cchMax, wchar_t*& pszText);
 bool GetColorRef(LPCWSTR pszText, COLORREF* pCR);
 
 //#pragma warning(disable: 4311) // 'type cast' : pointer truncation from 'HBRUSH' to 'BOOL'
@@ -253,59 +252,9 @@ wchar_t* SelectFile(LPCWSTR asTitle, LPCWSTR asDefFile = NULL, LPCWSTR asDefPath
 
 void RaiseTestException();
 
-//------------------------------------------------------------------------
-///| Registry |///////////////////////////////////////////////////////////
-//------------------------------------------------------------------------
-
-enum class StorageType : int
-{
-	BASIC,
-	REG,
-	XML,
-	INI,
-};
-
-struct SettingsStorage
-{
-	StorageType Type = StorageType::BASIC;
-	LPCWSTR     File = nullptr;   // NULL or full path to storage file
-	LPCWSTR     Config = nullptr; // Name of configuration
-	bool        ReadOnly = false; // If xml file is write-prohibited (created in "C:\Program Files"?)
-
-	static LPCWSTR getTypeName(const StorageType t)
-	{
-		return (t == StorageType::REG) ? L"[reg]"
-			: (t == StorageType::XML) ? L"[xml]"
-			: (t == StorageType::INI) ? L"[ini]"
-			: L"[basic]";
-	};
-	LPCWSTR getTypeName() const
-	{
-		return  getTypeName(Type);
-	};
-
-	bool isFileType() const
-	{
-		return (Type == StorageType::XML || Type == StorageType::INI);
-	};
-
-	bool hasFile() const
-	{
-		return isFileType() && (File && *File);
-	};
-
-	bool hasConfig() const
-	{
-		return (Config && *Config);
-	};
-};
-
-#define CONEMU_ROOT_KEY L"Software\\ConEmu"
-
-
 #define APP_MODEL_ID_PREFIX L"Maximus5.ConEmu."
 
-#include "Registry.h"
+#include "SettingsStorage.h"
 
 #include "../common/MRect.h"
 #include "../common/UnicodeChars.h"
@@ -459,14 +408,6 @@ enum ConEmuWindowMode
 
 LPCWSTR GetWindowModeName(ConEmuWindowMode wm);
 
-// Allow or not to convert pasted Windows path into Posix notation
-typedef BYTE PosixPasteMode;
-const PosixPasteMode
-	pxm_Convert    = 1,  // always try to convert
-	pxm_Intact     = 2,  // never convert
-	pxm_Auto       = 0   // autoselect on certain conditions and m_Args.pszMntRoot value
-;
-
 enum ExpandTextRangeType
 {
 	// Used for DblClick word selection, for example
@@ -581,128 +522,6 @@ enum CEPasteMode
 	pm_OneLine   = 2, // Paste all lines from the clipboard, but delimit them with SPACES (cmd-line safe!)
 };
 
-enum CESizeStyle
-{
-	ss_Standard = 0,
-	ss_Pixels   = 1,
-	ss_Percents = 2,
-};
-
-union CESize
-{
-	DWORD Raw;
-
-	struct
-	{
-		int         Value: 24;
-		CESizeStyle Style: 8;
-
-		wchar_t TempSZ[12];
-	};
-
-	const wchar_t* AsString()
-	{
-		switch (Style)
-		{
-		case ss_Pixels:
-			swprintf_c(TempSZ, L"%ipx", Value);
-			break;
-		case ss_Percents:
-			swprintf_c(TempSZ, L"%i%%", Value);
-			break;
-		//case ss_Standard:
-		default:
-			swprintf_c(TempSZ, L"%i", Value);
-		}
-		return TempSZ;
-	};
-
-	bool IsValid(bool IsWidth) const
-	{
-		bool bValid;
-		switch (Style)
-		{
-		case ss_Percents:
-			bValid = (Value >= 1 && Value <= 100);
-			break;
-		case ss_Pixels:
-			// Treat width/height as values for font size 4x2 (minimal)
-			if (IsWidth)
-				bValid = (Value >= (MIN_CON_WIDTH*4));
-			else
-				bValid = (Value >= (MIN_CON_HEIGHT*2));
-			break;
-		default:
-			if (IsWidth)
-				bValid = (Value >= MIN_CON_WIDTH);
-			else
-				bValid = (Value >= MIN_CON_HEIGHT);
-		}
-		return bValid;
-	};
-
-	bool Set(bool IsWidth, CESizeStyle NewStyle, int NewValue)
-	{
-		if (NewStyle == ss_Standard)
-		{
-			int nDef = IsWidth ? 80 : 25;
-			int nMax = IsWidth ? 1000 : 500;
-			if (NewValue <= 0) NewValue = nDef; else if (NewValue > nMax) NewValue = nMax;
-		}
-		else if (NewStyle == ss_Percents)
-		{
-			int nDef = IsWidth ? 50 : 30;
-			int nMax = 100;
-			if (NewValue <= 0) NewValue = nDef; else if (NewValue > nMax) NewValue = nMax;
-		}
-
-		if (!NewValue)
-		{
-			// Size can't be empty
-			_ASSERTE(NewValue);  // -V571
-			// Fail
-			return false;
-		}
-
-		Value = NewValue;
-		Style = NewStyle;
-		return true;
-	};
-
-	void SetFromRaw(bool IsWidth, DWORD aRaw)
-	{
-		CESize v; v.Raw = aRaw;
-		if (v.Style == ss_Standard || v.Style == ss_Pixels || v.Style == ss_Percents)
-		{
-			this->Set(IsWidth, v.Style, v.Value);
-		}
-	};
-
-	bool SetFromString(bool IsWidth, const wchar_t* sValue)
-	{
-		if (!sValue || !*sValue)
-			return false;
-		wchar_t* pszEnd = NULL;
-		// Try to convert
-		int NewValue = wcstol(sValue, &pszEnd, 10);
-		if (!NewValue)
-			return false;
-
-		CESizeStyle NewStyle = ss_Standard;
-		if (pszEnd)
-		{
-			switch (*SkipNonPrintable(pszEnd))
-			{
-			case L'%':
-				NewStyle = ss_Percents; break;
-			case L'p':
-				NewStyle = ss_Pixels; break;
-			}
-		}
-		// Done
-		return Set(IsWidth, NewStyle, NewValue);
-	};
-};
 
 // this is NOT a bitmask field!
 // only exact values are allowed!

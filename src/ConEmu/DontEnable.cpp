@@ -1,6 +1,6 @@
 ﻿
 /*
-Copyright (c) 2009-present Maximus5
+Copyright (c) 2019-present Maximus5
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -26,27 +26,38 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
 
-#include "../common/defines.h"
-#include "../common/CEStr.h"
+#define HIDE_USE_EXCEPTION_INFO
+#define SHOWDEBUGSTR
 
-extern BOOL gbInDisplayLastError;
-int DisplayLastError(LPCTSTR asLabel, DWORD dwError = 0, DWORD dwMsgFlags = 0, LPCWSTR asTitle = NULL, HWND hParent = NULL);
+#include "helper.h"
+#include "DontEnable.h"
 
-// All window/gdi related code must be run in main thread
-bool isMainThread();
-void initMainThread();
+std::atomic_int DontEnable::gnDontEnable{0};
+std::atomic_int DontEnable::gnDontEnableCount{0};
 
-const wchar_t* DupCygwinPath(LPCWSTR asWinPath, bool bAutoQuote, LPCWSTR asMntPrefix, CEStr& path);
-LPCWSTR MakeWinPath(LPCWSTR asAnyPath, LPCWSTR pszMntPrefix, CEStr& szWinPath);
-wchar_t* MakeStraightSlashPath(LPCWSTR asWinPath);
-bool FixDirEndSlash(wchar_t* rsPath);
+DontEnable::DontEnable(bool abLock /*= true*/)
+{
+	bLocked = abLock && isMainThread();
+	if (bLocked)
+	{
+		_ASSERTE(gnDontEnable>=0);
+		nPrev = gnDontEnable++;
+	}
+	++gnDontEnableCount;
+}
 
-bool isKey(DWORD wp,DWORD vk);
+DontEnable::~DontEnable()
+{
+	if (bLocked)
+	{
+		--gnDontEnable;
+	}
+	--gnDontEnableCount;
+	_ASSERTE(gnDontEnable>=0);
+}
 
-// pszWords - '|'separated
-void StripWords(wchar_t* pszText, const wchar_t* pszWords);
-
-// pszCommentMark - for example L"#"
-void StripLines(wchar_t* pszText, LPCWSTR pszCommentMark);
+bool DontEnable::isDontEnable()
+{
+	return (gnDontEnable.load(std::memory_order_acquire) > 0);
+}

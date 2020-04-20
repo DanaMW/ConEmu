@@ -36,31 +36,19 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma warning(disable: 4091)
 #include <ShlObj.h>
 
+#include "../common/EnvVar.h"
+#include "../common/MJsonReader.h"
+#include "../common/ProcessData.h"
+#include "../common/ProcessSetEnv.h"
+#include "../common/WFiles.h"
+#include "../common/WModuleCheck.h"
+#include "../common/WUser.h"
 #include "ConEmu.h"
 #include "Hotkeys.h"
 #include "Macro.h"
 #include "Match.h"
-#include "../common/EnvVar.h"
-#include "../common/WFiles.h"
-#include "../common/WUser.h"
+#include "SettingsStorage.h"
 
-#ifdef _DEBUG
-#include "DynDialog.h"
-#include "../common/ProcessData.h"
-#include "../common/ProcessSetEnv.h"
-#endif
-
-#ifdef _DEBUG
-#include "../common/WModuleCheck.h"
-#endif
-
-#ifdef _DEBUG
-#include "../common/MJsonReader.h"
-#endif
-
-#ifdef _DEBUG
-#include "Registry.h"
-#endif
 
 // Hide from global namespace
 namespace {
@@ -227,6 +215,7 @@ void UnitFileNamesTest()
 
 void UnitExpandTest()
 {
+	_ASSERTE(gpConEmu!=NULL);
 	CEStr szExe;
 	wchar_t szChoc[MAX_PATH] = L"powershell -NoProfile -ExecutionPolicy unrestricted -Command \"iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))\" && SET PATH=%PATH%;%systemdrive%\\chocolatey\\bin";
 	wchar_t* pszExpanded = ExpandEnvStr(szChoc);
@@ -245,6 +234,7 @@ void UnitModuleTest()
 	CEStr pszConEmuCD(gpConEmu->ms_ConEmuBaseDir, L"\\", ConEmuCD_DLL_3264);
 	HMODULE hMod, hGetMod;
 	bool bTest;
+
 
 	_ASSERTE(!IsModuleValid((HMODULE)NULL));
 	_ASSERTE(!IsModuleValid((HMODULE)INVALID_HANDLE_VALUE));
@@ -351,8 +341,6 @@ void DebugNeedCmdUnitTests()
 
 void DebugCmdParserTests()
 {
-	RConStartArgsEx::RunArgTests();
-
 	struct strTests { wchar_t szTest[100], szCmp[100]; }
 	Tests[] = {
 		{ L"\"Test1 & ^ \"\" Test2\"  Test3  \"Test \"\" 4\"", L"Test1 & ^ \" Test2\0Test3\0Test \" 4\0\0" }
@@ -682,28 +670,79 @@ void XmlValueConvertTest()
 
 } // end of namespace
 
-TEST(ConEmuTest,DebugUnitTests)
+TEST(ConEmuTest, DebugNeedCmdUnitTests)
 {
 	DebugNeedCmdUnitTests();
+}
+TEST(ConEmuTest, DebugCmdParserTests)
+{
 	DebugCmdParserTests();
+}
+TEST(ConEmuTest, UnitMaskTests)
+{
 	UnitMaskTests();
+}
+TEST(ConEmuTest, UnitDriveTests)
+{
 	UnitDriveTests();
+}
+TEST(ConEmuTest, UnitPathTests)
+{
 	UnitPathTests();
+}
+TEST(ConEmuTest, UnitFileNamesTest)
+{
 	UnitFileNamesTest();
+}
+TEST(ConEmuTest, UnitExpandTest)
+{
 	UnitExpandTest();
+}
+TEST(ConEmuTest, UnitModuleTest)
+{
 	UnitModuleTest();
+}
+TEST(ConEmuTest, DebugUnitMprintfTest)
+{
 	DebugUnitMprintfTest();
+}
+TEST(ConEmuTest, DebugVersionTest)
+{
 	DebugVersionTest();
+}
+TEST(ConEmuTest, DebugFileExistTests)
+{
 	DebugFileExistTests();
+}
+TEST(ConEmuTest, DebugStrUnitTest)
+{
 	DebugStrUnitTest();
+}
+TEST(ConEmuTest, DebugCpUnitTest)
+{
 	DebugCpUnitTest();
-	CMatch::UnitTests();
-	ConEmuChord::ChordUnitTests();
-	CDynDialog::UnitTests();
+}
+TEST(ConEmuTest, DebugProcessNameTest)
+{
 	DebugProcessNameTest();
+}
+TEST(ConEmuTest, DebugTestSetParser)
+{
 	DebugTestSetParser();
+}
+TEST(ConEmuTest, DebugMapsTests)
+{
 	DebugMapsTests();
+}
+TEST(ConEmuTest, DebugArrayTests)
+{
 	DebugArrayTests();
+}
+TEST(ConEmuTest, DebugJsonTest)
+{
 	DebugJsonTest();
+}
+TEST(ConEmuTest, XmlValueConvertTest)
+{
 	XmlValueConvertTest();
 }

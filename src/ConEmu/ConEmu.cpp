@@ -69,6 +69,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ConEmuApp.h"
 #include "ConEmuPipe.h"
 #include "DefaultTerm.h"
+#include "DontEnable.h"
 #include "DpiAware.h"
 #include "DragDrop.h"
 #include "FindDlg.h"
@@ -4036,10 +4037,10 @@ void CConEmuMain::RegisterMinRestore(bool abRegister)
 
 			const ConEmuHotKey* pHk = NULL;
 			DWORD VkMod = gpSet->GetHotkeyById(gRegisteredHotKeys[i].DescrID, &pHk);
-			UINT vk = ConEmuHotKey::GetHotkey(VkMod);
+			UINT vk = ConEmuChord::GetHotkey(VkMod);
 			if (!vk)
 				continue;  // не просили
-			UINT nMOD = ConEmuHotKey::GetHotKeyMod(VkMod);
+			UINT nMOD = ConEmuChord::GetHotKeyMod(VkMod);
 
 			if (gRegisteredHotKeys[i].RegisteredID
 					&& ((gRegisteredHotKeys[i].VK != vk) || (gRegisteredHotKeys[i].MOD != nMOD)))
@@ -4179,10 +4180,10 @@ void CConEmuMain::RegisterGlobalHotKeys(bool bRegister)
 			{
 				const ConEmuHotKey* pHk = NULL;
 				DWORD VkMod = gpSet->GetHotkeyById(gActiveOnlyHotKeys[i].DescrID, &pHk);
-				vk = ConEmuHotKey::GetHotkey(VkMod);
+				vk = ConEmuChord::GetHotkey(VkMod);
 				if (!vk)
 					continue;  // не просили
-				mod = ConEmuHotKey::GetHotKeyMod(VkMod);
+				mod = ConEmuChord::GetHotKeyMod(VkMod);
 			}
 
 			BOOL bRegRc = RegisterHotKey(ghWnd, id, mod, vk);

@@ -1,6 +1,6 @@
 ﻿
 /*
-Copyright (c) 2009-present Maximus5
+Copyright (c) 2019-present Maximus5
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -26,27 +26,21 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+
 #pragma once
 
-#include "../common/defines.h"
-#include "../common/CEStr.h"
+#include <atomic>
 
-extern BOOL gbInDisplayLastError;
-int DisplayLastError(LPCTSTR asLabel, DWORD dwError = 0, DWORD dwMsgFlags = 0, LPCWSTR asTitle = NULL, HWND hParent = NULL);
-
-// All window/gdi related code must be run in main thread
-bool isMainThread();
-void initMainThread();
-
-const wchar_t* DupCygwinPath(LPCWSTR asWinPath, bool bAutoQuote, LPCWSTR asMntPrefix, CEStr& path);
-LPCWSTR MakeWinPath(LPCWSTR asAnyPath, LPCWSTR pszMntPrefix, CEStr& szWinPath);
-wchar_t* MakeStraightSlashPath(LPCWSTR asWinPath);
-bool FixDirEndSlash(wchar_t* rsPath);
-
-bool isKey(DWORD wp,DWORD vk);
-
-// pszWords - '|'separated
-void StripWords(wchar_t* pszText, const wchar_t* pszWords);
-
-// pszCommentMark - for example L"#"
-void StripLines(wchar_t* pszText, LPCWSTR pszCommentMark);
+class DontEnable
+{
+private:
+	int nPrev; // Informational!
+	static std::atomic_int gnDontEnable;
+	static std::atomic_int gnDontEnableCount;
+	bool bLocked;
+public:
+	DontEnable(bool abLock = true);
+	~DontEnable();
+public:
+	static bool isDontEnable();
+};

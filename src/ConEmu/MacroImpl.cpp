@@ -43,9 +43,6 @@ wchar_t* GuiMacro::AsString()
 		return lstrdup(L"");
 	}
 
-	// Можно использовать EscapeChar, только нужно учесть,
-	// что кавычки ВНУТРИ Arg.Str нужно эскейпить...
-
 	size_t cchTotal = _tcslen(szFunc) + 5;
 
 	wchar_t** pszArgs = NULL;
@@ -83,11 +80,8 @@ wchar_t* GuiMacro::AsString()
 					LPWSTR pszDst = pszArgs[i];
 					// Start
 					*(pszDst++) = L'"';
-					// Loop
-					while (*pszSrc)
-					{
-						EscapeChar(true, pszSrc, pszDst);
-					}
+					// Value
+					EscapeString(pszSrc, pszDst);
 					// Done
 					*(pszDst++) = L'"'; *(pszDst++) = 0;
 					cchTotal += _tcslen(pszArgs[i])+1;
@@ -635,7 +629,7 @@ LPWSTR GetNextString(LPWSTR& rsArguments, LPWSTR& rsString, bool bColonDelim, bo
 		LPWSTR pszDst = rsString;
 		while (*pszSrc && (*pszSrc != L'"'))
 		{
-			EscapeChar(false, pszSrc, pszDst);
+			UnescapeChar(pszSrc, pszDst);
 		}
 		_ASSERTE((*pszSrc == L'"') || (*pszSrc == 0));
 		rsArguments = (wchar_t*)((*pszSrc == L'"') ? (pszSrc+1) : pszSrc);
@@ -662,21 +656,21 @@ LPWSTR GetNextString(LPWSTR& rsArguments, LPWSTR& rsString, bool bColonDelim, bo
 				{
 					DEBUGTEST(LPCWSTR pszStart = pszSrc);
 					pszTemp = szTemp;
-					EscapeChar(false, pszSrc, pszTemp);
-					EscapeChar(false, pszSrc, pszTemp);
+					UnescapeChar(pszSrc, pszTemp);
+					UnescapeChar(pszSrc, pszTemp);
 					_ASSERTE((pszTemp==(szTemp+2)) && (pszSrc==(pszStart+3) || pszSrc==(pszStart+4)));
 					pszTemp = szTemp;
 					LPCWSTR pszReent = szTemp;
-					EscapeChar(false, pszReent, pszDst);
+					UnescapeChar(pszReent, pszDst);
 				}
 				else
 				{
-					EscapeChar(false, pszSrc, pszTemp);
+					UnescapeChar(pszSrc, pszTemp);
 				}
 			}
 			else
 			{
-				EscapeChar(false, pszSrc, pszDst);
+				UnescapeChar(pszSrc, pszDst);
 			}
 		}
 		_ASSERTE((*pszSrc == L'"') || (*pszSrc == 0));

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
@@ -37,37 +37,37 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Remote|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Remote|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -305,6 +305,7 @@
     <ClInclude Include="ConEmu\DebugMsgLog.h" />
     <ClInclude Include="ConEmu\DefaultTerm.h" />
     <ClInclude Include="ConEmu\DlgItemHelper.h" />
+    <ClInclude Include="ConEmu\DontEnable.h" />
     <ClInclude Include="ConEmu\DpiAware.h" />
     <ClInclude Include="ConEmu\DragDrop.h" />
     <ClInclude Include="ConEmu\DragDropData.h" />
@@ -357,7 +358,6 @@
     <ClInclude Include="ConEmu\RealServer.h" />
     <ClInclude Include="ConEmu\Recreate.h" />
     <ClInclude Include="ConEmu\RefRelease.h" />
-    <ClInclude Include="ConEmu\Registry.h" />
     <ClInclude Include="ConEmu\RunQueue.h" />
     <ClInclude Include="ConEmu\ScreenDump.h" />
     <ClInclude Include="ConEmu\SearchCtrl.h" />
@@ -405,6 +405,7 @@
     <ClInclude Include="ConEmu\SetPgUpdate.h" />
     <ClInclude Include="ConEmu\SetPgViews.h" />
     <ClInclude Include="ConEmu\SetTypes.h" />
+    <ClInclude Include="ConEmu\SettingsStorage.h" />
     <ClInclude Include="ConEmu\ShObjIdl_Part.h" />
     <ClInclude Include="ConEmu\SizeInfo.h" />
     <ClInclude Include="ConEmu\Status.h" />
@@ -549,6 +550,7 @@
     <ClCompile Include="ConEmu\CustomFonts.cpp" />
     <ClCompile Include="ConEmu\DefaultTerm.cpp" />
     <ClCompile Include="ConEmu\DlgItemHelper.cpp" />
+    <ClCompile Include="ConEmu\DontEnable.cpp" />
     <ClCompile Include="ConEmu\DpiAware.cpp" />
     <ClCompile Include="ConEmu\DragDrop.cpp" />
     <ClCompile Include="ConEmu\DragDropData.cpp" />
@@ -592,7 +594,6 @@
     <ClCompile Include="ConEmu\RealConsole.cpp" />
     <ClCompile Include="ConEmu\RealServer.cpp" />
     <ClCompile Include="ConEmu\Recreate.cpp" />
-    <ClCompile Include="ConEmu\Registry.cpp" />
     <ClCompile Include="ConEmu\RunQueue.cpp" />
     <ClCompile Include="ConEmu\ScreenDump.cpp" />
     <ClCompile Include="ConEmu\SearchCtrl.cpp" />
@@ -639,6 +640,7 @@
     <ClCompile Include="ConEmu\SetPgTransparent.cpp" />
     <ClCompile Include="ConEmu\SetPgUpdate.cpp" />
     <ClCompile Include="ConEmu\SetPgViews.cpp" />
+    <ClCompile Include="ConEmu\SettingsStorage.cpp" />
     <ClCompile Include="ConEmu\SizeInfo.cpp" />
     <ClCompile Include="ConEmu\Status.cpp" />
     <ClCompile Include="ConEmu\SystemEnvironment.cpp" />

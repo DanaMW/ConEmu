@@ -1,6 +1,6 @@
 ﻿
 /*
-Copyright (c) 2009-present Maximus5
+Copyright (c) 2014-present Maximus5
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -26,27 +26,37 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
 
-#include "../common/defines.h"
-#include "../common/CEStr.h"
+#define HIDE_USE_EXCEPTION_INFO
+#define SHOWDEBUGSTR
 
-extern BOOL gbInDisplayLastError;
-int DisplayLastError(LPCTSTR asLabel, DWORD dwError = 0, DWORD dwMsgFlags = 0, LPCWSTR asTitle = NULL, HWND hParent = NULL);
+#include "Header.h"
+#include "../UnitTests/gtest.h"
 
-// All window/gdi related code must be run in main thread
-bool isMainThread();
-void initMainThread();
+#include "DynDialog.h"
 
-const wchar_t* DupCygwinPath(LPCWSTR asWinPath, bool bAutoQuote, LPCWSTR asMntPrefix, CEStr& path);
-LPCWSTR MakeWinPath(LPCWSTR asAnyPath, LPCWSTR pszMntPrefix, CEStr& szWinPath);
-wchar_t* MakeStraightSlashPath(LPCWSTR asWinPath);
-bool FixDirEndSlash(wchar_t* rsPath);
+TEST(CDynDialog, LoadTemplate)
+{
+	UINT nDlgID[] = {
+		IDD_SETTINGS, IDD_SPG_FONTS,
+		IDD_SPG_COLORS, IDD_SPG_INFO, IDD_SPG_FEATURES, IDD_SPG_DEBUG, IDD_SPG_FEATURE_FAR, IDD_SPG_TASKS,
+		IDD_SPG_APPDISTINCT, IDD_SPG_COMSPEC, IDD_SPG_STARTUP, IDD_SPG_STATUSBAR, IDD_SPG_APPDISTINCT2, IDD_SPG_CURSOR,
+		IDD_SPG_INTEGRATION, IDD_SPG_TRANSPARENT, IDD_SPG_SIZEPOS, IDD_SPG_MARKCOPY, IDD_SPG_TABS, IDD_SPG_VIEWS,
+		IDD_SPG_KEYS, IDD_SPG_UPDATE, IDD_SPG_APPEAR, IDD_SPG_TASKBAR, IDD_SPG_DEFTERM, IDD_SPG_FARMACRO,
+		IDD_SPG_KEYBOARD, IDD_SPG_MOUSE,
+		IDD_SPG_HIGHLIGHT, IDD_SPG_PASTE, IDD_SPG_CONFIRM, IDD_SPG_HISTORY, IDD_SPG_BACKGR,
+		IDD_MORE_CONFONT, IDD_MORE_DOSBOX, IDD_ATTACHDLG, IDD_FAST_CONFIG, IDD_FIND, IDD_ABOUT,
+		IDD_RENAMETAB, IDD_CMDPROMPT, IDD_HELP, IDD_ACTION, IDD_HOTKEY,
+		0
+	};
 
-bool isKey(DWORD wp,DWORD vk);
+	extern size_t gMsgBoxCallCount;
 
-// pszWords - '|'separated
-void StripWords(wchar_t* pszText, const wchar_t* pszWords);
-
-// pszCommentMark - for example L"#"
-void StripLines(wchar_t* pszText, LPCWSTR pszCommentMark);
+	for (int i = 0; nDlgID[i]; i++)
+	{
+		gMsgBoxCallCount = 0;
+		CDynDialog dlg(nDlgID[i]);
+		EXPECT_TRUE(dlg.LoadTemplate()) << "dlg_id=" << nDlgID[i];
+		EXPECT_EQ(gMsgBoxCallCount, 0) << "dlg_id=" << nDlgID[i];
+	}
+}

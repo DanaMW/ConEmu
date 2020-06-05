@@ -1325,7 +1325,7 @@ bool CFontMgr::RecreateFontByDpi(int dpiX, int dpiY, LPRECT prcSuggested)
 	_dpi_font.SetDpi(dpiX, dpiY);
 	//Raster fonts???
 	EvalLogfontSizes(LogFont, gpSet->FontSizeY, gpSet->FontSizeX);
-	RecreateFont(true);
+	RecreateFont(true, true);
 
 	return true;
 }
@@ -2470,9 +2470,6 @@ void CFontMgr::RecreateFont(bool abReset, bool abRecreateControls /*= false*/)
 		SaveFontSizes((mn_AutoFontWidth == -1), true);
 
 		{
-			if (abRecreateControls)
-				gpConEmu->RecreateControls(true, true, false);
-
 			gpConEmu->Update(true);
 
 			if (gpConEmu->GetWindowMode() == wmNormal)
@@ -2481,6 +2478,9 @@ void CFontMgr::RecreateFont(bool abReset, bool abRecreateControls /*= false*/)
 				CVConGroup::SyncConsoleToWindow();
 
 			gpConEmu->ReSize();
+
+			if (abRecreateControls)
+				gpConEmu->RecreateControls(true, true, false);
 		}
 	}
 

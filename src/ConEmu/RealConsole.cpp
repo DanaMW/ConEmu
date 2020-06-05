@@ -1081,6 +1081,14 @@ bool CRealConsole::SetConsoleSize(SHORT sizeX, SHORT sizeY, USHORT sizeBuffer, D
 	return (mp_RBuf->SetConsoleSize(sizeX, sizeY, sizeBuffer, anCmdID) != FALSE);
 }
 
+void CRealConsole::EndSizing()
+{
+	if (m_ConStatus.szText[0])
+	{
+		SetConStatus(nullptr);
+	}
+}
+
 void CRealConsole::SyncGui2Window(const RECT rcVConBack)
 {
 	if (!this)
@@ -4205,9 +4213,9 @@ bool CRealConsole::StartDebugger(StartDebugType sdt)
 			return false;
 
 		if (gpSetCls->IsMulti() && (Args.aRecreate != cra_CreateWindow))
-			lbRc = (gpConEmu->CreateCon(&Args) != NULL);
+			lbRc = (gpConEmu->CreateCon(Args) != NULL);
 		else
-			lbRc = gpConEmu->CreateWnd(&Args);
+			lbRc = gpConEmu->CreateWnd(Args);
 	}
 	else
 	{
@@ -11470,7 +11478,7 @@ bool CRealConsole::DuplicateRoot(bool bSkipMsg /*= false*/, bool bRunAsAdmin /*=
 			args.eSplit = RConStartArgsEx::eSplitNone;
 
 			// Create (detached) tab ready for attach
-			CVirtualConsole *pVCon = mp_ConEmu->CreateCon(&args);
+			CVirtualConsole *pVCon = mp_ConEmu->CreateCon(args);
 
 			if (pVCon)
 			{
@@ -14611,7 +14619,7 @@ void CRealConsole::StoreGuiChildRect(LPRECT prcNewPos)
 	m_ChildGui.rcLastGuiWnd = rcChild;
 }
 
-void CRealConsole::SetSplitProperties(RConStartArgsEx::SplitType aSplitType, UINT aSplitValue, UINT aSplitPane)
+void CRealConsole::UpdateStartArgs(RConStartArgsEx::SplitType aSplitType, UINT aSplitValue, UINT aSplitPane, bool active)
 {
 	if (!this)
 	{
@@ -14622,6 +14630,13 @@ void CRealConsole::SetSplitProperties(RConStartArgsEx::SplitType aSplitType, UIN
 	m_Args.eSplit = aSplitType;
 	m_Args.nSplitValue = aSplitValue;
 	m_Args.nSplitPane = aSplitPane;
+
+	// Ensure non-active consoles does not have 'Foreground' flag
+	// Ensure than active console does not have 'Background' flag
+	if (active && m_Args.BackgroundTab)
+		m_Args.BackgroundTab = crb_Undefined;
+	if (!active && m_Args.ForegroungTab)
+		m_Args.ForegroungTab = crb_Undefined;
 }
 
 void CRealConsole::SetGuiMode(DWORD anFlags, HWND ahGuiWnd, DWORD anStyle, DWORD anStyleEx, LPCWSTR asAppFileName, DWORD anAppPID, int anBits, RECT arcPrev)
@@ -16389,13 +16404,15 @@ bool CRealConsole::DetachRCon(bool bPosted /*= false*/, bool bSendCloseConsole /
 
 	LogString(L"CRealConsole::Detach");
 
+	SIZE cellSize = {};
+
 	if (InRecreate())
 	{
 		LogString(L"CRealConsole::Detach - Restricted, InRecreate!");
 		goto wrap;
 	}
 
-	SIZE cellSize = mp_VCon->GetCellSize();
+	cellSize = mp_VCon->GetCellSize();
 
 	if (m_ChildGui.hGuiWnd)
 	{

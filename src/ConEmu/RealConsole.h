@@ -287,7 +287,7 @@ class CRealConsole
 		bool    isGuiOverCon();
 		void    StoreGuiChildRect(LPRECT prcNewPos);
 		void    SetGuiMode(DWORD anFlags, HWND ahGuiWnd, DWORD anStyle, DWORD anStyleEx, LPCWSTR asAppFileName, DWORD anAppPID, int anBits, RECT arcPrev);
-		void    SetSplitProperties(RConStartArgsEx::SplitType aSplitType, UINT aSplitValue, UINT aSplitPane);
+		void    UpdateStartArgs(RConStartArgsEx::SplitType aSplitType, UINT aSplitValue, UINT aSplitPane, bool active);
 		static void CorrectGuiChildRect(DWORD anStyle, DWORD anStyleEx, RECT& rcGui, LPCWSTR pszExeName);
 		static bool CanCutChildFrame(LPCWSTR pszExeName);
 
@@ -312,6 +312,7 @@ class CRealConsole
 		void DoLockUnlock(bool bLock);
 
 		bool SetConsoleSize(SHORT sizeX, SHORT sizeY, USHORT sizeBuffer=0, DWORD anCmdID=CECMD_SETSIZESYNC);
+		void EndSizing();
 	private:
 		bool SetActiveBuffer(CRealBuffer* aBuffer, bool abTouchMonitorEvent = true);
 		bool LoadAlternativeConsole(LoadAltMode iMode = lam_Default);

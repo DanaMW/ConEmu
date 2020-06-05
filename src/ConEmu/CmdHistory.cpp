@@ -54,7 +54,7 @@ void CommandHistory::FreeItems()
 	{
 		SafeFree(p);
 	}
-	Items.swap(MArray<wchar_t*>());
+	MArray<wchar_t*>().swap(Items);
 }
 
 // Return size in bytes

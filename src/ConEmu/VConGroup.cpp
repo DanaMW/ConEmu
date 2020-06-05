@@ -198,28 +198,23 @@ CVConGroup* CVConGroup::SplitVConGroup(RConStartArgsEx::SplitType aSplitType /*e
 }
 
 
-CVirtualConsole* CVConGroup::CreateVCon(RConStartArgsEx *args, CVirtualConsole*& ppVConI, int index)
+CVirtualConsole* CVConGroup::CreateVCon(RConStartArgsEx& args, CVirtualConsole*& ppVConI, int index)
 {
 	_ASSERTE(ppVConI == NULL);
-	if (!args)
-	{
-		_ASSERTE(args!=NULL);
-		return NULL;
-	}
 
 	_ASSERTE(isMainThread()); // во избежание сбоев в индексах?
 
-	if (args->pszSpecialCmd)
+	if (args.pszSpecialCmd)
 	{
-		args->ProcessNewConArg();
+		args.ProcessNewConArg();
 	}
 
-	if (args->ForceUserDialog == crb_On)
+	if (args.ForceUserDialog == crb_On)
 	{
-		_ASSERTE(args->aRecreate!=cra_RecreateTab);
-		args->aRecreate = cra_CreateTab;
+		_ASSERTE(args.aRecreate!=cra_RecreateTab);
+		args.aRecreate = cra_CreateTab;
 
-		int nRc = gpConEmu->RecreateDlg(args);
+		int nRc = gpConEmu->RecreateDlg(&args);
 		if (nRc != IDC_START)
 			return NULL;
 
@@ -228,14 +223,14 @@ CVirtualConsole* CVConGroup::CreateVCon(RConStartArgsEx *args, CVirtualConsole*&
 
 	void* pActiveGroupVConPtr = NULL;
 	CVConGroup* pGroup = NULL;
-	if (gp_VActive && args->eSplit)
+	if (gp_VActive && args.eSplit)
 	{
 		CVConGuard VCon;
-		if (((args->nSplitPane && GetVCon(gn_CreateGroupStartVConIdx+args->nSplitPane-1, &VCon))
+		if (((args.nSplitPane && GetVCon(gn_CreateGroupStartVConIdx + args.nSplitPane - 1, &VCon))
 				|| (GetActiveVCon(&VCon) >= 0))
 			&& VCon->mp_Group)
 		{
-			pGroup = ((CVConGroup*)VCon->mp_Group)->SplitVConGroup(args->eSplit, args->nSplitValue);
+			pGroup = ((CVConGroup*)VCon->mp_Group)->SplitVConGroup(args.eSplit, args.nSplitValue);
 			if (pGroup)
 			{
 				pActiveGroupVConPtr = ((CVConGroup*)VCon->mp_Group)->mp_ActiveGroupVConPtr;
@@ -266,7 +261,7 @@ CVirtualConsole* CVConGroup::CreateVCon(RConStartArgsEx *args, CVirtualConsole*&
 	//pVCon->Constructor(args);
 	//if (!pVCon->mp_RCon->PreCreate(args))
 
-	if (!pVCon->Constructor(args))
+	if (!pVCon->Constructor(&args))
 	{
 		ppVConI = NULL;
 		bool bWasValid = isValid(pVCon);
@@ -3612,7 +3607,7 @@ BOOL CVConGroup::AttachRequested(HWND ahConWnd, const CESERVER_REQ_STARTSTOP* pS
 			static LRESULT createVConProc(LPARAM lParam)
 			{
 				createVCon* p = (createVCon*)lParam;
-				p->VCon.Attach(gpConEmu->CreateCon(p->pArgs));
+				p->VCon.Attach(gpConEmu->CreateCon(*p->pArgs));
 				if (!p->VCon.VCon())
 					return 0;
 				if (p->pStartStop && p->pStartStop->Palette.bPalletteLoaded)
@@ -3621,6 +3616,11 @@ BOOL CVConGroup::AttachRequested(HWND ahConWnd, const CESERVER_REQ_STARTSTOP* pS
 			};
 		} impl = {new RConStartArgsEx(), pStartStop};
 
+		if (!impl.pArgs)
+		{
+			_ASSERTE(impl.pArgs != nullptr);
+			goto wrap;
+		}
 		impl.pArgs->Detached = crb_On;
 		impl.pArgs->BackgroundTab = pStartStop->bRunInBackgroundTab ? crb_On : crb_Undefined;
 		impl.pArgs->RunAsAdministrator = pStartStop->bUserIsAdmin ? crb_On : crb_Undefined;
@@ -3657,6 +3657,7 @@ BOOL CVConGroup::AttachRequested(HWND ahConWnd, const CESERVER_REQ_STARTSTOP* pS
 		bFound = VCon->RCon()->AttachConemuC(ahConWnd, pStartStop->dwPID, pStartStop, pRet);
 	}
 
+wrap:
 	return bFound;
 }
 
@@ -4257,9 +4258,8 @@ void CVConGroup::OnCreateGroupEnd()
 	gpConEmu->mp_RunQueue->AdvanceQueue();
 }
 
-CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScripts /*= false*/, bool abForceCurConsole /*= false*/)
+CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx& args, bool abAllowScripts /*= false*/, bool abForceCurConsole /*= false*/)
 {
-	_ASSERTE(args!=NULL);
 	if (!isMainThread())
 	{
 		// Создание VCon в фоновых потоках не допускается, т.к. здесь создаются HWND
@@ -4271,13 +4271,13 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 	CVirtualConsole* pVCon = NULL;
 
 	// When no command specified - choose default one. Now!
-	if ((args->Detached != crb_On) && (!args->pszSpecialCmd || !*args->pszSpecialCmd))
+	if ((args.Detached != crb_On) && (!args.pszSpecialCmd || !*args.pszSpecialCmd))
 	{
 		// We must get here (with empty creation command line) only in certain cases, for example:
 		// a) User presses Win+W (or `[+]` button);
 		// b) User runs something like "ConEmu -detached GuiMacro Create"
 		_ASSERTE((gpConEmu->GetStartupStage() == CConEmuMain::ss_Started || gpConEmu->GetStartupStage() == CConEmuMain::ss_VConStarted) || (gpConEmu->m_StartDetached != crb_Undefined));
-		_ASSERTE(args->pszSpecialCmd==NULL);
+		_ASSERTE(args.pszSpecialCmd==NULL);
 
 		// Сюда мы попадаем, если юзер жмет Win+W (создание без подтверждения)
 		LPCWSTR pszSysCmd = gpConEmu->GetCmd(NULL, !abAllowScripts);
@@ -4291,17 +4291,17 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 			{
 				// Попробовать взять команду из текущей консоли?
 				pszSysCmd = vActive->RCon()->GetCmd(true);
-				if (pszSysCmd && *pszSysCmd && !args->pszStartupDir)
+				if (pszSysCmd && *pszSysCmd && !args.pszStartupDir)
 					pszSysDir = vActive->RCon()->GetStartupDir();
 				// Run as admin?
-				if ((args->RunAsAdministrator == crb_Undefined)
-					&& (args->RunAsRestricted == crb_Undefined)
-					&& (args->pszUserName == NULL))
+				if ((args.RunAsAdministrator == crb_Undefined)
+					&& (args.RunAsRestricted == crb_Undefined)
+					&& (args.pszUserName == NULL))
 				{
 					// That is specially processed because "As admin"
 					// may be set in the task with "*" prefix
 					if (vActive->RCon()->isAdministrator())
-						args->RunAsAdministrator = crb_On;
+						args.RunAsAdministrator = crb_On;
 				}
 			}
 			// Хм? Команда по умолчанию тогда.
@@ -4311,48 +4311,49 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 			}
 		}
 
-		args->pszSpecialCmd = lstrdup(pszSysCmd);
+		_ASSERTE(args.pszSpecialCmd == nullptr);
+		args.pszSpecialCmd = lstrdup(pszSysCmd);
 
 		if (pszSysDir)
 		{
-			_ASSERTE(args->pszStartupDir==NULL);
-			args->pszStartupDir = lstrdup(pszSysDir);
+			_ASSERTE(args.pszStartupDir==NULL);
+			args.pszStartupDir = lstrdup(pszSysDir);
 		}
 
-		_ASSERTE(args->pszSpecialCmd && *args->pszSpecialCmd);
+		_ASSERTE(args.pszSpecialCmd && *args.pszSpecialCmd);
 	}
 
 	CEStr lsTaskCommands;
-	if (args->pszSpecialCmd && *args->pszSpecialCmd)
+	if (args.pszSpecialCmd && *args.pszSpecialCmd)
 	{
 		// gh-1456: VS Extension runs ConEmu as "ConEmu.exe ... -cmd -cur_console:c {cmd}"
 		// Process "-new_console" switches
-		args->ProcessNewConArg(abForceCurConsole);
+		args.ProcessNewConArg(abForceCurConsole);
 
 		// E.g.: "{cmd}", "{Shell::PowerShell}"
-		if (args->pszSpecialCmd && *args->pszSpecialCmd
-			&& gpConEmu->IsConsoleBatchOrTask(args->pszSpecialCmd))
+		if (args.pszSpecialCmd && *args.pszSpecialCmd
+			&& gpConEmu->IsConsoleBatchOrTask(args.pszSpecialCmd))
 		{
-			lsTaskCommands = gpConEmu->LoadConsoleBatch(args->pszSpecialCmd, args);
+			lsTaskCommands = gpConEmu->LoadConsoleBatch(args.pszSpecialCmd, &args);
 		}
 
-		if (lsTaskCommands.IsEmpty() && args->pszSpecialCmd && *args->pszSpecialCmd)
+		if (lsTaskCommands.IsEmpty() && args.pszSpecialCmd && *args.pszSpecialCmd)
 		{
 			// Issue 1711: May be that is smth like?
 			// ""C:\Windows\...\powershell.exe" -noprofile -new_console:t:"PoSh":d:"C:\Users""
 			// Start/End quotes need to be removed
 			CEStr szExe; BOOL bNeedCutQuot = FALSE;
-			bool bNeedCmd = IsNeedCmd(FALSE, args->pszSpecialCmd, szExe, NULL, &bNeedCutQuot);
+			bool bNeedCmd = IsNeedCmd(FALSE, args.pszSpecialCmd, szExe, NULL, &bNeedCutQuot);
 			if (!bNeedCmd && bNeedCutQuot)
 			{
-				int nLen = lstrlen(args->pszSpecialCmd);
+				int nLen = lstrlen(args.pszSpecialCmd);
 				_ASSERTE(nLen > 4);
 				// Cut first quote
-				_ASSERTE(args->pszSpecialCmd[0] == L'"' && args->pszSpecialCmd[1] == L'"');
-				wmemmove(args->pszSpecialCmd, args->pszSpecialCmd+1, nLen);
+				_ASSERTE(args.pszSpecialCmd[0] == L'"' && args.pszSpecialCmd[1] == L'"');
+				wmemmove(args.pszSpecialCmd, args.pszSpecialCmd+1, nLen);
 				// And trim one end quote
-				_ASSERTE(args->pszSpecialCmd[nLen-2] == L'"' && args->pszSpecialCmd[nLen-1] == 0);
-				args->pszSpecialCmd[nLen-2] = 0;
+				_ASSERTE(args.pszSpecialCmd[nLen-2] == L'"' && args.pszSpecialCmd[nLen-1] == 0);
+				args.pszSpecialCmd[nLen-2] = 0;
 			}
 		}
 	}
@@ -4362,14 +4363,14 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 	{
 		LogString(L"!!! Forcing first console to run as Admin (mb_InsideIntegrationAdmin) !!!");
 		gpConEmu->mp_Inside->mb_InsideIntegrationAdmin = false;
-		args->RunAsAdministrator = crb_On;
+		args.RunAsAdministrator = crb_On;
 	}
 
 	// Support starting new tasks by hotkey in the Active VCon working directory
 	// User have to add to Task parameters: /dir "%CD%"
-	if (args->pszStartupDir)
+	if (args.pszStartupDir)
 	{
-		if (lstrcmpi(args->pszStartupDir, L"%CD%") == 0)
+		if (lstrcmpi(args.pszStartupDir, L"%CD%") == 0)
 		{
 			CEStr lsActiveDir;
 			CVConGuard vActive;
@@ -4377,18 +4378,18 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 				vActive->RCon()->GetConsoleCurDir(lsActiveDir, true);
 			if (lsActiveDir.IsEmpty())
 				lsActiveDir.Set(gpConEmu->WorkDir());
-			SafeFree(args->pszStartupDir);
-			args->pszStartupDir = lsActiveDir.Detach();
+			SafeFree(args.pszStartupDir);
+			args.pszStartupDir = lsActiveDir.Detach();
 		}
 	}
 
 	//wchar_t* pszScript = NULL; //, szScript[MAX_PATH];
 
-	_ASSERTE(args->pszSpecialCmd!=NULL);
+	_ASSERTE(args.pszSpecialCmd!=NULL);
 
-	if ((args->Detached != crb_On)
-		&& args->pszSpecialCmd
-		&& gpConEmu->IsConsoleBatchOrTask(args->pszSpecialCmd)
+	if ((args.Detached != crb_On)
+		&& args.pszSpecialCmd
+		&& gpConEmu->IsConsoleBatchOrTask(args.pszSpecialCmd)
 		)
 	{
 		if (!abAllowScripts)
@@ -4402,7 +4403,7 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 			return NULL;
 
 		// GO
-		pVCon = gpConEmu->CreateConGroup(lsTaskCommands, (args->RunAsAdministrator == crb_On), NULL/*ignored when 'args' specified*/, args);
+		pVCon = gpConEmu->CreateConGroup(lsTaskCommands, &args);
 
 		MCHKHEAP;
 		return pVCon;
@@ -4434,9 +4435,9 @@ CVirtualConsole* CVConGroup::CreateCon(RConStartArgsEx *args, bool abAllowScript
 			gb_CreatingActive = false;
 
 			// 130826 - "-new_console:sVb" - "b" was ignored!
-			BOOL lbInBackground = (args->BackgroundTab == crb_On) && (pOldActive != NULL); // && !args->eSplit;
+			BOOL lbInBackground = (args.BackgroundTab == crb_On) && (pOldActive != NULL); // && !args.eSplit;
 			// 131106 - "cmd -new_console:bsV" fails, split was left invisible
-			BOOL lbShowSplit = (args->eSplit != RConStartArgsEx::eSplitNone);
+			BOOL lbShowSplit = (args.eSplit != RConStartArgsEx::eSplitNone);
 
 			if (pVCon)
 			{
@@ -5885,48 +5886,80 @@ CVConGroup* CVConGroup::GetLeafRight() const
 
 void CVConGroup::PopulateSplitPanes(MArray<CVConGuard*>& VCons) const
 {
-	UINT nSecond = 0;
-	UINT nParent = VCons.size() + 1;
-
-	// Only for the root
-	// The code may be in the caller (before recursion starts),
-	// but it's here for simplification
-	if (VCons.empty() || (this == GetRootGroup()))
+	CVConGroup* pFirst = GetLeafLeft();
+	if (!pFirst || !pFirst->mp_Item)
 	{
-		CVConGroup* pFirst = GetLeafLeft();
-		CVConGuard* pFirstVCon = pFirst ? new CVConGuard(pFirst->mp_Item) : NULL;
-		if (!pFirstVCon || !pFirstVCon->VCon())
-		{
-			_ASSERTE(pFirstVCon && pFirstVCon->VCon());
-			_ASSERTE(GetLeafRight() == NULL);
-			SafeDelete(pFirstVCon);
-			return;
-		}
-		// First pane, the anchor, is started layered!
-		pFirstVCon->VCon()->RCon()->SetSplitProperties(RConStartArgsEx::eSplitNone, DefaultSplitValue, 0);
-
-		// Remember we have processed
-		VCons.push_back(pFirstVCon);
+		_ASSERTE(pFirst && pFirst->mp_Item);
+		_ASSERTE(GetLeafRight() == NULL);
+		LogString(L"PopulateSplitPanes error: left leaf is null");
+		return;
 	}
 
-	// Now update split properties of second pane (the splitter)
+	auto findVCon = [&VCons](const CVirtualConsole* pVCon)
+	{
+		UINT nIndex = 0; // 0 - split active console, otherwise - 1-based index of the console to split
+		for (ssize_t i = 0; i < VCons.size(); ++i)
+		{
+			if (VCons[i]->VCon() == pVCon)
+			{
+				nIndex = static_cast<UINT>(i) + 1;
+				break;
+			}
+		}
+		return nIndex;
+	};
+
+	// VConGroup node has left and right leafs. Splits are always done via splitting *left* node.
+	// We need to know the index of *left* node to make proper split.
+
+	// 0 - split active console, otherwise - 1-based index of the console to split
+	UINT nParent = findVCon(pFirst->mp_Item);
+	if (nParent == 0)
+	{
+		// Should be executer only for the root
+		_ASSERTE(this == GetRootGroup());
+		_ASSERTE(VCons.empty());
+
+		// First pane, the anchor, is started layered!
+		pFirst->mp_Item->RCon()->UpdateStartArgs(
+			RConStartArgsEx::eSplitNone, DefaultSplitValue, 0, (pFirst->mp_Item == gp_VActive));
+
+		// Remember we have processed
+		CVConGuard* pFirstVCon = new CVConGuard(pFirst->mp_Item);
+		VCons.push_back(pFirstVCon);
+		nParent = static_cast<UINT>(VCons.size());
+		_ASSERTE(nParent == findVCon(pFirst->mp_Item));
+	}
+
+	// Now update split properties of the second pane (the splitter)
 	CVConGroup* pSecond = GetLeafRight();
-	CVConGuard* pSecondVCon = pSecond ? new CVConGuard(pSecond->mp_Item) : NULL;
-	if (!pSecondVCon || !pSecondVCon->VCon())
+	if (!pSecond || !pSecond->mp_Item)
 	{
 		// No splits?
 		_ASSERTE(m_SplitType == RConStartArgsEx::eSplitNone);
-		SafeDelete(pSecondVCon);
-		pSecond = NULL;
+		pSecond = nullptr;
 	}
 	else
 	{
 		// Update split properties
 		_ASSERTE(m_SplitType != RConStartArgsEx::eSplitNone);
-		pSecondVCon->VCon()->RCon()->SetSplitProperties(m_SplitType, mn_SplitPercent10, nParent);
+		_ASSERTE(nParent != 0 && nParent <= (UINT)VCons.size());
+		pSecond->mp_Item->RCon()->UpdateStartArgs(
+			m_SplitType, mn_SplitPercent10, nParent, (pSecond->mp_Item == gp_VActive));
+
 		// Remember we have processed
-		VCons.push_back(pSecondVCon);
-		nSecond = VCons.size();
+		UINT nSecond = findVCon(pSecond->mp_Item);
+		if (nSecond == 0)
+		{
+			CVConGuard* pSecondVCon = new CVConGuard(pSecond->mp_Item);
+			VCons.push_back(pSecondVCon);
+			_ASSERTE(findVCon(pSecond->mp_Item) == static_cast<UINT>(VCons.size()));
+		}
+		else
+		{
+			_ASSERTE(nSecond == 0);
+			LogString(L"PopulateSplitPanes error: right leaf should not be stored yet");
+		}
 	}
 
 	if (mp_Grp1)
@@ -5935,7 +5968,6 @@ void CVConGroup::PopulateSplitPanes(MArray<CVConGuard*>& VCons) const
 	}
 	if (mp_Grp2)
 	{
-		_ASSERTE(nSecond!=0);
 		mp_Grp2->PopulateSplitPanes(VCons);
 	}
 }
@@ -5966,7 +5998,7 @@ wchar_t* CVConGroup::GetTasks()
 			continue;
 		}
 		// Already appended?
-		INT_PTR q = 0;
+		ssize_t q = 0;
 		while (q < groups.size())
 		{
 			if (groups[q] == pRoot)
@@ -5983,8 +6015,7 @@ wchar_t* CVConGroup::GetTasks()
 
 	_ASSERTE(GetConCount() == addVCon.size());
 
-
-	for (INT_PTR i = 0; i < addVCon.size(); i++)
+	for (ssize_t i = 0; i < addVCon.size(); i++)
 	{
 		CVConGuard* VCon = addVCon[i];
 		if (!VCon)

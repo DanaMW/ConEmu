@@ -36,3 +36,5 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 BOOL ProcessInputMessage(MSG64::MsgStr &msg, INPUT_RECORD &r);
 //BOOL WriteInputQueue(const INPUT_RECORD *pr, BOOL bSetEvent = TRUE);
 DWORD WINAPI InputThread(LPVOID lpvParam);
+
+BOOL SendConsoleEvent(INPUT_RECORD* pr, UINT nCount);

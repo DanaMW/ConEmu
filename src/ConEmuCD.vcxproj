@@ -37,7 +37,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -145,6 +145,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WIN32;NDEBUG;HIDE_TODO;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -172,6 +173,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN64;_WIN64;NDEBUG;HIDE_TODO;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -194,7 +196,9 @@
       <PreprocessorDefinitions>WIN32;_WIN32;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WIN32;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -215,7 +219,9 @@
       <PreprocessorDefinitions>WIN64;_WIN64;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN64;_WIN64;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -236,7 +242,9 @@
       <PreprocessorDefinitions>WIN32;_WIN32;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WIN32;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -257,7 +265,9 @@
       <PreprocessorDefinitions>WIN64;_WIN64;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN64;_WIN64;_DEBUG;HIDE_TODO;MSGLOGGER;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -276,15 +286,19 @@
     <ClInclude Include="ConEmuCD\ConAnsi.h" />
     <ClInclude Include="ConEmuCD\ConAnsiImpl.h" />
     <ClInclude Include="ConEmuCD\ConData.h" />
+    <ClInclude Include="ConEmuCD\ConEmuCmd.h" />
     <ClInclude Include="ConEmuCD\ConEmuSrv.h" />
     <ClInclude Include="ConEmuCD\ConProcess.h" />
     <ClInclude Include="ConEmuCD\ConsoleHelp.h" />
+    <ClInclude Include="ConEmuCD\ConsoleMain.h" />
     <ClInclude Include="ConEmuCD\Debugger.h" />
     <ClInclude Include="ConEmuCD\DownloaderCall.h" />
     <ClInclude Include="ConEmuCD\ExitCodes.h" />
     <ClInclude Include="ConEmuCD\GuiHooks.h" />
     <ClInclude Include="ConEmuCD\GuiMacro.h" />
     <ClInclude Include="ConEmuCD\Infiltrate.h" />
+    <ClInclude Include="ConEmuCD\InjectRemote.h" />
+    <ClInclude Include="ConEmuCD\InputLogger.h" />
     <ClInclude Include="ConEmuCD\LogFunction.h" />
     <ClInclude Include="ConEmuCD\MapDump.h" />
     <ClInclude Include="ConEmuCD\Queue.h" />
@@ -313,6 +327,7 @@
     <ClCompile Include="ConEmuCD\GuiMacro.cpp" />
     <ClCompile Include="ConEmuCD\Infiltrate.cpp" />
     <ClCompile Include="ConEmuCD\InjectRemote.cpp" />
+    <ClCompile Include="ConEmuCD\InputLogger.cpp" />
     <ClCompile Include="ConEmuCD\LogFunction.cpp" />
     <ClCompile Include="ConEmuCD\MapDump.cpp" />
     <ClCompile Include="ConEmuCD\Queue.cpp" />

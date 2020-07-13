@@ -31,23 +31,26 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/defines.h"
 
+#include "../common/PaletteColors.h"
 #include "../common/RgnDetect.h"
 
 class CRealConsole;
 
+constexpr size_t CE_COLOR_PALETTE_TABLE_SIZE = ConEmu::CE_COLOR_PALETTE_SIZE * ConEmu::CE_COLOR_PALETTE_SIZE; // 256
+
 class CRConPalette
 {
 public:
-	CRealConsole* mp_RCon;
-	CharAttr m_TableOrg[0x100];
-	CharAttr m_TableExt[0x100];
-	COLORREF m_Colors[32];
+	CRealConsole* mp_RCon = nullptr;
+	CharAttr m_TableOrg[CE_COLOR_PALETTE_TABLE_SIZE]{};
+	CharAttr m_TableExt[CE_COLOR_PALETTE_TABLE_SIZE]{};
+	ConEmu::PaletteColors m_Colors{};
 
 protected:
-	bool mb_Initialized;
-	bool mb_VividColors;
-	bool mb_ExtendFonts;
-	BYTE mn_FontNormalColor, mn_FontBoldColor, mn_FontItalicColor;
+	bool mb_Initialized = false;
+	bool mb_VividColors = false;
+	bool mb_ExtendFonts = false;
+	BYTE mn_FontNormalColor = 0, mn_FontBoldColor = 0, mn_FontItalicColor = 0;
 
 public:
 	CRConPalette(CRealConsole* apRCon);
@@ -55,8 +58,8 @@ public:
 
 public:
 	// Methods
-	void UpdateColorTable(COLORREF *apColors/*[32]*/,
-		bool bVividColors,
+	void UpdateColorTable(
+		const ConEmu::PaletteColors& colors, bool bVividColors,
 		bool bExtendFonts, BYTE nFontNormalColor, BYTE nFontBoldColor, BYTE nFontItalicColor);
 
 };

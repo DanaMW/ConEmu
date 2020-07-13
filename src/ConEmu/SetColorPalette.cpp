@@ -35,6 +35,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Options.h"
 #include "SetColorPalette.h"
 
+using ConEmu::PaletteColors;
+
 void ColorPalette::FreePtr()
 {
 	SafeFree(pszName);
@@ -42,7 +44,7 @@ void ColorPalette::FreePtr()
 	SafeFree(p);
 }
 
-COLORREF* ColorPalette::GetColors(bool abFade)
+const PaletteColors& ColorPalette::GetColors(bool abFade)
 {
 	return gpSet->GetColorsPrepare(Colors, ColorsFade, &FadeInitialized, abFade);
 }

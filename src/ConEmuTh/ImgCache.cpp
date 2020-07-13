@@ -62,7 +62,7 @@ CImgCache::CImgCache(HMODULE hSelf)
 	LoadModules();
 
 	// Initialize Com
-	HRESULT hr = CoInitialize(NULL);
+	HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 	_ASSERTE(SUCCEEDED(hr));
 	mb_comInitialized = SUCCEEDED(hr);
 

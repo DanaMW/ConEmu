@@ -31,6 +31,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/defines.h"
 
+#include "../common/PaletteColors.h"
+
 #define CEDEF_BackColorAuto    16
 #define CEDEF_FontNormalColor  1
 #define CEDEF_FontBoldColor    12
@@ -51,13 +53,13 @@ struct ColorPalette
 	BYTE nPopBackColorIdx; // 0..15,16
 
 	// Loaded
-	COLORREF Colors[0x10];
+	ConEmu::PaletteColors Colors;
 
 	// Computed
-	COLORREF ColorsFade[0x10];
+	ConEmu::PaletteColors ColorsFade;
 	bool FadeInitialized;
 
-	COLORREF* GetColors(bool abFade);
+	const ConEmu::PaletteColors& GetColors(bool abFade);
 
 	void FreePtr();
 };

@@ -44,13 +44,16 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/MProcess.h"
 #include "../common/MStrDup.h"
 #include "../common/ProcessData.h"
-#include "../common/WCodePage.h"
 #include "../common/WFiles.h"
 #include "../common/WUser.h"
 #include "../ConEmuHk/Injects.h"
 #include "../ConEmu/version.h"
 
 #include "Actions.h"
+
+
+#include "ConsoleArgs.h"
+#include "ConsoleState.h"
 #include "ConsoleMain.h"
 #include "GuiMacro.h"
 #include "InjectRemote.h"
@@ -132,12 +135,12 @@ bool DoStateCheck(ConEmuStateCheck eStateCheck)
 
 	switch (eStateCheck)
 	{
-	case ec_IsConEmu:
-	case ec_IsAnsi:
-		if (ghConWnd)
+	case ConEmuStateCheck::IsConEmu:
+	case ConEmuStateCheck::IsAnsi:
+		if (gState.realConWnd_)
 		{
 			CESERVER_CONSOLE_MAPPING_HDR* pInfo = (CESERVER_CONSOLE_MAPPING_HDR*)malloc(sizeof(*pInfo));
-			if (pInfo && LoadSrvMapping(ghConWnd, *pInfo))
+			if (pInfo && LoadSrvMapping(gState.realConWnd_, *pInfo))
 			{
 				_ASSERTE(pInfo->ComSpec.ConEmuExeDir[0] && pInfo->ComSpec.ConEmuBaseDir[0]);
 
@@ -146,10 +149,10 @@ bool DoStateCheck(ConEmuStateCheck eStateCheck)
 				{
 					switch (eStateCheck)
 					{
-					case ec_IsConEmu:
+					case ConEmuStateCheck::IsConEmu:
 						bOn = true;
 						break;
-					case ec_IsAnsi:
+					case ConEmuStateCheck::IsAnsi:
 						bOn = ((pInfo->Flags & CECF_ProcessAnsi) != 0);
 						break;
 					default:
@@ -160,13 +163,13 @@ bool DoStateCheck(ConEmuStateCheck eStateCheck)
 			SafeFree(pInfo);
 		}
 		break;
-	case ec_IsAdmin:
+	case ConEmuStateCheck::IsAdmin:
 		bOn = IsUserAdmin();
 		break;
-	case ec_IsRedirect:
+	case ConEmuStateCheck::IsRedirect:
 		bOn = IsOutputRedirected();
 		break;
-	case ec_IsTerm:
+	case ConEmuStateCheck::IsTerm:
 		bOn = isTerminalMode();
 		break;
 	default:
@@ -180,14 +183,22 @@ bool DoStateCheck(ConEmuStateCheck eStateCheck)
 int DoInjectHooks(LPWSTR asCmdArg)
 {
 	gbInShutdown = TRUE; // чтобы не возникло вопросов при выходе
-	gnRunMode = RM_SETHOOK64;
+	gState.runMode_ = RunMode::SetHook64;
 	LPWSTR pszNext = asCmdArg;
 	LPWSTR pszEnd = NULL;
 	BOOL lbForceGui = FALSE;
-	PROCESS_INFORMATION pi = {NULL};
+	PROCESS_INFORMATION pi = {};
 
+	auto strToHandle = [](LPWSTR pszNext, LPWSTR* ppszEnd) -> HANDLE
+	{
+#ifdef _WIN64
+		return HANDLE(wcstoull(pszNext, ppszEnd, 16));
+#else
+		return HANDLE(wcstoul(pszNext, ppszEnd, 16));
+#endif
+	};
 
-	pi.hProcess = (HANDLE)wcstoul(pszNext, &pszEnd, 16);
+	pi.hProcess = strToHandle(pszNext, &pszEnd);
 
 	if (pi.hProcess && pszEnd && *pszEnd)
 	{
@@ -198,7 +209,7 @@ int DoInjectHooks(LPWSTR asCmdArg)
 	if (pi.dwProcessId && pszEnd && *pszEnd)
 	{
 		pszNext = pszEnd+1;
-		pi.hThread = (HANDLE)wcstoul(pszNext, &pszEnd, 16);
+		pi.hThread = strToHandle(pszNext, &pszEnd);
 	}
 
 	if (pi.hThread && pszEnd && *pszEnd)
@@ -226,8 +237,7 @@ int DoInjectHooks(LPWSTR asCmdArg)
 
 	if (pi.hProcess && pi.hThread && pi.dwProcessId && pi.dwThreadId)
 	{
-		// Аргумент abForceGui не использовался
-		CINJECTHK_EXIT_CODES iHookRc = InjectHooks(pi, /*lbForceGui,*/ gbLogProcess);
+		const CINJECTHK_EXIT_CODES iHookRc = InjectHooks(pi, gbLogProcess, gsSelfPath, gState.realConWnd_);
 
 		if (iHookRc == CIH_OK/*0*/)
 		{
@@ -259,7 +269,7 @@ int DoInjectHooks(LPWSTR asCmdArg)
 int DoInjectRemote(LPWSTR asCmdArg, bool abDefTermOnly)
 {
 	gbInShutdown = TRUE; // чтобы не возникло вопросов при выходе
-	gnRunMode = RM_SETHOOK64;
+	gState.runMode_ = RunMode::SetHook64;
 	LPWSTR pszNext = asCmdArg;
 	LPWSTR pszEnd = NULL;
 	DWORD nRemotePID = wcstoul(pszNext, &pszEnd, 10);
@@ -397,11 +407,11 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 
 	#define ExpFailedPref WIN3264TEST("ConEmuC","ConEmuC64") ": can't export environment"
 
-	if (!ghConWnd)
+	if (!gState.realConWnd_)
 	{
-		_ASSERTE(ghConWnd);
+		_ASSERTE(gState.realConWnd_);
 		if (!bSilent)
-			_printf(ExpFailedPref ", ghConWnd was not set\n");
+			_printf(ExpFailedPref ", gState.realConWnd was not set\n");
 		goto wrap;
 	}
 
@@ -591,7 +601,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	pIn->hdr.cbSize = sizeof(CESERVER_REQ_HDR)+(DWORD)cchMaxEnvLen*sizeof(wchar_t);
 
 	// Find current server (even if no server or no GUI - apply environment to parent tree)
-	lbMapExist = LoadSrvMapping(ghConWnd, test);
+	lbMapExist = LoadSrvMapping(gState.realConWnd_, test);
 	if (lbMapExist)
 	{
 		_ASSERTE(test.ComSpec.ConEmuExeDir[0] && test.ComSpec.ConEmuBaseDir[0]);
@@ -609,7 +619,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	// Go, build tree (first step - query all running PIDs in the system)
 	nParentPID = nSelfPID;
 	// Don't do snapshot if only GUI was requested
-	h = (eExecAction != ea_ExportGui) ? CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) : NULL;
+	h = (eExecAction != ConEmuExecAction::ExportGui) ? CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) : NULL;
 	// Snapshot opened?
 	if (h && (h != INVALID_HANDLE_VALUE))
 	{
@@ -682,7 +692,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 			LogString(szInfo);
 
 			// Apply environment
-			CESERVER_REQ *pOut = ExecuteHkCmd(nTestPID, pIn, ghConWnd, FALSE, TRUE);
+			CESERVER_REQ *pOut = ExecuteHkCmd(nTestPID, pIn, gState.realConWnd_, FALSE, TRUE);
 
 			if (!pOut && !bSilent)
 			{
@@ -704,7 +714,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 		LogString(szInfo);
 
 		// Server found? Try to apply environment
-		CESERVER_REQ *pOut = ExecuteSrvCmd(nSrvPID, pIn, ghConWnd);
+		CESERVER_REQ *pOut = ExecuteSrvCmd(nSrvPID, pIn, gState.realConWnd_);
 
 		if (!pOut)
 		{
@@ -718,9 +728,9 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	}
 
 	// Если просили во все табы - тогда досылаем и в GUI
-	if ((eExecAction != ea_ExportCon) && lbMapExist && test.hConEmuRoot && IsWindow((HWND)test.hConEmuRoot))
+	if ((eExecAction != ConEmuExecAction::ExportCon) && lbMapExist && test.hConEmuRoot && IsWindow((HWND)test.hConEmuRoot))
 	{
-		if (eExecAction == ea_ExportAll)
+		if (eExecAction == ConEmuExecAction::ExportAll)
 		{
 			pIn->hdr.nCmd = CECMD_EXPORTVARSALL;
 		}
@@ -732,7 +742,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 		LogString(L"DoExportEnv: ConEmu GUI");
 
 		// ea_ExportTab, ea_ExportGui, ea_ExportAll -> export to ConEmu window
-		ExecuteGuiCmd(ghConWnd, pIn, ghConWnd, TRUE);
+		ExecuteGuiCmd(gState.realConWnd_, pIn, gState.realConWnd_, TRUE);
 	}
 
 	swprintf_c(szInfo, WIN3264TEST(L"ConEmuC",L"ConEmuC64") L": %i %s processed", iVarCount, (iVarCount == 1) ? L"variable was" : L"variables were");
@@ -772,7 +782,7 @@ int DoParseArgs(LPCWSTR asCmdLine)
 	_printf("ConEmu `NextArg` splitter\n");
 	while ((asCmdLine = NextArg(asCmdLine, szArg)))
 	{
-		if (szArg.mb_Quoted)
+		if (szArg.m_bQuoted)
 			DemangleArg(szArg, true);
 		_printf("  %u: `", ++i);
 		_wprintf(szArg);
@@ -837,12 +847,12 @@ int DoOutput(ConEmuExecAction eExecAction, LPCWSTR asCmdArg)
 		// Use Ascii functions to print text (RAW data, don't convert to unicode)
 		else if (lstrcmpi(szArg, L"-a") == 0)
 		{
-			if (eExecAction == ea_OutType) bAsciiPrint = true;
+			if (eExecAction == ConEmuExecAction::OutType) bAsciiPrint = true;
 		}
 		// For testing purposes, stream characters one-by-one
 		else if (lstrcmpi(szArg, L"-s") == 0)
 		{
-			if (eExecAction == ea_OutType) bStreamBy1 = true;
+			if (eExecAction == ConEmuExecAction::OutType) bStreamBy1 = true;
 		}
 		// Forced codepage of typed text file
 		else // `-65001`, `-utf8`, `-oemcp`, etc.
@@ -855,7 +865,7 @@ int DoOutput(ConEmuExecAction eExecAction, LPCWSTR asCmdArg)
 	_ASSERTE(asCmdArg && (*asCmdArg != L' '));
 	asCmdArg = SkipNonPrintable(asCmdArg);
 
-	if (eExecAction == ea_OutType)
+	if (eExecAction == ConEmuExecAction::OutType)
 	{
 		if ((asCmdArg = NextArg(asCmdArg, szArg)))
 		{
@@ -867,14 +877,14 @@ int DoOutput(ConEmuExecAction eExecAction, LPCWSTR asCmdArg)
 				wchar_t szInfo[100];
 				swprintf_c(szInfo, L"\r\nCode=%i, Error=%u\r\n", iRead, nErrCode);
 				szTemp = lstrmerge(L"Reading source file failed!\r\n", szArg, szInfo);
-				cchLen = szTemp.GetLen();
+				cchLen = static_cast<DWORD>(szTemp.GetLen());
 				bAsciiPrint = false;
 				iRc = 4;
 			}
 			pszText = szTemp.ms_Val;
 		}
 	}
-	else if (eExecAction == ea_OutEcho)
+	else if (eExecAction == ConEmuExecAction::OutEcho)
 	{
 		_ASSERTE(szTemp.ms_Val == NULL);
 
@@ -896,13 +906,13 @@ int DoOutput(ConEmuExecAction eExecAction, LPCWSTR asCmdArg)
 			}
 
 			// Replace two double-quotes with one double-quotes
-			if (szArg.mb_Quoted
+			if (szArg.m_bQuoted
 				// Process special symbols: ^e^[^r^n^t^b
 				|| (bProcessed && wcschr(pszAdd, L'^'))
 				)
 			{
 				lsDemangle.Set(pszAdd);
-				if (DemangleArg(lsDemangle, szArg.mb_Quoted, bProcessed))
+				if (DemangleArg(lsDemangle, szArg.m_bQuoted, bProcessed))
 					pszAdd = lsDemangle.ms_Val;
 			}
 
@@ -919,7 +929,7 @@ int DoOutput(ConEmuExecAction eExecAction, LPCWSTR asCmdArg)
 	#ifdef _DEBUG
 	if (bAsciiPrint)
 	{
-		_ASSERTE(eExecAction == ea_OutType);
+		_ASSERTE(eExecAction == ConEmuExecAction::OutType);
 	}
 	#endif
 
@@ -982,7 +992,7 @@ int WriteOutput(LPCWSTR pszText, DWORD cchLen /*= -1*/, DWORD* pdwWritten /*= nu
 		if (bProcessed && (!WriteProcessed || !WriteProcessedA))
 		{
 			// ConEmuHk.dll / ConEmuHk64.dll
-			if (ConEmuHk.Load(WIN3264TEST(L"ConEmuHk.dll",L"ConEmuHk64.dll")))
+			if (ConEmuHk.Load(ConEmuHk_DLL_3264))
 			{
 				ConEmuHk.GetProcAddress("WriteProcessed", WriteProcessed);
 				ConEmuHk.GetProcAddress("WriteProcessedA", WriteProcessedA);
@@ -1067,115 +1077,115 @@ int DoStoreCWD(LPCWSTR asCmdArg)
 
 	if (!NextArg(asCmdArg, szDir) || szDir.IsEmpty())
 	{
-		if (GetDirectory(szDir) == NULL)
+		if (GetDirectory(szDir) == nullptr)
 			goto wrap;
 	}
 
 	// Sends CECMD_STORECURDIR into RConServer
-	SendCurrentDirectory(ghConWnd, szDir);
+	SendCurrentDirectory(gState.realConWnd_, szDir);
 	iRc = 0;
 wrap:
 	return iRc;
 }
 
-int DoExecAction(ConEmuExecAction eExecAction, LPCWSTR asCmdArg /* rest of cmdline */, MacroInstance& Inst)
+int DoExecAction(const ConEmuExecAction eExecAction, LPCWSTR asCmdArg /* rest of cmdline */, MacroInstance& Inst)
 {
 	int iRc = CERR_CARGUMENT;
 
 	switch (eExecAction)
 	{
-	case ea_RegConFont:
+	case ConEmuExecAction::RegConFont:
 		{
 			LogString(L"DoExecAction: ea_RegConFont");
 			RegisterConsoleFontHKLM(asCmdArg);
 			iRc = CERR_EMPTY_COMSPEC_CMDLINE;
 			break;
 		}
-	case ea_InjectHooks:
+	case ConEmuExecAction::InjectHooks:
 		{
 			LogString(L"DoExecAction: DoInjectHooks");
 			iRc = DoInjectHooks((LPWSTR)asCmdArg);
 			break;
 		}
-	case ea_InjectRemote:
-	case ea_InjectDefTrm:
+	case ConEmuExecAction::InjectRemote:
+	case ConEmuExecAction::InjectDefTrm:
 		{
 			LogString(L"DoExecAction: DoInjectRemote");
-			iRc = DoInjectRemote((LPWSTR)asCmdArg, (eExecAction == ea_InjectDefTrm));
+			iRc = DoInjectRemote((LPWSTR)asCmdArg, (eExecAction == ConEmuExecAction::InjectDefTrm));
 			break;
 		}
-	case ea_GuiMacro: // ConEmuC -GuiMacro
+	case ConEmuExecAction::GuiMacro: // ConEmuC -GuiMacro
 		{
 			LogString(L"DoExecAction: DoGuiMacro");
-			GuiMacroFlags Flags = gmf_SetEnvVar
+			const GuiMacroFlags flags = GuiMacroFlags::SetEnvVar
 				// If current RealConsole was already started in ConEmu, try to export variable
-				| ((gbMacroExportResult && (gnRunMode != RM_GUIMACRO) && (ghConEmuWnd != NULL)) ? gmf_ExportEnvVar : gmf_None)
+				| ((gpConsoleArgs->macroExportResult_ && (gState.runMode_ != RunMode::GuiMacro) && (gState.conemuWnd_ != nullptr)) ? GuiMacroFlags::ExportEnvVar : GuiMacroFlags::None)
 				// Interactive mode, print output to console
-				| ((!gbPreferSilentMode && (gnRunMode != RM_GUIMACRO)) ? gmf_PrintResult : gmf_None);
-			iRc = DoGuiMacro(asCmdArg, Inst, Flags);
+				| ((!gpConsoleArgs->preferSilentMode_ && (gState.runMode_ != RunMode::GuiMacro)) ? GuiMacroFlags::PrintResult : GuiMacroFlags::None);
+			iRc = DoGuiMacro(asCmdArg, Inst, flags);
 			break;
 		}
-	case ea_CheckUnicodeFont: // ConEmuC -CheckUnicode
+	case ConEmuExecAction::CheckUnicodeFont: // ConEmuC -CheckUnicode
 		{
 			LogString(L"DoExecAction: ea_CheckUnicodeFont");
 			iRc = CheckUnicodeFont();
 			break;
 		}
-	case ea_PrintConsoleInfo: // ConEmuC -ConInfo
+	case ConEmuExecAction::PrintConsoleInfo: // ConEmuC -ConInfo
 		{
 			LogString(L"DoExecAction: ea_PrintConsoleInfo");
 			PrintConsoleInfo();
 			iRc = 0;
 			break;
 		}
-	case ea_TestUnicodeCvt: // ConEmuC -TestUnicode
+	case ConEmuExecAction::TestUnicodeCvt: // ConEmuC -TestUnicode
 		{
 			LogString(L"DoExecAction: ea_TestUnicodeCvt");
 			iRc = TestUnicodeCvt();
 			break;
 		}
-	case ea_OsVerInfo: // ConEmuC -OsVerInfo
+	case ConEmuExecAction::OsVerInfo: // ConEmuC -OsVerInfo
 		{
 			LogString(L"DoExecAction: ea_OsVerInfo");
 			iRc = OsVerInfo();
 			break;
 		}
-	case ea_ExportCon: // ConEmuC -Export ...
-	case ea_ExportTab:
-	case ea_ExportGui:
-	case ea_ExportAll:
+	case ConEmuExecAction::ExportCon: // ConEmuC -Export ...
+	case ConEmuExecAction::ExportTab:
+	case ConEmuExecAction::ExportGui:
+	case ConEmuExecAction::ExportAll:
 		{
 			LogString(L"DoExecAction: DoExportEnv");
-			iRc = DoExportEnv(asCmdArg, eExecAction, gbPreferSilentMode);
+			iRc = DoExportEnv(asCmdArg, eExecAction, gpConsoleArgs->preferSilentMode_.GetBool());
 			break;
 		}
-	case ea_ParseArgs: // ConEmuC -Args ... | ConEmuC -ParseArgs
+	case ConEmuExecAction::ParseArgs: // ConEmuC -Args ... | ConEmuC -ParseArgs
 		{
 			LogString(L"DoExecAction: DoParseArgs");
 			iRc = DoParseArgs(asCmdArg);
 			break;
 		}
-	case ea_ErrorLevel: // ConEmuC -ErrorLevel
+	case ConEmuExecAction::ErrorLevel: // ConEmuC -ErrorLevel
 		{
 			LogString(L"DoExecAction: ea_ErrorLevel");
 			wchar_t* pszEnd = NULL;
 			iRc = wcstol(asCmdArg, &pszEnd, 10);
 			break;
 		}
-	case ea_OutEcho: // ConEmuC -e ...
-	case ea_OutType: // ConEmuC -t
+	case ConEmuExecAction::OutEcho: // ConEmuC -e ...
+	case ConEmuExecAction::OutType: // ConEmuC -t
 		{
 			LogString(L"DoExecAction: DoOutput");
 			iRc = DoOutput(eExecAction, asCmdArg);
 			break;
 		}
-	case ea_StoreCWD: // ConEmuC -StoreCWD
+	case ConEmuExecAction::StoreCWD: // ConEmuC -StoreCWD
 		{
 			LogString(L"DoExecAction: DoStoreCWD");
 			iRc = DoStoreCWD(asCmdArg);
 			break;
 		}
-	case ea_DumpStruct: // ConEmuC -STRUCT
+	case ConEmuExecAction::DumpStruct: // ConEmuC -STRUCT
 		{
 			LogString(L"DoExecAction: DoDumpStruct");
 			iRc = DoDumpStruct(asCmdArg);

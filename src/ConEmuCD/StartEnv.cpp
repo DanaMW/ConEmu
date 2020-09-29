@@ -37,7 +37,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Actions.h"
 #include "StartEnv.h"
 
-wchar_t* gpszForcedTitle = NULL;
+#include "../ConEmuHk/SetHook.h"
+
+wchar_t* gpszForcedTitle = nullptr;
 
 // old-issues#60: On some systems (Win2k3, WinXP) SetConsoleCP and SetConsoleOutputCP just hangs!
 // That's why we call them in background thread, and if it hangs - TerminateThread it.
@@ -110,7 +112,7 @@ void CStartEnv::ChCp(LPCWSTR asCP)
 void CStartEnv::Echo(LPCWSTR asSwitches, LPCWSTR asText)
 {
 	CEStr lsFull = lstrmerge(asSwitches, (asSwitches && *asSwitches) ? L" " : NULL, L"\"", asText, L"\"");
-	DoOutput(ea_OutEcho, lsFull);
+	DoOutput(ConEmuExecAction::OutEcho, lsFull);
 }
 
 void CStartEnv::Set(LPCWSTR asName, LPCWSTR asValue)
@@ -190,78 +192,5 @@ void CStartEnv::Title(LPCWSTR asTitle)
 void CStartEnv::Type(LPCWSTR asSwitches, LPCWSTR asFile)
 {
 	CEStr lsFull = lstrmerge(asSwitches, (asSwitches && *asSwitches) ? L" " : NULL, L"\"", asFile, L"\"");
-	DoOutput(ea_OutType, lsFull);
+	DoOutput(ConEmuExecAction::OutType, lsFull);
 }
-
-#ifdef _DEBUG
-void CStartEnv::UnitTests()
-{
-	CStartEnv setEnv;
-	wchar_t szTempName[80]; SYSTEMTIME st = {}; GetLocalTime(&st);
-	swprintf_c(szTempName, L"ce_temp_%u%u%u%u", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	SetEnvironmentVariable(szTempName, NULL);
-
-	const wchar_t szInit[] = L"initial", szPref[] = L"abc;", szSuff[] = L";def";
-	wchar_t* pchValue;
-	int iCmp;
-
-	// ce_temp="initial"
-	setEnv.Set(szTempName, szInit);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, szInit) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-
-	// ce_temp="abc;initial"
-	CEStr lsSet1(szPref, L"%", szTempName, L"%");
-	CEStr lsCmd1(szPref, szInit);
-	setEnv.Set(szTempName, lsSet1);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, lsCmd1) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-	setEnv.Set(szTempName, lsSet1);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, lsCmd1) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-
-	// ce_temp="abc;initial;def"
-	CEStr lsSet2(L"%", szTempName, L"%", szSuff);
-	CEStr lsCmd2(szPref, szInit, szSuff);
-	setEnv.Set(szTempName, lsSet2);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, lsCmd2) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-	setEnv.Set(szTempName, lsSet2);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, lsCmd2) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-
-	// ce_temp="initial"
-	setEnv.Set(szTempName, szInit);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, szInit) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-
-	// ce_temp="abc;initial;def"
-	CEStr lsSet3(szPref, L"%", szTempName, L"%", szSuff);
-	CEStr lsCmd3(szPref, szInit, szSuff);
-	setEnv.Set(szTempName, lsSet3);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, lsCmd3) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-	setEnv.Set(szTempName, lsSet3);
-	pchValue = GetEnvVar(szTempName);
-	iCmp = pchValue ? wcscmp(pchValue, lsCmd3) : -1;
-	_ASSERTE(iCmp==0);
-	SafeFree(pchValue);
-
-	// Drop temp variable
-	SetEnvironmentVariable(szTempName, NULL);
-}
-#endif

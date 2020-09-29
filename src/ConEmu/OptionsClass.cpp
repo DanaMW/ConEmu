@@ -43,38 +43,30 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ShObjIdl_Part.h"
 #endif // __GNUC__
 
-#include "../common/Monitors.h"
 #include "../common/MSetter.h"
 #include "../common/StartupEnvDef.h"
 #include "../common/WUser.h"
 #include "../ConEmuCD/ExitCodes.h"
 #include "../ConEmuCD/GuiHooks.h"
-#include "../ConEmuPlugin/FarDefaultMacros.h"
 
-#include "AboutDlg.h"
 #include "Background.h"
 #include "CmdHistory.h"
 #include "ConEmu.h"
-#include "ConEmuApp.h"
-#include "ConEmuCtrl.h"
 #include "ConfirmDlg.h"
-#include "DefaultTerm.h"
 #include "DpiAware.h"
 #include "DynDialog.h"
 #include "FontMgr.h"
 #include "HotkeyDlg.h"
 #include "ImgButton.h"
-#include "Inside.h"
 #include "LngRc.h"
-#include "LoadImg.h"
 #include "Options.h"
 #include "OptionsClass.h"
+
+#include "GlobalHotkeys.h"
 #include "OptionsFast.h"
 #include "OptionsHelp.h"
 #include "RealConsole.h"
-#include "Recreate.h"
 #include "SearchCtrl.h"
-#include "SetCmdTask.h"
 #include "SetColorPalette.h"
 #include "SetDlgColors.h"
 #include "SetDlgLists.h"
@@ -114,10 +106,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SetPgTransparent.h"
 #include "SetPgUpdate.h"
 #include "SetPgViews.h"
-#include "Status.h"
 #include "TabBar.h"
-#include "TrayIcon.h"
-#include "VConChild.h"
 #include "VConGroup.h"
 #include "VirtualConsole.h"
 
@@ -1803,12 +1792,12 @@ void CSettings::OnSettingsClosed()
 
 	gpConEmu->OnPanelViewSettingsChanged();
 
-	gpConEmu->RegisterMinRestore(gpSet->IsHotkey(vkMinimizeRestore) || gpSet->IsHotkey(vkMinimizeRestor2));
+	gpConEmu->GetGlobalHotkeys().RegisterMinRestore(gpSet->IsHotkey(vkMinimizeRestore) || gpSet->IsHotkey(vkMinimizeRestor2));
 
 	if (gpSet->m_isKeyboardHooks == 1)
-		gpConEmu->RegisterHooks();
+		gpConEmu->GetGlobalHotkeys().RegisterHooks();
 	else if (gpSet->m_isKeyboardHooks == 2)
-		gpConEmu->UnRegisterHooks();
+		gpConEmu->GetGlobalHotkeys().UnRegisterHooks();
 
 	UnregisterTabs();
 
@@ -3473,10 +3462,10 @@ bool CSettings::CheckConsoleFontFast(LPCWSTR asCheckName /*= NULL*/)
 		wchar_t szCmd[MAX_PATH+64] = L"\"";
 		wcscat_c(szCmd, gpConEmu->ms_ConEmuBaseDir);
 		wchar_t* psz = szCmd + _tcslen(szCmd);
-		_wcscpy_c(psz, 64, L"\\ConEmuC.exe");
+		_wcscpy_c(psz, 64, L"\\" ConEmuC_32_EXE);
 		if (IsWindows64() && !FileExists(szCmd+1))
 		{
-			_wcscpy_c(psz, 64, L"\\ConEmuC64.exe");
+			_wcscpy_c(psz, 64, L"\\" ConEmuC_64_EXE);
 		}
 		wcscat_c(szCmd, L"\" /CheckUnicode");
 

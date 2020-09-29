@@ -437,7 +437,7 @@ RECT CConEmuSize::CalcRect(enum ConEmuRect tWhat, CVirtualConsole* pVCon /*= NUL
 	WINDOWPLACEMENT wpl = {sizeof(wpl)};
 	int nGetStyle = 0;
 
-	bool bNeedCalc = (isIconic() || InMinimizing() || mp_ConEmu->mp_Menu->GetRestoreFromMinimized() || !IsWindowVisible(ghWnd));
+	const bool bNeedCalc = (isIconic() || InMinimizing() || mp_ConEmu->mp_Menu->GetRestoreFromMinimized() || !IsWindowVisible(ghWnd));
 
 	if (mp_ConEmu->mp_Inside)
 	{
@@ -448,8 +448,7 @@ RECT CConEmuSize::CalcRect(enum ConEmuRect tWhat, CVirtualConsole* pVCon /*= NUL
 			return rcMain;
 		}
 	}
-	else
-	if (bNeedCalc)
+	else if (bNeedCalc)
 	{
 		nGetStyle = 1;
 
@@ -508,11 +507,11 @@ RECT CConEmuSize::CalcRect(enum ConEmuRect tWhat, CVirtualConsole* pVCon /*= NUL
 				}
 			}
 
-			// Если окно было свернуто из Maximized/FullScreen состояния
+			// If the window was minimized from Maximized/FullScreen state
 			if ((WindowMode == wmMaximized) || (WindowMode == wmFullScreen))
 			{
-				ConEmuRect t = (WindowMode == wmMaximized) ? CER_MAXIMIZED : CER_FULLSCREEN;
-				rcMain = CalcRect(t, rcMain, t);
+				const ConEmuRect what = (WindowMode == wmMaximized) ? CER_MAXIMIZED : CER_FULLSCREEN;
+				rcMain = CalcRect(what, rcMain, CER_MAIN);
 				nGetStyle += 10;
 			}
 		}
@@ -522,12 +521,14 @@ RECT CConEmuSize::CalcRect(enum ConEmuRect tWhat, CVirtualConsole* pVCon /*= NUL
 		GetWindowRect(ghWnd, &rcMain);
 	}
 
+	RECT result;
 	if (tWhat == CER_MAIN)
-	{
-		return rcMain;
-	}
+		result = rcMain;
+	else
+		result = CalcRect(tWhat, rcMain, CER_MAIN, pVCon);
 
-	return CalcRect(tWhat, rcMain, CER_MAIN, pVCon);
+	std::ignore = nGetStyle;
+	return result;
 }
 
 // Для приблизительного расчета размеров - нужен только (размер главного окна)|(размер консоли)
@@ -1737,7 +1738,7 @@ void CConEmuSize::SetRequestedMonitor(HMONITOR hNewMon)
 	// and therefore ReloadMonitorInfo() is not called yet
 	DpiValue dpi;
 	CDpiAware::QueryDpiForMonitor(mi.hMon, &dpi);
-	if (mi.Xdpi != dpi.Xdpi || mi.Ydpi != mi.Ydpi)
+	if (mi.Xdpi != dpi.Xdpi || mi.Ydpi != dpi.Ydpi)
 	{
 		wchar_t log_info[128];
 		swprintf_c(log_info, L"WARNING: Cached monitor dpi is obsolete, old={%i,%i}, new={%i,%i}",
@@ -1748,9 +1749,9 @@ void CConEmuSize::SetRequestedMonitor(HMONITOR hNewMon)
 		ReloadMonitorInfo();
 
 		mi = NearestMonitorInfo(mh_RequestedMonitor);
-		if (mi.Xdpi != dpi.Xdpi || mi.Ydpi != mi.Ydpi)
+		if (mi.Xdpi != dpi.Xdpi || mi.Ydpi != dpi.Ydpi)
 		{
-			Assert(mi.Xdpi == dpi.Xdpi && mi.Ydpi == mi.Ydpi);
+			Assert(mi.Xdpi == dpi.Xdpi && mi.Ydpi == dpi.Ydpi);
 			mi.Xdpi = dpi.Xdpi; mi.Ydpi = dpi.Ydpi;
 		}
 	}
@@ -6407,6 +6408,19 @@ void CConEmuSize::LogMinimizeRestoreSkip(LPCWSTR asMsgFormat, DWORD nParm1, DWOR
 	wchar_t szInfo[200];
 	swprintf_c(szInfo, asMsgFormat, nParm1, nParm2, nParm3);
 	LogFocusInfo(szInfo);
+}
+
+void CConEmuSize::ProcessMinRestoreHotkey(const int hotkeyId, const DWORD nTime)
+{
+	if (!nTime || !mn_LastQuakeShowHide || (static_cast<int>(nTime - mn_LastQuakeShowHide) >= 0))
+	{
+		DoMinimizeRestore((hotkeyId == vkGlobalRestore) ? sih_Show : sih_None);
+	}
+	else
+	{
+		LogMinimizeRestoreSkip(L"DoMinimizeRestore skipped, vk=%u time=%u delay=%i",
+			hotkeyId, nTime, static_cast<int>(nTime - mn_LastQuakeShowHide));
+	}
 }
 
 void CConEmuSize::DoMinimizeRestore(SingleInstanceShowHideType ShowHideType /*= sih_None*/)

@@ -70,6 +70,7 @@ class CToolTip;
 class CVConGroup;
 class CVConGuard;
 class MFileLogEx;
+class GlobalHotkeys;
 enum ConEmuWindowMode;
 struct CEFindDlg;
 struct HandleMonitor;
@@ -158,7 +159,7 @@ class CConEmuMain
 		LPWSTR  mps_ConEmuExtraArgs = NULL;            // Used with TaskBar jump list creation (/FontDir, /FontFile, etc.)
 		public:
 		void AppendExtraArgs(LPCWSTR asSwitch, LPCWSTR asSwitchValue = NULL);
-		LPCWSTR MakeConEmuStartArgs(CEStr& rsArgs, LPCWSTR asOtherConfig = NULL);
+		LPCWSTR MakeConEmuStartArgs(CEStr& rsArgs, LPCWSTR asOtherConfig = NULL) const;
 		wchar_t ms_ComSpecInitial[MAX_PATH] = L"";
 		CEStr ms_PostGuiMacro;
 		void SetPostGuiMacro(LPCWSTR asGuiMacro);
@@ -185,7 +186,8 @@ class CConEmuMain
 			bool  bBlockChildrenDebuggers;
 		} m_DbgInfo;
 	private:
-		bool CheckBaseDir();
+		bool CheckBaseDir() const;
+		bool mb_DontUseInjects = false;
 		bool mb_ForceUseRegistry = false;
 		bool mb_SpecialConfigPath = false;
 		wchar_t ms_ConEmuXml[MAX_PATH+1] = L"";       // полный путь к портабельным настройкам
@@ -230,6 +232,9 @@ class CConEmuMain
 			int  iRc;
 		};
 		static BOOL CALLBACK EnumWindowsOverQuake(HWND hWnd, LPARAM lpData);
+
+		std::mutex mcs_Log; // for create mp_Log
+		std::shared_ptr<MFileLogEx> mp_Log;
 	public:
 		//CConEmuChild *m_Child;
 		//CConEmuBack  *m_Back;
@@ -239,14 +244,13 @@ class CConEmuMain
 		CConEmuInside *mp_Inside = nullptr;
 		CStatus *mp_Status;
 		CToolTip *mp_Tip = nullptr;
-		MFileLogEx *mp_Log = nullptr;
-		MSectionSimple* mpcs_Log; // mcs_Log - для создания
 		CDefaultTerminal *mp_DefTrm;
 		CEFindDlg *mp_Find;
 		CRunQueue *mp_RunQueue;
 		HandleMonitor *mp_HandleMonitor = nullptr;
 
 		bool CreateLog();
+		std::shared_ptr<MFileLogEx> GetLogger() const;
 		bool LogString(LPCWSTR asInfo, bool abWriteTime = true, bool abWriteLine = true);
 		bool LogString(LPCSTR asInfo, bool abWriteTime = true, bool abWriteLine = true);
 		bool LogMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -480,17 +484,10 @@ class CConEmuMain
 		HANDLE mh_ConEmuAliveEvent = NULL; bool mb_ConEmuAliveOwned = false; DWORD mn_ConEmuAliveEventErr = 0;
 		HANDLE mh_ConEmuAliveEventNoDir = NULL; bool mb_ConEmuAliveOwnedNoDir = false; DWORD mn_ConEmuAliveEventErrNoDir = 0;
 		//
-		bool mb_HotKeyRegistered = false;
-		HHOOK mh_LLKeyHook = NULL;
-		HMODULE mh_LLKeyHookDll = NULL;
-		HWND* mph_HookedGhostWnd = nullptr;
-		HMODULE LoadConEmuCD();
-		void RegisterHotKeys();
-		void RegisterGlobalHotKeys(bool bRegister);
+		std::shared_ptr<GlobalHotkeys> m_Hotkeys;
 	public:
-		void GlobalHotKeyChanged();
+		GlobalHotkeys& GetGlobalHotkeys() const;
 	protected:
-		void UnRegisterHotKeys(bool abFinal=false);
 		HBITMAP mh_RightClickingBmp = NULL; HDC mh_RightClickingDC = NULL;
 		POINT m_RightClickingSize = {}; // {384 x 16} 24 фрейма, считаем, что четверть отведенного времени прошла до начала показа
 		int m_RightClickingFrames = 0, m_RightClickingCurrent = -1;
@@ -509,12 +506,6 @@ class CConEmuMain
 		wchar_t* LoadConsoleBatch_Task(LPCWSTR asSource, RConStartArgsEx* pArgs = NULL);
 	public:
 		void RightClickingPaint(HDC hdcIntVCon, CVirtualConsole* apVCon);
-		void RegisterMinRestore(bool abRegister);
-		bool IsKeyboardHookRegistered();
-		void RegisterHooks();
-		void UnRegisterHooks(bool abFinal=false);
-		void OnWmHotkey(WPARAM wParam, DWORD nTime = 0);
-		void UpdateWinHookSettings();
 		void CtrlWinAltSpace();
 		void DeleteVConMainThread(CVirtualConsole* apVCon);
 		UINT GetRegisteredMessage(LPCSTR asLocal, LPCWSTR asGlobal = NULL);
@@ -581,8 +572,8 @@ class CConEmuMain
 		DWORD GetFarPID(bool abPluginRequired=false);
 
 	public:
-		LPCWSTR GetDefaultTitle(); // вернуть ms_ConEmuDefTitle
-		LPCWSTR GetDefaultTabLabel(); // L"ConEmu"
+		LPCWSTR GetDefaultTitle() const; // ms_ConEmuDefTitle
+		LPCWSTR GetDefaultTabLabel() const; // L"ConEmu"
 		LPCTSTR GetLastTitle(bool abUseDefault=true);
 		LPCTSTR GetVConTitle(int nIdx);
 		void SetTitle(HWND ahWnd, LPCWSTR asTitle, bool abTrySync = false);
@@ -607,6 +598,7 @@ class CConEmuMain
 		void AttachToDialog();
 		void CheckFocus(LPCWSTR asFrom);
 		bool CheckRequiredFiles();
+		bool CanUseInjects() const;
 		bool CheckUpdates(UINT abShowMessages);
 		DWORD isSelectionModifierPressed(bool bAllowEmpty);
 		void ForceSelectionModifierPressed(DWORD nValue);
@@ -735,7 +727,6 @@ class CConEmuMain
 		BOOL TrackMouse();
 		void SetSkipMouseEvent(UINT nMsg1, UINT nMsg2, UINT nReplaceDblClk);
 		void Update(bool isForce = false);
-		void UpdateActiveGhost(CVirtualConsole* apVCon);
 	protected:
 		void UpdateImeComposition();
 	public:

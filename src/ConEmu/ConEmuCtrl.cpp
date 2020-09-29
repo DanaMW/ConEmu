@@ -35,8 +35,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AboutDlg.h"
 #include "ConEmu.h"
 #include "ConEmuCtrl.h"
+
+#include "ConfirmDlg.h"
 #include "Hotkeys.h"
 #include "FindDlg.h"
+#include "LngRc.h"
 #include "Macro.h"
 #include "Menu.h"
 #include "OptionsClass.h"
@@ -588,7 +591,7 @@ bool CConEmuCtrl::key_CTSVkTextStart(const ConEmuChord& VkState, bool TestOnly, 
 }
 
 // pRCon may be NULL
-bool CConEmuCtrl::key_SystemMenu(const ConEmuChord& VkState, bool TestOnly, const ConEmuHotKey* hk, CRealConsole* pRCon)
+bool CConEmuCtrl::key_SystemMenu(const ConEmuChord& VkState, bool TestOnly, const ConEmuHotKey* /*hk*/, CRealConsole* /*pRCon*/)
 {
 	if (TestOnly)
 		return true;
@@ -1242,6 +1245,33 @@ bool CConEmuCtrl::key_AlwaysOnTop(const ConEmuChord& VkState, bool TestOnly, con
 
 	gpSet->isAlwaysOnTop = !gpSet->isAlwaysOnTop;
 	gpConEmu->DoAlwaysOnTopSwitch();
+
+	return true;
+}
+
+bool CConEmuCtrl::key_ResetTerminal(const ConEmuChord& /*VkState*/, bool TestOnly, const ConEmuHotKey* /*hk*/, CRealConsole* pRCon)
+{
+	if (TestOnly)
+		return true;
+
+	if (gpSet->isResetTerminalConfirm)
+	{
+		const auto confirmRc = ConfirmDialog(
+			CLngRc::getRsrc(lng_ResetTerminalWarning) /*
+			L"Warning!\nThis operation could harm further output of applications.\n"
+			L"It's better to execute a dedicated command as `clear` or `cls`."*/,
+			CLngRc::getRsrc(lng_ResetTerminalConfirm/*"Do you want to reset terminal contents?"*/),
+			CLngRc::getRsrc(lng_ResetTerminalTitle/*"Reset terminal confirmation"*/),
+			CECLEARSCREEN, MB_OKCANCEL, ghWnd,
+			nullptr, CLngRc::getRsrc(lng_ResetTerminalOk/*"Reset terminal contents and properties"*/),
+			nullptr, CLngRc::getRsrc(lng_ResetTerminalCancel/*"Cancel operation"*/));
+		if (confirmRc != IDOK)
+			return false;
+	}
+
+	const CEStr szMacro(L"Write(\"\\ec\")");
+	const CEStr szResult = ConEmuMacro::ExecuteMacro(szMacro.ms_Val, pRCon);
+	LogString(CEStr(L"Reset terminal macro result: ", szResult));
 
 	return true;
 }

@@ -1536,7 +1536,7 @@
       "de": "Zeigt einen 'Ein externes Programm hat ConEmu in den Vordergrund geholt. Rückgängig?'-Bestätigungsdialog",
       "ja": "Show 'いくつかの外部プログラムがConEmu OnTopをもたらしました.復帰？ '確認ボックス",
       "es": "Mostrar el mensaje de confirmación 'Algún programa externo trajo a ConEmu a primer plano. ¿Deshacer?'",
-      "pl": "Pokaż „Niektóre zewnętrzne programy przyniosły ConEmu OnTop. Cofnij\" pole potwierdzenia?",
+      "pl": "Pokaż „Niektóre zewnętrzne programy na wierzchu ConEmu. Cofnij\" pole potwierdzenia?",
       "id": 2854 }
     ,
     "cbSingleInstance": {
@@ -5464,6 +5464,14 @@
       "pl": "Program emulacji konsoli (terminal lokalny)",
       "id": 8 }
     ,
+    "lng_AlternativeIsOffHint": {
+      "en": "Alternative mode is off",
+      "id": 199 }
+    ,
+    "lng_AlternativeIsOnHint": {
+      "en": "Alternative mode is ON (console frozen)",
+      "id": 198 }
+    ,
     "lng_AltNumberACP": {
       "en": "Type ANSI code point using decimal numbers",
       "ru": "Введите десятичный код ANSI",
@@ -5570,6 +5578,90 @@
       "es": "Configuración básica",
       "pl": "Podstawowe ustawienia",
       "id": 21 }
+    ,
+    "lng_BufferHeightOffHint": {
+      "en": "BufferHeight mode is off",
+      "id": 197 }
+    ,
+    "lng_BufferHeightOnHint": {
+      "en": "BufferHeight mode is ON (scrolling enabled)",
+      "id": 196 }
+    ,
+    "lng_CloseAllConsolesHint": {
+      "en": "Close ALL consoles",
+      "id": 193 }
+    ,
+    "lng_ConfirmCloseActiveOnly": {
+      "en": "Close active console only",
+      "id": 178 }
+    ,
+    "lng_ConfirmCloseBtn": {
+      "en": "Close",
+      "id": 202 }
+    ,
+    "lng_ConfirmCloseBtnAll": {
+      "en": "Close all",
+      "id": 203 }
+    ,
+    "lng_ConfirmCloseBtnConsole": {
+      "en": "Close 1 console",
+      "id": 205 }
+    ,
+    "lng_ConfirmCloseBtnConsoles": {
+      "en": "consoles",
+      "id": 204 }
+    ,
+    "lng_ConfirmCloseBtnGroup": {
+      "en": "Close group of",
+      "id": 201 }
+    ,
+    "lng_ConfirmCloseChildGuiQ": {
+      "en": "Confirm closing active child window?",
+      "id": 181 }
+    ,
+    "lng_ConfirmCloseConsoleQ": {
+      "en": "Confirm closing console?",
+      "id": 182 }
+    ,
+    "lng_ConfirmCloseEditorQ": {
+      "en": "Confirm closing Far editor?",
+      "id": 184 }
+    ,
+    "lng_ConfirmCloseGroupQ": {
+      "en": "Confirm closing group?",
+      "id": 187 }
+    ,
+    "lng_ConfirmCloseViewerQ": {
+      "en": "Confirm closing Far viewer?",
+      "id": 185 }
+    ,
+    "lng_ConfirmClosingQ": {
+      "en": "Confirm closing?",
+      "id": 188 }
+    ,
+    "lng_ConfirmDontCloseAnything": {
+      "en": "Don't close anything",
+      "id": 189 }
+    ,
+    "lng_ConfirmIncompleteOperations": {
+      "en": "Incomplete operations",
+      "id": 179 }
+    ,
+    "lng_ConfirmKillButShellQ": {
+      "en": "Terminate all but shell processes?",
+      "id": 183 }
+    ,
+    "lng_ConfirmKillingQ": {
+      "en": "Confirm killing?",
+      "id": 186 }
+    ,
+    "lng_ConfirmUnsavedEditors": {
+      "en": "Unsaved editor windows",
+      "id": 180 }
+    ,
+    "lng_CreateNewConsoleHint": {
+      "en": "Create new console",
+      "id": 200 }
     ,
     "lng_CurClrScheme": {
       "en": "<Current color scheme>",
@@ -5801,6 +5893,354 @@
       "pl": "<None>",
       "id": 77 }
     ,
+    "lng_MaximizeWindowHint": {
+      "en": "Maximize window",
+      "id": 194 }
+    ,
+    "lng_MenuAbout": {
+      "en": "&About / Help",
+      "id": 138 }
+    ,
+    "lng_MenuAllTaskTabs": {
+      "en": "All task tabs",
+      "id": 158 }
+    ,
+    "lng_MenuAlwaysOnTop": {
+      "en": "Al&ways on top",
+      "id": 153 }
+    ,
+    "lng_MenuAttachTo": {
+      "en": "Attach to...",
+      "id": 116 }
+    ,
+    "lng_MenuAutoScroll": {
+      "en": "Auto scro&ll",
+      "id": 154 }
+    ,
+    "lng_MenuBringHere": {
+      "en": "Bring &here",
+      "id": 145 }
+    ,
+    "lng_MenuChangeAffinity": {
+      "en": "A&ffinity/priority...",
+      "id": 111 }
+    ,
+    "lng_MenuCheckUpdate": {
+      "en": "&Check for updates",
+      "id": 129 }
+    ,
+    "lng_MenuChildSysMenu": {
+      "en": "Child system menu...",
+      "id": 114 }
+    ,
+    "lng_MenuClearHistory": {
+      "en": "Clear history...",
+      "id": 139 }
+    ,
+    "lng_MenuCloseConsole": {
+      "en": "&Close console",
+      "id": 107 }
+    ,
+    "lng_MenuCloseGroup": {
+      "en": "&Close tab group",
+      "id": 108 }
+    ,
+    "lng_MenuCloseTab": {
+      "en": "&Close tab",
+      "id": 109 }
+    ,
+    "lng_MenuConCopy": {
+      "en": "Cop&y",
+      "id": 119 }
+    ,
+    "lng_MenuConCopyAll": {
+      "en": "Copy &all",
+      "id": 120 }
+    ,
+    "lng_MenuConCopyFmt0": {
+      "en": "Plain &text only",
+      "id": 123 }
+    ,
+    "lng_MenuConCopyFmt1": {
+      "en": "Copy &HTML format",
+      "id": 124 }
+    ,
+    "lng_MenuConCopyFmt2": {
+      "en": "Copy a&s HTML",
+      "id": 125 }
+    ,
+    "lng_MenuConCopyFmt3": {
+      "en": "A&NSI sequences",
+      "id": 126 }
+    ,
+    "lng_MenuConFind": {
+      "en": "&Find text...",
+      "id": 127 }
+    ,
+    "lng_MenuConMarkBlock": {
+      "en": "Mark &block",
+      "id": 117 }
+    ,
+    "lng_MenuConMarkText": {
+      "en": "Mar&k text",
+      "id": 118 }
+    ,
+    "lng_MenuConPaste": {
+      "en": "&Paste",
+      "id": 121 }
+    ,
+    "lng_MenuConProperties": {
+      "en": "&Properties...",
+      "id": 160 }
+    ,
+    "lng_MenuConToggleVisible": {
+      "en": "&Real console",
+      "id": 159 }
+    ,
+    "lng_MenuDebugActive": {
+      "en": "Debug &active process...",
+      "id": 170 }
+    ,
+    "lng_MenuDebugAssert": {
+      "en": "Show assertion",
+      "id": 168 }
+    ,
+    "lng_MenuDebugGui": {
+      "en": "Debug &log (GUI)",
+      "id": 164 }
+    ,
+    "lng_MenuDebugShowRects": {
+      "en": "Show debug rec&ts",
+      "id": 165 }
+    ,
+    "lng_MenuDebugTrap": {
+      "en": "Raise exception (Main thread)",
+      "id": 166 }
+    ,
+    "lng_MenuDebugTrap2": {
+      "en": "Raise exception (Monitor thread)",
+      "id": 167 }
+    ,
+    "lng_MenuDetach": {
+      "en": "Detach",
+      "id": 99 }
+    ,
+    "lng_MenuDonateLink": {
+      "en": "&Donate ConEmu",
+      "id": 131 }
+    ,
+    "lng_MenuDumpConsole": {
+      "en": "&Dump screen...",
+      "id": 162 }
+    ,
+    "lng_MenuDumpMemBlk": {
+      "en": "Dump used memory blocks",
+      "id": 169 }
+    ,
+    "lng_MenuDuplicate": {
+      "en": "Duplica&te root...",
+      "id": 101 }
+    ,
+    "lng_MenuHelp": {
+      "en": "&Help",
+      "id": 135 }
+    ,
+    "lng_MenuHideToTray": {
+      "en": "Hide to &TSA",
+      "id": 149 }
+    ,
+    "lng_MenuHomePage": {
+      "en": "&Visit home page",
+      "id": 130 }
+    ,
+    "lng_MenuHotkeys": {
+      "en": "Hot&keys",
+      "id": 136 }
+    ,
+    "lng_MenuLoadDumpConsole": {
+      "en": "&Load screen dump...",
+      "id": 163 }
+    ,
+    "lng_MenuMiniDump": {
+      "en": "Active process &memory dump...",
+      "id": 171 }
+    ,
+    "lng_MenuMiniDumpTree": {
+      "en": "Active &tree memory dump...",
+      "id": 172 }
+    ,
+    "lng_MenuMoreTasks": {
+      "en": "&More tasks",
+      "id": 141 }
+    ,
+    "lng_MenuNewConsole": {
+      "en": "New console dialog...",
+      "id": 115 }
+    ,
+    "lng_MenuOnlineHelp": {
+      "en": "Online &Help",
+      "id": 137 }
+    ,
+    "lng_MenuPopupActiveCon": {
+      "en": "Acti&ve console",
+      "id": 152 }
+    ,
+    "lng_MenuPopupConList": {
+      "en": "Console &list",
+      "id": 151 }
+    ,
+    "lng_MenuPopupDebug": {
+      "en": "&Debug",
+      "id": 144 }
+    ,
+    "lng_MenuPopupEdit": {
+      "en": "Ed&it",
+      "id": 142 }
+    ,
+    "lng_MenuPopupHelp": {
+      "en": "Hel&p",
+      "id": 146 }
+    ,
+    "lng_MenuPopupPalettes": {
+      "en": "&View (palettes)",
+      "id": 143 }
+    ,
+    "lng_MenuPopupRestart": {
+      "en": "&Restart or duplicate",
+      "id": 112 }
+    ,
+    "lng_MenuPopupSysDebug": {
+      "en": "&Debug",
+      "id": 147 }
+    ,
+    "lng_MenuPopupSysEdit": {
+      "en": "&Edit",
+      "id": 148 }
+    ,
+    "lng_MenuPopupTerminate": {
+      "en": "Close or &kill",
+      "id": 113 }
+    ,
+    "lng_MenuRenameTab": {
+      "en": "Rena&me tab...",
+      "id": 110 }
+    ,
+    "lng_MenuReportBug": {
+      "en": "&Report a bug...",
+      "id": 134 }
+    ,
+    "lng_MenuResetTerminal": {
+      "en": "&Reset terminal",
+      "id": 122 }
+    ,
+    "lng_MenuRestart": {
+      "en": "&Restart",
+      "id": 105 }
+    ,
+    "lng_MenuRestartAs": {
+      "en": "Restart as Admin",
+      "id": 106 }
+    ,
+    "lng_MenuRestartDlg": {
+      "en": "&Restart...",
+      "id": 104 }
+    ,
+    "lng_MenuRestoreFromTray": {
+      "en": "Restore from &TSA",
+      "id": 150 }
+    ,
+    "lng_MenuScreenshot": {
+      "en": "Make &screenshot...",
+      "id": 161 }
+    ,
+    "lng_MenuSettings": {
+      "en": "Sett&ings...",
+      "id": 155 }
+    ,
+    "lng_MenuSetupTasks": {
+      "en": "Setup tasks...",
+      "id": 140 }
+    ,
+    "lng_MenuSplit2Bottom": {
+      "en": "Split to &bottom",
+      "id": 103 }
+    ,
+    "lng_MenuSplit2Right": {
+      "en": "Split to ri&ght",
+      "id": 102 }
+    ,
+    "lng_MenuStopUpdate": {
+      "en": "&Stop updates checking",
+      "id": 128 }
+    ,
+    "lng_MenuSysAttachTo": {
+      "en": "Attach t&o...",
+      "id": 156 }
+    ,
+    "lng_MenuSysNewConsole": {
+      "en": "New console dialog...",
+      "id": 157 }
+    ,
+    "lng_MenuTerminate2Right": {
+      "en": "Close to the &right",
+      "id": 98 }
+    ,
+    "lng_MenuTerminateAllCon": {
+      "en": "Close &all consoles",
+      "id": 95 }
+    ,
+    "lng_MenuTerminateButShell": {
+      "en": "Kill all but &shell",
+      "id": 92 }
+    ,
+    "lng_MenuTerminateCon": {
+      "en": "Close active &console",
+      "id": 90 }
+    ,
+    "lng_MenuTerminateConExpt": {
+      "en": "Close e&xcept active",
+      "id": 97 }
+    ,
+    "lng_MenuTerminateGroup": {
+      "en": "Close active &group",
+      "id": 93 }
+    ,
+    "lng_MenuTerminatePrc": {
+      "en": "Kill &active process",
+      "id": 91 }
+    ,
+    "lng_MenuTerminatePrcGroup": {
+      "en": "Kill active &processes",
+      "id": 94 }
+    ,
+    "lng_MenuTerminateZombies": {
+      "en": "Close all &zombies",
+      "id": 96 }
+    ,
+    "lng_MenuUnfasten": {
+      "en": "Unfasten",
+      "id": 100 }
+    ,
+    "lng_MenuWhatsNewFile": {
+      "en": "Whats &new (local)",
+      "id": 132 }
+    ,
+    "lng_MenuWhatsNewWeb": {
+      "en": "Whats new (&web)",
+      "id": 133 }
+    ,
+    "lng_MinimizeWindowHint": {
+      "en": "Minimize window",
+      "id": 195 }
+    ,
+    "lng_NewConsoleSaveBtn": {
+      "en": "&Save",
+      "id": 191 }
+    ,
+    "lng_NewConsoleStartBtn": {
+      "en": "&Start",
+      "id": 190 }
+    ,
     "lng_PasteEnterConfirm": {
       "en": [ "Warning!\n"
             , "\n"
@@ -5910,6 +6350,28 @@
       "pl": "Automatyczny rozmiar czcionki nie jest dozwolony dla stałego rozmiaru czcionki rastrowej. Wybierz \"Terminal\" zamiast \"[Czcionki rastrowe ...]\"",
       "id": 72 }
     ,
+    "lng_ResetTerminalCancel": {
+      "en": "Cancel operation",
+      "id": 177 }
+    ,
+    "lng_ResetTerminalConfirm": {
+      "en": "Do you want to reset terminal contents?",
+      "id": 174 }
+    ,
+    "lng_ResetTerminalOk": {
+      "en": "Reset terminal contents and properties",
+      "id": 176 }
+    ,
+    "lng_ResetTerminalTitle": {
+      "en": "Reset terminal confirmation",
+      "id": 175 }
+    ,
+    "lng_ResetTerminalWarning": {
+      "en": [ "Warning!\n"
+            , "This operation could harm further output of applications.\n"
+            , "It's better to execute a dedicated command as `clear` or `cls`." ],
+      "id": 173 }
+    ,
     "lng_Search": {
       "en": "Search",
       "ru": "Поиск",
@@ -5959,6 +6421,14 @@
       "es": "selección de flujo",
       "pl": "wybór strumienia",
       "id": 19 }
+    ,
+    "lng_SetPgInfoNone": {
+      "en": "(None)",
+      "id": 89 }
+    ,
+    "lng_ShowSystemMenuHint": {
+      "en": "Show system menu (RClick for Settings)",
+      "id": 192 }
     ,
     "lng_SizeRadioCentered": {
       "en": "Centered",
@@ -6217,7 +6687,7 @@
       "de": "Markieren/Kopieren",
       "ja": "マーク / コピー",
       "es": "Marcar/Copìar",
-      "pl": "Znak/Kopiuj",
+      "pl": "Oznacz/Kopiuj",
       "id": 47 }
     ,
     "lng_SpgMouse": {
@@ -6267,7 +6737,7 @@
       "de": "Autostart",
       "ja": "起動",
       "es": "Arranque",
-      "pl": "Uruchomienie",
+      "pl": "PrzyStarcie",
       "id": 33 }
     ,
     "lng_SpgStatusBar": {
@@ -6952,7 +7422,7 @@
       "de": "Aktive Reiter",
       "ja": "アクティブなタブ",
       "es": "Pestañas activas",
-      "pl": "Aktywne zakładki",
+      "pl": "Active zakładki",
       "id": 2493 }
     ,
     "cbCmdTasksDir": {
@@ -7106,13 +7576,17 @@
     ,
     "cbConfirmDetach": {
       "en": "Confirm console detach",
-      "ru": "Подтверждение отсоединение консоли",
+      "ru": "Подтверждение отсоединения консоли",
       "zh": "确认控制台分离",
       "de": "Rückfrage beim Konsolenabkoppeln",
       "ja": "コンソールの取り外しを確認する",
       "es": "Confirmar desanclar el terminal",
       "pl": "Potwierdź odłączenie konsoli",
       "id": 2689 }
+    ,
+    "cbConfirmResetTerminal": {
+      "en": "Confirm terminal reset",
+      "id": 2690 }
     ,
     "cbConsoleExceptionHandler": {
       "en": "Exception handler (debug)",
@@ -7221,7 +7695,7 @@
       "de": "Versuche vor Zurücksetzen Auswahl auszuschneiden/zu löschen",
       "ja": "リセット前に カット/消去 を試みてください",
       "es": "intentar cortar/borrar selección antes de reiniciar",
-      "pl": "spróbuj wyciąć/usunąć zaznaczenie przed resetem",
+      "pl": "spróbuj usunąć zaznaczenie przed resetem",
       "id": 3030 }
     ,
     "cbCTSFreezeBeforeSelect": {
@@ -7231,7 +7705,7 @@
       "de": "Friere Konsoleninhalte vor Auswahl ein (Kann kurze Verzögerungen verursachen)",
       "ja": "選択前にコンソールの内容をフリーズする(小さなラグを引き起こす可能性がある)",
       "es": "Inmovilizar contenidos del terminal antes de seleccionar (puede provocar parones)",
-      "pl": "Zatrzymaj zawartość konsoli przed wyborem (może powodować opóźnienie)",
+      "pl": "Zatrzymaj zawartość konsoli przed wyborem (małe opóźnienie)",
       "id": 2257 }
     ,
     "cbCTSIBeam": {
@@ -7291,7 +7765,7 @@
       "de": "Anhängende Leerzeichen abschneiden",
       "ja": "末尾のスペースを削除する",
       "es": "Eliminar espacios finales",
-      "pl": "Przycinaj końcowe spacje",
+      "pl": "Przytnij końc. spacje",
       "id": 2365 }
     ,
     "cbCursorBlink": {
@@ -7321,7 +7795,7 @@
       "de": "Feste Zeigergröße",
       "ja": "固定カーソルサイズ",
       "es": "Tamaño del cursor fijo",
-      "pl": "Poprawka rozmiar kursora",
+      "pl": "Poprawka roz. kursora",
       "id": 1655 }
     ,
     "cbCursorOverride": {
@@ -7951,7 +8425,7 @@
       "de": "Feste Schreibmarkengröße",
       "ja": "固定カーソルサイズ",
       "es": "Tamaño fijo del cursor",
-      "pl": "Poprawka rozm.. kursora",
+      "pl": "Poprawka roz. kursor",
       "id": 2539 }
     ,
     "cbInactiveCursorSubstHidden": {
@@ -8492,7 +8966,7 @@
       "de": "Zeige '... holte ConEmu in den Vordergrund. Rückgängig?'-Bestätigungsdialog",
       "ja": "'... ConEmu OnTopをもたらした.復帰？ '確認ボックスを表示",
       "es": "Mostrar confirmación '... trajo ConEmu al frente. ¿Deshacer?'",
-      "pl": "Pokaż \"… przyniósł ConEmu Na górze. Cofnij?\" pole potwierdzenia",
+      "pl": "Pokaż \"…  ConEmu na wierzchu. Cofnij?\" pole potwierdzenia",
       "id": 2854 }
     ,
     "cbSingleInstance": {
@@ -9887,6 +10361,10 @@
       "pl": "Dołączać",
       "id": 21 }
     ,
+    "IDABORT": {
+      "en": "Abort",
+      "id": 3 }
+    ,
     "IDC_ATTACH_ALT": {
       "en": "&Alternative mode",
       "ru": "Альтернативный режим",
@@ -9966,6 +10444,18 @@
       "pl": "Anuluj",
       "id": 2 }
     ,
+    "IDCONTINUE": {
+      "en": "Continue",
+      "id": 11 }
+    ,
+    "IDIGNORE": {
+      "en": "Ignore",
+      "id": 5 }
+    ,
+    "IDNO": {
+      "en": "No",
+      "id": 7 }
+    ,
     "IDOK": {
       "en": "OK",
       "ru": "OK",
@@ -9975,6 +10465,18 @@
       "es": "Aceptar",
       "pl": "OK",
       "id": 1 }
+    ,
+    "IDRETRY": {
+      "en": "Retry",
+      "id": 4 }
+    ,
+    "IDTRYAGAIN": {
+      "en": "Try",
+      "id": 10 }
+    ,
+    "IDYES": {
+      "en": "Yes",
+      "id": 6 }
     ,
     "rbActivityComm": {
       "en": "Comm",
@@ -11194,6 +11696,14 @@
       "pl": "Status wersji:",
       "id": 2683 }
     ,
+    "stConsoleBufferChars": {
+      "en": "Buffer (chars):",
+      "id": 2954 }
+    ,
+    "stConsoleLeftTop": {
+      "en": "Left x Top:",
+      "id": 2946 }
+    ,
     "stConsoleSizeChars": {
       "en": "Console (chars):",
       "ru": "Консоль (символы):",
@@ -11203,16 +11713,6 @@
       "es": "Terminar (cars.):",
       "pl": "Konsola (znaki):",
       "id": 2945 }
-    ,
-    "stConsoleSizePixels": {
-      "en": "(pixels):",
-      "ru": "(пиксели):",
-      "zh": "（像素）：",
-      "de": "(Pixel):",
-      "ja": "(ピクセル):",
-      "es": "(pixels):",
-      "pl": "(pixels):",
-      "id": 2946 }
     ,
     "stCopyFormat": {
       "en": "Copying format:",
@@ -12015,7 +12515,7 @@
       "de": "Start&verzeichnis für einen neuen Prozess:",
       "ja": "新しいプロセスのスタートアップディレクトリ:(&d)",
       "es": "&Carpeta de inicio para procesos nuevos:",
-      "pl": "Uruchomienie &katalog nowego procesu:",
+      "pl": "Uruchom &katalog nowego procesu:",
       "id": 2968 }
     ,
     "stStartupShellFast": {
@@ -12568,7 +13068,7 @@
       "de": "Möglicherweise Konsolenneustart erforderlich",
       "ja": "コンソールの再起動が必要な場合があります",
       "es": "Se requiere reinicio del terminal",
-      "pl": "Może być konieczne ponowne uruchomienie konsoli",
+      "pl": "Może być konieczne ponowne włączenie konsoli",
       "id": 1732 }
     ,
     "tConsoleFontHklmNote": {

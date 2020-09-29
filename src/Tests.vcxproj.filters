@@ -4,6 +4,9 @@
     <Filter Include="ConEmu">
       <UniqueIdentifier>{8CCC3EAC-786E-6982-6129-7DD64D6AF0D2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ConEmuCD">
+      <UniqueIdentifier>{732824B7-5FF5-7EC2-880E-6D6A743AB450}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Resources">
       <UniqueIdentifier>{000BCD17-6C75-818E-B5B3-3234215D5FE3}</UniqueIdentifier>
     </Filter>
@@ -69,9 +72,6 @@
     <ClInclude Include="ConEmu\ConfirmDlg.h">
       <Filter>ConEmu</Filter>
     </ClInclude>
-    <ClInclude Include="ConEmu\ConsoleMessages.h">
-      <Filter>ConEmu</Filter>
-    </ClInclude>
     <ClInclude Include="ConEmu\CreateProcess.h">
       <Filter>ConEmu</Filter>
     </ClInclude>
@@ -133,6 +133,9 @@
       <Filter>ConEmu</Filter>
     </ClInclude>
     <ClInclude Include="ConEmu\GestureEngine.h">
+      <Filter>ConEmu</Filter>
+    </ClInclude>
+    <ClInclude Include="ConEmu\GlobalHotkeys.h">
       <Filter>ConEmu</Filter>
     </ClInclude>
     <ClInclude Include="ConEmu\GuiServer.h">
@@ -513,6 +516,9 @@
     <ClInclude Include="common\ConsoleAnnotation.h">
       <Filter>common</Filter>
     </ClInclude>
+    <ClInclude Include="common\ConsoleMessages.h">
+      <Filter>common</Filter>
+    </ClInclude>
     <ClInclude Include="common\ConsoleMixAttr.h">
       <Filter>common</Filter>
     </ClInclude>
@@ -791,6 +797,9 @@
     <ClCompile Include="ConEmu\ConEmu.cpp">
       <Filter>ConEmu</Filter>
     </ClCompile>
+    <ClCompile Include="ConEmu\ConEmuCD_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
     <ClCompile Include="ConEmu\ConEmuCtrl.cpp">
       <Filter>ConEmu</Filter>
     </ClCompile>
@@ -861,6 +870,9 @@
       <Filter>ConEmu</Filter>
     </ClCompile>
     <ClCompile Include="ConEmu\GestureEngine.cpp">
+      <Filter>ConEmu</Filter>
+    </ClCompile>
+    <ClCompile Include="ConEmu\GlobalHotkeys.cpp">
       <Filter>ConEmu</Filter>
     </ClCompile>
     <ClCompile Include="ConEmu\GuiServer.cpp">
@@ -1181,6 +1193,12 @@
     <ClCompile Include="ConEmu\helper.cpp">
       <Filter>ConEmu</Filter>
     </ClCompile>
+    <ClCompile Include="ConEmuCD\StartEnv.cpp">
+      <Filter>ConEmuCD</Filter>
+    </ClCompile>
+    <ClCompile Include="ConEmuCD\StartEnv_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
     <ClCompile Include="UnitTests\main_test.cpp">
       <Filter>tests</Filter>
     </ClCompile>
@@ -1192,6 +1210,9 @@
     </ClCompile>
     <ClCompile Include="common\CEStr.cpp">
       <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\CEStr_test.cpp">
+      <Filter>tests</Filter>
     </ClCompile>
     <ClCompile Include="common\CmdLine.cpp">
       <Filter>common</Filter>
@@ -1312,6 +1333,9 @@
     </ClCompile>
     <ClCompile Include="common\ProcessSetEnv.cpp">
       <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ProcessSetEnv_test.cpp">
+      <Filter>tests</Filter>
     </ClCompile>
     <ClCompile Include="common\RConStartArgs.cpp">
       <Filter>common</Filter>

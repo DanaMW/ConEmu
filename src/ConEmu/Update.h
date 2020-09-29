@@ -125,15 +125,15 @@ public:
 	static bool IsUpdatePackage(LPCWSTR asFilePath);
 	static bool NeedRunElevation();
 
-	enum UpdateStep
+	enum class UpdateStep
 	{
-		us_NotStarted = 0,
-		us_Check,
-		us_ConfirmDownload,
-		us_Downloading,
-		us_ConfirmUpdate,
-		us_PostponeUpdate,
-		us_ExitAndUpdate,
+		NotStarted = 0,
+		Check,
+		ConfirmDownload,
+		Downloading,
+		ConfirmUpdate,
+		PostponeUpdate,
+		ExitAndUpdate,
 	};
 	UpdateStep InUpdate();
 
@@ -167,6 +167,5 @@ protected:
 	#endif
 	bool StartLocalUpdate(LPCWSTR asDownloadedPackage);
 	bool LoadVersionInfoFromServer();
-	bool LoadPackageFromServer();
 	wchar_t* CreateVersionOnServerInfo(bool abRightAligned, LPCWSTR asSuffix = NULL);
 };

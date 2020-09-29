@@ -32,9 +32,19 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../UnitTests/gtest.h"
 
 #include "HotkeyChord.h"
+#include "SetPgBase.h"
 
-TEST(ConEmuHotKey,Tests)
+#include "LngRc.h"
+
+TEST(Hotkeys,Tests)
 {
+	if (!gpLng)
+	{
+		CLngRc::Initialize();
+	}
+	// Should be initialized now
+	EXPECT_STREQ(L"<None>", gsNoHotkey);
+	
 	// Key names order:
 	//    Win, Apps, Ctrl, Alt, Shift
 	// Modifiers:
@@ -46,7 +56,7 @@ TEST(ConEmuHotKey,Tests)
 		BYTE Mod[3];
 		ConEmuModifiers ModTest;
 		LPCWSTR KeyName;
-	} Tests[] = {
+	} tests[] = {
 			{VK_OEM_5/*'|\'*/, {VK_LCONTROL, VK_RCONTROL}, cvk_Ctrl|cvk_LCtrl|cvk_RCtrl, L"LCtrl+RCtrl+\\"},
 			{VK_SPACE, {VK_CONTROL, VK_LWIN, VK_MENU}, cvk_Ctrl|cvk_Alt|cvk_Win, L"Win+Ctrl+Alt+Space"},
 			{'W', {VK_LWIN, VK_SHIFT}, cvk_Win|cvk_Shift, L"Win+Shift+W"},
@@ -59,10 +69,49 @@ TEST(ConEmuHotKey,Tests)
 	ConEmuChord HK = {};
 	wchar_t szFull[128];
 
-	for (size_t i = 0; i < countof(Tests); i++)
+	for (auto& test : tests)
 	{
-		HK.SetHotKey(HkType, Tests[i].Vk, Tests[i].Mod[0], Tests[i].Mod[1], Tests[i].Mod[2]);
-		EXPECT_EQ(HK.Mod, Tests[i].ModTest);
-		EXPECT_STREQ(ConEmuChord::GetHotkeyName(szFull, HK.GetVkMod(HkType), HkType, true), Tests[i].KeyName);
+		HK.SetHotKey(HkType, test.Vk, test.Mod[0], test.Mod[1], test.Mod[2]);
+		EXPECT_EQ(HK.Mod, test.ModTest);
+		EXPECT_STREQ(ConEmuChord::GetHotkeyName(szFull, HK.GetVkMod(HkType), HkType, true), test.KeyName);
+	}
+}
+
+TEST(Hotkeys, GroupReplacement)
+{
+	wchar_t szFull[128];
+
+	wcscpy_s(szFull, L"Left");
+	CSetPgBase::ApplyHotkeyGroupName(szFull, L"Arrows");
+	EXPECT_STREQ(szFull, L"Arrows");
+
+	wcscpy_s(szFull, L"Win+Left");
+	CSetPgBase::ApplyHotkeyGroupName(szFull, L"Arrows");
+	EXPECT_STREQ(szFull, L"Win+Arrows");
+
+	wcscpy_s(szFull, L"Ctrl+Alt+1");
+	CSetPgBase::ApplyHotkeyGroupName(szFull, L"Numbers");
+	EXPECT_STREQ(szFull, L"Ctrl+Alt+Numbers");
+}
+
+TEST(Hotkeys, LabelHotkeyReplacement)
+{
+	struct TestCases
+	{
+		LPCWSTR label;
+		LPCWSTR hotkey;
+		LPCWSTR from;
+		LPCWSTR to;
+		LPCWSTR expected;
+	} tests[] = {
+		{L"Paste mode #1 (Shift+Ins)", L"Ctrl+V", L"(", L")", L"Paste mode #1 (Ctrl+V)"},
+		{L"Ctrl+Alt - drag ConEmu window", L"Win", nullptr, L" - ", L"Win - drag ConEmu window"},
+		{L"Win+Number - activate console", L"Ctrl+Number", nullptr, L" - ", L"Ctrl+Number - activate console"},
+	};
+	for (const auto& test : tests)
+	{
+		CEStr label(test.label);
+		const CEStr result = CSetPgBase::ApplyHotkeyToTitle(label, test.from, test.to, test.hotkey);
+		EXPECT_STREQ(result.ms_Val, test.expected);
 	}
 }

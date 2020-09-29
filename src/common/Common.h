@@ -77,9 +77,18 @@ typedef struct _CONSOLE_SELECTION_INFO
 #define CEC_INITTITLE       L"ConEmu"
 
 // Our binaries
+#define ConEmu_32_EXE L"ConEmu.exe"
+#define ConEmu_64_EXE L"ConEmu64.exe"
+#define ConEmu_EXE_3264 WIN3264TEST(ConEmu_32_EXE,ConEmu_64_EXE)
+#define ConEmuC_32_EXE L"ConEmuC.exe"
+#define ConEmuC_64_EXE L"ConEmuC64.exe"
+#define ConEmuC_EXE_3264 WIN3264TEST(ConEmuC_32_EXE,ConEmuC_64_EXE)
 #define ConEmuCD_32_DLL L"ConEmuCD.dll"
 #define ConEmuCD_64_DLL L"ConEmuCD64.dll"
 #define ConEmuCD_DLL_3264 WIN3264TEST(ConEmuCD_32_DLL,ConEmuCD_64_DLL)
+#define ConEmuHk_32_DLL L"ConEmuHk.dll"
+#define ConEmuHk_64_DLL L"ConEmuHk64.dll"
+#define ConEmuHk_DLL_3264 WIN3264TEST(ConEmuHk_32_DLL,ConEmuHk_64_DLL)
 
 // Windows and Classes
 #define VirtualConsoleClass L"VirtualConsoleClass" // DC Window
@@ -108,8 +117,8 @@ typedef struct _CONSOLE_SELECTION_INFO
 #define CTRL(x) ((x)&0x1F)
 
 
-#define CECOPYRIGHTSTRING_A "(c) 2009-2017, ConEmu.Maximus5@gmail.com"
-#define CECOPYRIGHTSTRING_W L"© 2009-2017 ConEmu.Maximus5@gmail.com"
+#define CECOPYRIGHTSTRING_A "(c) 2009-2020, ConEmu.Maximus5@gmail.com"
+#define CECOPYRIGHTSTRING_W L"© 2009-2020 ConEmu.Maximus5@gmail.com"
 
 
 #define CEHOMEPAGE_A    "https://conemu.github.io/"
@@ -127,6 +136,10 @@ typedef struct _CONSOLE_SELECTION_INFO
 #define CEREPORTCRASH  CEWIKIBASE L"Issues.html"
 #define CEWHATSNEW     CEWIKIBASE L"Whats_New.html"
 #define CEZONEID       CEWIKIBASE L"ZoneId.html"
+#define CECLEARSCREEN  CEWIKIBASE L"ClearScreen.html"
+
+
+#define DEFAULT_CONSOLE_FONT_NAME L"Lucida Console"
 
 
 // Tasks related
@@ -981,9 +994,9 @@ enum PaintBackgroundPlaces
 	pbp_None = 0,
 };
 
-#define BkPanelInfo_CurDirMax 32768
+#define BkPanelInfo_CurDirMax MAX_WIDE_PATH_LENGTH
 #define BkPanelInfo_FormatMax MAX_PATH
-#define BkPanelInfo_HostFileMax 32768
+#define BkPanelInfo_HostFileMax MAX_WIDE_PATH_LENGTH
 
 struct BkPanelInfo
 {
@@ -991,9 +1004,9 @@ struct BkPanelInfo
 	BOOL bFocused;   // В фокусе
 	BOOL bPlugin;    // Плагиновая панель
 	int  nPanelType; // enum PANELINFOTYPE
-	wchar_t *szCurDir/*[32768]*/;    // Текущая папка на панели
+	wchar_t *szCurDir/*[MAX_WIDE_PATH_LENGTH]*/;    // Текущая папка на панели
 	wchar_t *szFormat/*[MAX_PATH]*/; // Доступно только в FAR2, в FAR3 это может быть префикс, если "формат" плагином не определен
-	wchar_t *szHostFile/*[32768]*/;  // Доступно только в FAR2
+	wchar_t *szHostFile/*[MAX_WIDE_PATH_LENGTH]*/;  // Доступно только в FAR2
 	RECT rcPanelRect; // Консольные координаты панели. В FAR 2+ с ключом /w верх может быть != {0,0}
 };
 
@@ -1213,6 +1226,12 @@ struct ConEmuComspec
 };
 
 
+enum class ConEmuUseInjects : DWORD
+{
+	DontUse = 0,
+	Use = 1,
+};
+
 
 typedef DWORD ConEmuConsoleFlags;
 const ConEmuConsoleFlags
@@ -1272,17 +1291,17 @@ struct ConEmuGuiMapping
 	DWORD    nChangeNum; // incremental change number of structure
 	HWND2    hGuiWnd; // основное (корневое) окно ConEmu
 	DWORD    nGuiPID; // PID ConEmu.exe
-	
+
 	DWORD    nLoggingType; // enum GuiLoggingType
-	
+
 	wchar_t  sConEmuExe[MAX_PATH+1]; // полный путь к ConEmu.exe (GUI)
 	// --> ComSpec.ConEmuBaseDir:  wchar_t  sConEmuDir[MAX_PATH+1]; // БЕЗ завершающего слеша. Папка содержит ConEmu.exe
 	// --> ComSpec.ConEmuBaseDir:  wchar_t  sConEmuBaseDir[MAX_PATH+1]; // БЕЗ завершающего слеша. Папка содержит ConEmuC.exe, ConEmuHk.dll, ConEmu.xml
 	wchar_t  sConEmuArgs[MAX_PATH*2];
 
 
-	DWORD    bUseInjects;   // 0-off, 1-on, 3-exe only. Далее могут быть (пока не используется) доп.флаги (битмаск)? chcp, Hook HKCU\FAR[2] & HKLM\FAR and translate them to hive, ...
-	
+	ConEmuUseInjects   useInjects;
+
 	ConEmuConsoleFlags Flags;
 	//BOOL     bUseTrueColor; // включен флажок "TrueMod support"
 	//BOOL     bProcessAnsi;  // ANSI X3.64 & XTerm-256-colors Support
@@ -1299,7 +1318,7 @@ struct ConEmuGuiMapping
 
 	/* Main font in GUI */
 	struct ConEmuMainFont MainFont;
-	
+
 	// DosBox
 	//BOOL     bDosBox; // наличие DosBox
 	//wchar_t  sDosBoxExe[MAX_PATH+1]; // полный путь к DosBox.exe
@@ -1444,7 +1463,7 @@ struct CESERVER_CONSAVE_MAP
 {
 	CESERVER_REQ_HDR hdr; // Для унификации
 	CONSOLE_SCREEN_BUFFER_INFO info;
-	
+
 	DWORD MaxCellCount;
 	int   CurrentIndex;
 	BOOL  Succeeded;
@@ -1538,7 +1557,7 @@ struct CEFAR_INFO_MAPPING
 	// Far current panel directories
 	// These MUST be last members!
 	LONG nPanelDirIdx; // Separately of nFarInfoIdx
-	wchar_t sActiveDir[0x8000], sPassiveDir[0x8000];
+	wchar_t sActiveDir[MAX_WIDE_PATH_LENGTH], sPassiveDir[MAX_WIDE_PATH_LENGTH];
 };
 
 
@@ -1589,7 +1608,7 @@ struct CESERVER_CONSOLE_MAPPING_HDR
 	HWND2 hConEmuWndBack;
 
 	DWORD nLoggingType;  // enum GuiLoggingType
-	DWORD bUseInjects;   // 0-off, 1-on, 3-exe only. Далее могут быть доп.флаги (битмаск)? chcp, Hook HKCU\FAR[2] & HKLM\FAR and translate them to hive, ...
+	ConEmuUseInjects useInjects;
 
 	ConEmuConsoleFlags Flags;
 	//BOOL  bDosBox;       // DosBox установлен, можно пользоваться
@@ -1599,7 +1618,7 @@ struct CESERVER_CONSOLE_MAPPING_HDR
 
 	// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
 	ConEmuAnsiLog AnsiLog;
-	
+
 	// Разрешенный размер видимой области
 	BOOL  bLockVisibleArea;
 	COORD crLockedVisible;
@@ -1906,14 +1925,14 @@ struct CESERVER_REQ_STARTSTOP
 	// Только при аттаче. Может быть NULL-ом
 	HANDLE2 hServerProcessHandle;
 	// При завершении
-	DWORD nOtherPID; // Для RM_COMSPEC - PID завершенного процесса (при sst_ComspecStop)
+	DWORD nOtherPID; // Для RunMode::RM_COMSPEC - PID завершенного процесса (при sst_ComspecStop)
 	// Для информации и удобства (GetModuleFileName(0))
 	wchar_t sModuleName[MAX_PATH+1];
 	// Reserved
 	DWORD nReserved0[17];
 	// Create background tab, when attaching new console
 	BOOL bRunInBackgroundTab;
-	// При запуске в режиме RM_COMSPEC, сохранение "длинного вывода"
+	// При запуске в режиме RunMode::RM_COMSPEC, сохранение "длинного вывода"
 	DWORD nParentFarPID;
 	// После детача/аттача мог остаться "альтернативный" сервер
 	DWORD nAltServerPID;
@@ -2174,7 +2193,7 @@ struct CESERVER_REQ_ATTACHGUIAPP
 	RECT  rcWindow;     // координаты
 	DWORD Reserved;     // зарезервировано под флаги, вроде "Показывать заголовок"
 	//DWORD nStyle, nStyleEx;
-	//BOOL  bHideCaption; // 
+	//BOOL  bHideCaption; //
 	struct GuiStylesAndShifts Styles;
 	wchar_t sAppFilePathName[MAX_PATH*2];
 };
@@ -2327,7 +2346,7 @@ struct CESERVER_ROOT_INFO
 // CECMD_GETTASKCMD
 struct CESERVER_REQ_TASK
 {
-	UINT    nIdx;
+	BOOL    found;
 	wchar_t data[1]; // Variable length
 };
 
@@ -2492,7 +2511,7 @@ const RequestLocalServerFlags
 struct RequestLocalServerParm
 {
 	DWORD     StructSize;
-	
+
 	RequestLocalServerFlags Flags;
 
 	/*[IN]*/  HANDLE* ppConOutBuffer;

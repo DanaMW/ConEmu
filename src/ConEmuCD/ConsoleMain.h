@@ -86,14 +86,7 @@ extern wchar_t gsModuleName[32];
 extern wchar_t gsVersion[20];
 extern wchar_t gsSelfExe[MAX_PATH];  // Full path+exe to our executable
 extern wchar_t gsSelfPath[MAX_PATH]; // Directory of our executable
-//HANDLE  ghConIn = NULL, ghConOut = NULL;
-extern HWND    ghConWnd;
-extern DWORD   gnConEmuPID; // PID of ConEmu[64].exe (ghConEmuWnd)
-extern HWND    ghConEmuWnd; // Root! window
-extern HWND    ghConEmuWndDC; // ConEmu DC window
-extern HWND    ghConEmuWndBack; // ConEmu Back window
-extern void    SetConEmuWindows(HWND hRootWnd, HWND hDcWnd, HWND hBackWnd);
-extern void    SetConEmuFolders(LPCWSTR asExeDir, LPCWSTR asBaseDir);
+//HANDLE  ghConIn = nullptr, ghConOut = nullptr;
 extern DWORD   gnMainServerPID; // PID сервера (инициализируется на старте, при загрузке Dll)
 extern DWORD   gnAltServerPID; // PID сервера (инициализируется на старте, при загрузке Dll)
 extern BOOL    gbLogProcess; // (pInfo->nLoggingType == glt_Processes)
@@ -104,29 +97,12 @@ extern HANDLE  ghExitQueryEvent; // выставляется когда в ко�
 extern int nExitQueryPlace, nExitPlaceStep, nExitPlaceThread;
 extern HANDLE  ghQuitEvent;      // когда мы в процессе закрытия (юзер уже нажал кнопку "Press to close console")
 extern bool    gbQuit;           // когда мы в процессе закрытия (юзер уже нажал кнопку "Press to close console")
-extern bool    gbSkipHookersCheck;
-extern RConStartArgs::CloseConfirm gnConfirmExitParm;
-extern BOOL    gbAlwaysConfirmExit, gbInShutdown, gbAutoDisableConfirmExit;
+//extern bool    gbSkipHookersCheck;
+extern BOOL    gbInShutdown;
 extern int     gbRootWasFoundInCon;
 extern BOOL    gbComspecInitCalled;
-typedef DWORD AttachModeEnum;
-const AttachModeEnum
-	am_Simple  = 0x0001,    // As is
-	am_Auto    = 0x0002,    // Same as am_Simple, but always return 0 as errorlevel
-	am_Modes   = (am_Simple|am_Auto),
-	am_Async   = 0x0010,    // "/AUTOATTACH" must be async to be able to call from cmd prompt
-	am_DefTerm = 0x0020,    // "/
-	am_Admin   = 0x1000,    // Special "attach" when ConEmu is run under "User" and console "As admin"
-	am_None    = 0
-;
-extern AttachModeEnum gbAttachMode; // сервер запущен НЕ из conemu.exe (а из плагина, из CmdAutoAttach, или -new_console)
-extern BOOL    gbAlternativeAttach; // TRUE - Подцепиться к существующей консоли, без внедрения в процесс ConEmuHk.dll
-extern BOOL    gbAlienMode;  // сервер НЕ является владельцем консоли (корневым процессом этого консольного окна)
-extern BOOL    gbDontInjectConEmuHk;
-extern BOOL    gbForceHideConWnd;
 extern DWORD   gdwMainThreadId;
 extern wchar_t* gpszRunCmd;
-extern wchar_t* gpszRootExe;
 extern bool    gbRunInBackgroundTab;
 extern DWORD   gnImageSubsystem;
 #ifdef _DEBUG
@@ -135,26 +111,18 @@ extern HANDLE ghFarInExecuteEvent;
 #endif
 
 #include "../common/Common.h"
-#include "../common/ConEmuCheck.h"
-#include "../common/MConHandle.h"
-#include "../common/MFileMapping.h"
 #include "../common/MFileLogEx.h"
-#include "../common/MSection.h"
-#include "../common/WObjects.h"
-#include "../common/ConsoleAnnotation.h"
-#include "../common/InQueue.h"
-#include "ExitCodes.h"
 #include "LogFunction.h"
 
 
 #define START_MAX_PROCESSES 1000
 #define CHECK_PROCESSES_TIMEOUT 500
 #define CHECK_ANTIVIRUS_TIMEOUT (6*1000)
-#define CHECK_ROOTSTART_TIMEOUT (10*1000)
+#define CHECK_ROOT_START_TIMEOUT (10*1000)
 #ifdef _DEBUG
-	#define CHECK_ROOTOK_TIMEOUT (IsDebuggerPresent() ? ((DWORD)-1) : (10*1000)) // while debugging - wait infinitive
+	#define CHECK_ROOT_OK_TIMEOUT (IsDebuggerPresent() ? ((DWORD)-1) : (10*1000)) // while debugging - wait infinitive
 #else
-	#define CHECK_ROOTOK_TIMEOUT (10*1000)
+	#define CHECK_ROOT_OK_TIMEOUT (10*1000)
 #endif
 #define MAX_FORCEREFRESH_INTERVAL 500
 #define MAX_SYNCSETSIZE_WAIT 1000
@@ -198,65 +166,37 @@ extern HANDLE ghFarInExecuteEvent;
 //#undef USE_WINEVENT_SRV
 
 BOOL createProcess(BOOL abSkipWowChange, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
-void SetupCreateDumpOnException();
+int AttachRootProcessHandle();
 void RefillConsoleAttributes(const CONSOLE_SCREEN_BUFFER_INFO& csbi5, const WORD wOldText, const WORD wNewText);
 void PreConsoleSize(const int width, const int height);
 void PreConsoleSize(const COORD crSize);
-BOOL SetConsoleSize(USHORT BufferHeight, COORD crNewSize, SMALL_RECT rNewRect, LPCSTR asLabel = NULL, bool bForceWriteLog = false);
-void CreateLogSizeFile(int nLevel, const CESERVER_CONSOLE_MAPPING_HDR* pConsoleInfo = NULL);
+BOOL SetConsoleSize(USHORT BufferHeight, COORD crNewSize, SMALL_RECT rNewRect, LPCSTR asLabel = nullptr, bool bForceWriteLog = false);
+void CreateLogSizeFile(int /* level */, const CESERVER_CONSOLE_MAPPING_HDR* pConsoleInfo = nullptr);
 void LogSize(const COORD* pcrSize, int newBufferHeight, LPCSTR pszLabel, bool bForceWriteLog = false);
 void LogModeChange(LPCWSTR asName, DWORD oldVal, DWORD newVal);
 bool LogString(LPCSTR asText);
 bool LogString(LPCWSTR asText);
-void PrintExecuteError(LPCWSTR asCmd, DWORD dwErr, LPCWSTR asSpecialInfo=NULL);
-
-#if defined(__GNUC__)
-extern "C" {
-#endif
-	BOOL WINAPI HandlerRoutine(DWORD dwCtrlType);
-	int WINAPI RequestLocalServer(/*[IN/OUT]*/RequestLocalServerParm* Parm);
-#if defined(__GNUC__)
-};
-#endif
+void PrintExecuteError(LPCWSTR asCmd, DWORD dwErr, LPCWSTR asSpecialInfo = nullptr);
 
 int GetProcessCount(DWORD *rpdwPID, UINT nMaxCount);
 bool MyLoadConsolePalette(HANDLE ahConOut, CESERVER_CONSOLE_PALETTE& Palette);
 BOOL MyGetConsoleScreenBufferInfo(HANDLE ahConOut, PCONSOLE_SCREEN_BUFFER_INFO apsc);
 HWND FindConEmuByPID(DWORD anSuggestedGuiPID = 0);
-
-void CheckKeyboardLayout();
-bool IsKeyboardLayoutChanged(DWORD& pdwLayout, LPDWORD pdwErrCode = NULL);
-typedef BOOL (__stdcall *FGetConsoleKeyboardLayoutName)(wchar_t*);
-extern FGetConsoleKeyboardLayoutName pfnGetConsoleKeyboardLayoutName;
-
-int CALLBACK FontEnumProc(ENUMLOGFONTEX *lpelfe, NEWTEXTMETRICEX *lpntme, DWORD FontType, LPARAM lParam);
-typedef DWORD (WINAPI* FGetConsoleProcessList)(LPDWORD lpdwProcessList, DWORD dwProcessCount);
-extern FGetConsoleProcessList pfnGetConsoleProcessList;
+CESERVER_CONSOLE_APP_MAPPING* GetAppMapPtr();
 
 void SendStarted();
-CESERVER_REQ* SendStopped(CONSOLE_SCREEN_BUFFER_INFO* psbi = NULL);
-
-typedef BOOL (WINAPI *FDebugActiveProcessStop)(DWORD dwProcessId);
-extern FDebugActiveProcessStop pfnDebugActiveProcessStop;
-
-typedef BOOL (WINAPI *FDebugSetProcessKillOnExit)(BOOL KillOnExit);
-extern FDebugSetProcessKillOnExit pfnDebugSetProcessKillOnExit;
-
-typedef BOOL (WINAPI* FGetConsoleDisplayMode)(LPDWORD);
-extern FGetConsoleDisplayMode pfnGetConsoleDisplayMode;
+CESERVER_REQ* SendStopped(CONSOLE_SCREEN_BUFFER_INFO* psbi = nullptr);
 
 bool IsOutputRedirected();
 void _wprintf(LPCWSTR asBuffer);
 void _printf(LPCSTR asBuffer);
 void _printf(LPCSTR asFormat, DWORD dwErr);
 void _printf(LPCSTR asFormat, DWORD dwErr, LPCWSTR asAddLine);
-void _printf(LPCSTR asFormat, DWORD dw1, DWORD dw2, LPCWSTR asAddLine=NULL);
-void print_error(DWORD dwErr = 0, LPCSTR asFormat = NULL);
+void _printf(LPCSTR asFormat, DWORD dw1, DWORD dw2, LPCWSTR asAddLine = nullptr);
+void print_error(DWORD dwErr = 0, LPCSTR asFormat = nullptr);
 
 int ParseCommandLine(LPCWSTR asCmdLine);
 wchar_t* ParseConEmuSubst(LPCWSTR asCmd);
-void ApplyEnvironmentCommands(LPCWSTR pszCommands);
-void ApplyProcessSetEnvCmd();
 void UpdateConsoleTitle();
 BOOL SetTitle(LPCWSTR lsTitle);
 void Help();
@@ -277,50 +217,19 @@ enum LGSResult
 	lgs_ActiveChanged,
 	lgs_Updated,
 };
-LGSResult ReloadGuiSettings(ConEmuGuiMapping* apFromCmd, LPDWORD pnWrongValue = NULL);
-
-void DisableAutoConfirmExit(BOOL abFromFarPlugin=FALSE);
-
-
-typedef enum tag_RunMode
-{
-	RM_UNDEFINED = 0,
-	RM_SERVER,
-	RM_COMSPEC,
-	RM_SETHOOK64,
-	RM_ALTSERVER,
-	RM_APPLICATION,
-	RM_GUIMACRO,
-	RM_AUTOATTACH,
-} RunMode;
-
-extern RunMode gnRunMode;
+LGSResult ReloadGuiSettings(ConEmuGuiMapping* apFromCmd, LPDWORD pnWrongValue = nullptr);
 
 extern BOOL gbDumpServerInitStatus;
-extern BOOL gbNoCreateProcess;
-extern BOOL gbRootIsCmdExe;
-extern BOOL gbAttachFromFar;
-extern BOOL gbDefTermCall;
-extern BOOL gbConsoleModeFlags;
-extern DWORD gnConsoleModeFlags;
 extern WORD  gnDefTextColors, gnDefPopupColors;
 extern BOOL  gbVisibleOnStartup;
 
 #include "../common/PipeServer.h"
 #include "../common/MArray.h"
-#include "../common/MMap.h"
 
 struct ConProcess;
 
-#include "Debugger.h"
-
 struct SrvInfo;
 extern SrvInfo *gpSrv;
-extern OSVERSIONINFO gOSVer;
-extern WORD gnOsVer;
-extern bool gbIsWine;
-extern bool gbIsDBCS;
-extern BOOL gbRootAliveLess10sec;
 extern BOOL	gbTerminateOnCtrlBreak;
 
 extern HMODULE ghOurModule;

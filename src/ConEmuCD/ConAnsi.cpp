@@ -31,13 +31,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <WinError.h>
 #include <WinNT.h>
 #include <TCHAR.h>
-#include <limits>
 #include "../common/Common.h"
 #include "../common/ConEmuCheck.h"
 #include "../common/ConEmuColors3.h"
-#include "../common/CmdLine.h"
-#include "../common/ConsoleAnnotation.h"
-#include "../common/UnicodeChars.h"
 #include "../common/WConsole.h"
 #include "../common/WConsoleInfo.h"
 #include "../common/WErrGuard.h"
@@ -466,7 +462,7 @@ void SrvAnsi::GetFeatures(bool* pbAnsiAllowed, bool* pbSuppressBells) const
 		CESERVER_CONSOLE_MAPPING_HDR* pMap = GetConMap();
 		if (pMap)
 		{
-			//if (!::LoadSrvMapping(ghConWnd, *pMap) || !pMap->bProcessAnsi)
+			//if (!::LoadSrvMapping(gState.realConWnd, *pMap) || !pMap->bProcessAnsi)
 			//	bAnsiAllowed = false;
 			//else
 			//	bAnsiAllowed = true;

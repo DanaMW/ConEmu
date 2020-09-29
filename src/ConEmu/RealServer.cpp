@@ -36,8 +36,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Header.h"
 #include <Tlhelp32.h>
 #include "../common/ConEmuCheck.h"
-#include "../common/RgnDetect.h"
-#include "../common/Execute.h"
+#include "../common/execute.h"
 #include "../common/PipeServer.h"
 #include "../common/WConsole.h"
 #include "../common/WUser.h"
@@ -47,11 +46,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "VirtualConsole.h"
 #include "TabBar.h"
 #include "ConEmu.h"
-#include "ConEmuApp.h"
 #include "SetPgDebug.h"
 #include "VConChild.h"
 #include "VConGroup.h"
-#include "ConEmuPipe.h"
+#include "GlobalHotkeys.h"
 #include "Macro.h"
 #include "OptionsClass.h"
 
@@ -492,15 +490,15 @@ CESERVER_REQ* CRealServer::cmdStartStop(LPVOID pInst, CESERVER_REQ* pIn, UINT nD
 			{
 				pOut->StartStopRet.nWidth = mp_RCon->mp_RBuf->GetBufferWidth()/*con.m_sbi.dwSize.X*/;
 
-				//0x101 - запуск отладчика
-				if (nSubSystem != 0x100   // 0x100 - Аттач из фар-плагина
+				//0x101 - debugger start
+				if (nSubSystem != IMAGE_SUBSYSTEM_FAR_PLUGIN   // 0x100 - attach from Far Manager plugin
 				        && (mp_RCon->mp_RBuf->isScroll()
 				            || (mp_RCon->mn_DefaultBufferHeight && bRunViaCmdExe)))
 				{
 					// Смысл ассерта в том, что консоль запускаемая ИЗ ConEmu должна стартовать
 					// с корректным размером (заранее заданные через параметры для ConEmuC)
 					// А вот если идет аттач внешних консолей - то размер будет отличаться (и это нормально)
-					_ASSERTE(mp_RCon->mb_WasStartDetached || mp_RCon->mn_DefaultBufferHeight == mp_RCon->mp_RBuf->GetBufferHeight()/*con.m_sbi.dwSize.Y*/ || mp_RCon->mp_RBuf->GetBufferHeight()/*con.m_sbi.dwSize.Y*/ == mp_RCon->TextHeight());
+					_ASSERTE(mp_RCon->mb_WasStartDetached || mp_RCon->mn_DefaultBufferHeight == mp_RCon->mp_RBuf->GetBufferHeight()/*con.m_sbi.dwSize.Y*/ || static_cast<int>(mp_RCon->mp_RBuf->GetBufferHeight())/*con.m_sbi.dwSize.Y*/ == static_cast<int>(mp_RCon->TextHeight()));
 
 					pOut->StartStopRet.nBufferHeight = std::max<int>(mp_RCon->mp_RBuf->GetBufferHeight()/*con.m_sbi.dwSize.Y*/,mp_RCon->mn_DefaultBufferHeight);
 					_ASSERTE(mp_RCon->mp_RBuf->TextHeight()/*con.nTextHeight*/ >= 1);
@@ -549,7 +547,7 @@ CESERVER_REQ* CRealServer::cmdStartStop(LPVOID pInst, CESERVER_REQ* pIn, UINT nD
 			BOOL lbNeedResizeGui = FALSE;
 			// {mp_RCon->TextWidth(),mp_RCon->TextHeight()} использовать нельзя,
 			// т.к. при если из фара выполняется "cmd -new_console:s" то при завершении
-			// RM_COMSPEC выполняется "возврат" размера буфера и это обламывает синхронизацию
+			// RunMode::RM_COMSPEC выполняется "возврат" размера буфера и это обламывает синхронизацию
 			// размера под измененную конфигурацию сплитов...
 			RECT rcCon = gpConEmu->CalcRect(CER_CONSOLE_CUR, mp_RCon->mp_VCon);
 			//COORD crNewSize = {mp_RCon->TextWidth(),mp_RCon->TextHeight()};
@@ -1235,7 +1233,7 @@ CESERVER_REQ* CRealServer::cmdOnSetConsoleKeyShortcuts(LPVOID pInst, CESERVER_RE
 	DEBUGSTRCMD(L"GUI recieved CECMD_KEYSHORTCUTS\n");
 
 	mp_RCon->m_ConsoleKeyShortcuts = pIn->Data[0] ? pIn->Data[1] : 0;
-	gpConEmu->UpdateWinHookSettings();
+	gpConEmu->GetGlobalHotkeys().UpdateWinHookSettings();
 
 	pOut = ExecuteNewCmd(pIn->hdr.nCmd, sizeof(CESERVER_REQ_HDR));
 	return pOut;
@@ -1505,45 +1503,23 @@ CESERVER_REQ* CRealServer::cmdQueryPalette(LPVOID pInst, CESERVER_REQ* pIn, UINT
 
 CESERVER_REQ* CRealServer::cmdGetTaskCmd(LPVOID pInst, CESERVER_REQ* pIn, UINT nDataSize)
 {
-	CEStr lsData;
-	const CommandTasks* pTask = (pIn->DataSize() > sizeof(pIn->GetTask)) ? gpSet->CmdTaskGetByName(pIn->GetTask.data) : NULL;
-	if (pTask)
-	{
-		LPCWSTR pszTemp = pTask->pszCommands;
-		if ((pszTemp = NextLine(pszTemp, lsData)))
-		{
-			RConStartArgsEx args;
-			LPCWSTR pszRaw = gpConEmu->ParseScriptLineOptions(lsData.ms_Val, NULL, NULL);
-			if (pszRaw)
-			{
-				args.pszSpecialCmd = lstrdup(pszRaw);
-				// Parse all -new_console's
-				args.ProcessNewConArg();
-				// Prohbit external requests for credentials
-				args.CleanPermissions();
-				// Directory?
-				if (!args.pszStartupDir && pTask->pszGuiArgs)
-					pTask->ParseGuiArgs(&args);
-				// Prepare for execution
-				lsData = args.CreateCommandLine(false);
-			}
-		}
-	}
+	const CommandTasks* pTask = (pIn->DataSize() > sizeof(pIn->GetTask)) ? gpSet->CmdTaskGetByName(pIn->GetTask.data) : nullptr;
+	const CEStr lsData = pTask ? pTask->GetFirstCommandForPrompt() : L"";
 
-	ssize_t nLen = lsData.GetLen();
+	const ssize_t nLen = lsData.GetLen();
 
-	CESERVER_REQ* pOut = ExecuteNewCmd(pIn->hdr.nCmd, sizeof(CESERVER_REQ_HDR) + sizeof(CESERVER_REQ_TASK) + nLen*sizeof(wchar_t));
+	CESERVER_REQ* pOut = ExecuteNewCmd(pIn->hdr.nCmd, sizeof(CESERVER_REQ_HDR) + sizeof(CESERVER_REQ_TASK) + nLen * sizeof(wchar_t));
 	if (!pOut)
-		return NULL;
+		return nullptr;
 
 	if (nLen > 0)
 	{
-		pOut->GetTask.nIdx = TRUE;
+		pOut->GetTask.found = TRUE;
 		lstrcpy(pOut->GetTask.data, lsData.ms_Val);
 	}
 	else
 	{
-		pOut->GetTask.nIdx = FALSE;
+		pOut->GetTask.found = FALSE;
 		pOut->GetTask.data[0] = 0;
 	}
 

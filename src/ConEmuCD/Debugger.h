@@ -28,10 +28,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-void ProcessDebugEvent();
-int AttachRootProcessHandle();
-int RunDebugger();
-void GenerateMiniDumpFromCtrlBreak();
+#include "../common/CEStr.h"
+#include "../common/MArray.h"
+#include "../common/MMap.h"
+#include "../common/MModule.h"
 
 struct CEDebugProcessInfo
 {
@@ -40,28 +40,67 @@ struct CEDebugProcessInfo
 	HANDLE hProcess;
 };
 
-struct DebuggerInfo
+enum class DumpProcessType
 {
-	LPWSTR pszDebuggingCmdLine;
-	BOOL   bDebuggerActive;
-	BOOL   bDebuggerRequestDump;
-	BOOL   bUserRequestDump;
-	HANDLE hDebugThread;
-	HANDLE hDebugReady;
-	DWORD  dwDebugThreadId;
+	None = 0,
+	AskUser = 1,
+	MiniDump = 2,
+	FullDump = 3,
+};
 
-	MMap<DWORD,CEDebugProcessInfo>* pDebugTreeProcesses /*= NULL*/;
-	MArray<DWORD>* pDebugAttachProcesses /*= NULL*/;
-	BOOL  bDebugProcess /*= FALSE*/;
-	BOOL  bDebugProcessTree /*= FALSE*/;
-	int   nDebugDumpProcess /*= 0*/; // 1 - ask user, 2 - minidump, 3 - fulldump
-	BOOL  bDebugMultiProcess; // Debugger was asked for multiple processes simultaneously
-	int   nProcessCount;
-	int   nWaitTreeBreaks;
-	BOOL  bAutoDump; // For creating series of mini-dumps, useful for "snapshotting" running application
-	DWORD nAutoInterval;
-	LONG  nDumpsCounter;
+class DebuggerInfo
+{
+public:
+	DebuggerInfo();
+	~DebuggerInfo();
 
-	HMODULE hDbghelp;
-	FARPROC MiniDumpWriteDump_f;
+	DebuggerInfo(const DebuggerInfo&) = delete;
+	DebuggerInfo(DebuggerInfo&&) = delete;
+	DebuggerInfo& operator=(const DebuggerInfo&) = delete;
+	DebuggerInfo& operator=(DebuggerInfo&&) = delete;
+
+	static DWORD WINAPI DebugThread(LPVOID lpvParam);
+	
+	void WriteMiniDump(DWORD dwProcessId, DWORD dwThreadId, EXCEPTION_RECORD *pExceptionRecord, LPCSTR asConfirmText = NULL, BOOL bTreeBreak = FALSE);
+	void GenerateTreeDebugBreak(DWORD nExcludePID);
+	void PrintDebugInfo() const;
+	void UpdateDebuggerTitle() const;
+	DumpProcessType ConfirmDumpType(DWORD dwProcessId, LPCSTR asConfirmText /*= NULL*/) const;
+	int RunDebugger();
+	HANDLE GetProcessHandleForDebug(DWORD nPID, LPDWORD pnErrCode = nullptr) const;
+	void AttachConHost(DWORD nConHostPID) const;
+	bool IsDumpMulti() const;
+	wchar_t* FormatDumpName(wchar_t* DmpFile, size_t cchDmpMax, DWORD dwProcessId, bool bTrap, bool bFull) const;
+	bool GetSaveDumpName(DWORD dwProcessId, bool bFull, wchar_t* dmpFile, DWORD cchMaxDmpFile) const;
+	void ProcessDebugEvent();
+	void GenerateMiniDumpFromCtrlBreak();
+
+	CEStr  szDebuggingCmdLine;
+	bool   bDebuggerActive = false;
+	bool   bDebuggerRequestDump = false;
+	bool   bUserRequestDump = false;
+	HANDLE hDebugThread = nullptr;
+	HANDLE hDebugReady = nullptr;
+	DWORD  dwDebugThreadId = 0;
+
+	MMap<DWORD,CEDebugProcessInfo>* pDebugTreeProcesses = nullptr;
+	MArray<DWORD>* pDebugAttachProcesses = nullptr;
+	bool  bDebugProcess = false;
+	bool  bDebugProcessTree = false;
+	DumpProcessType debugDumpProcess = DumpProcessType::None;
+	bool  bDebugMultiProcess = false; // Debugger was asked for multiple processes simultaneously
+	int   nProcessCount = 0;
+	int   nWaitTreeBreaks = 0;
+	bool  bAutoDump = false; // For creating series of mini-dumps, useful for "snapshotting" running application
+	DWORD nAutoInterval = 0; // milliseconds
+	LONG  nDumpsCounter = 0;
+
+	MModule dbgHelpDll{};
+	FARPROC MiniDumpWriteDump_f = nullptr;
+
+	typedef BOOL (WINAPI *FDebugActiveProcessStop)(DWORD dwProcessId);
+	FDebugActiveProcessStop pfnDebugActiveProcessStop = nullptr;
+
+	typedef BOOL (WINAPI *FDebugSetProcessKillOnExit)(BOOL KillOnExit);
+	FDebugSetProcessKillOnExit pfnDebugSetProcessKillOnExit = nullptr;
 };

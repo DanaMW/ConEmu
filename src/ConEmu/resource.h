@@ -204,7 +204,7 @@
 #define bResetSettings                  1595
 #define bReloadSettings                 1596
 #define tConSizeChr                     1597
-#define tConSizePix                     1598
+#define tConLeftTop                     1598
 #define tDCSize                         1599
 #define tPanelLeft                      1600
 #define tPanelRight                     1601
@@ -956,6 +956,7 @@
 #define gbConfirmMisc                   2687
 #define cbDupConfirm                    2688
 #define cbConfirmDetach                 2689
+#define cbConfirmResetTerminal          2690
 #define cbFontMonitorDpi                2691
 #define cbFontAsDeviceUnits             2692
 #define vkAppsPgUp                      2693
@@ -1190,7 +1191,7 @@
 #define gbInfoSizes                     2943
 #define gbInfoCmdLine                   2944
 #define stConsoleSizeChars              2945
-#define stConsoleSizePixels             2946
+#define stConsoleLeftTop                2946
 #define stDcWndSize                     2947
 #define stRConCursorInfo                2948
 #define stFarPanelLeft                  2949
@@ -1198,6 +1199,7 @@
 #define gbVConFont                      2951
 #define stVConFontMain                  2952
 #define stVConFontFix                   2953
+#define stConsoleBufferChars            2954
 #define gbCmdAutoAttach                 2955
 #define stCmdAutoAttach                 2956
 #define gbFarDragDrop                   2957
@@ -1343,15 +1345,16 @@
 #define vkCTSCtrlShiftRight             3104
 #define cbAnsiLogCodes                  3105
 #define cbAutoReloadEnvironment         3106
+#define tConBufferChr                   3107
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
-// 
+//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        246
+#define _APS_NEXT_RESOURCE_VALUE        248
 #define _APS_NEXT_COMMAND_VALUE         40010
-#define _APS_NEXT_CONTROL_VALUE         3107
+#define _APS_NEXT_CONTROL_VALUE         3108
 #define _APS_NEXT_SYMED_VALUE           130
 #endif
 #endif

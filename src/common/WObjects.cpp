@@ -140,41 +140,51 @@ int apiSearchPath(LPCWSTR lpPath, LPCWSTR lpFileName, LPCWSTR lpExtension, CEStr
 		}
 	}
 
-	return bFound ? rsPath.GetLen() : 0;
+	int result = 0;
+	if (bFound)
+	{
+		const auto len = rsPath.GetLen();
+		// no sense in path strings greater than supported by OS
+		_ASSERTE(len >= 0 && len <= MAX_WIDE_PATH_LENGTH);
+		result = static_cast<int>(len);
+	}
+	return result;
 }
 
 int apiGetFullPathName(LPCWSTR lpFileName, CEStr& rsPath)
 {
-	bool bFound = false;
-	wchar_t *pszFilePart, *pszBuffer = NULL;
-	wchar_t szFind[MAX_PATH+1];
+	int iFoundLen = 0;
+	wchar_t* pszFilePart = nullptr;
+	// ReSharper disable once CppInitializedValueIsAlwaysRewritten
+	wchar_t* pszBuffer = nullptr;
+	wchar_t szFind[MAX_PATH+1] = L"";
 
 	DWORD nLen = GetFullPathName(lpFileName, countof(szFind), szFind, &pszFilePart);
 	if (nLen)
 	{
 		if (nLen < countof(szFind))
 		{
-			bFound = true;
 			rsPath.Set(szFind);
+			iFoundLen = static_cast<int>(rsPath.GetLen());
 		}
 		else
 		{
 			// Too long path, allocate more space
-			pszBuffer = (wchar_t*)malloc((++nLen)*sizeof(*pszBuffer));
+			pszBuffer = static_cast<wchar_t*>(malloc((++nLen)*sizeof(*pszBuffer)));
 			if (pszBuffer)
 			{
-				DWORD nLen2 = GetFullPathName(lpFileName, nLen, pszBuffer, &pszFilePart);
+				const DWORD nLen2 = GetFullPathName(lpFileName, nLen, pszBuffer, &pszFilePart);
 				if (nLen2 && (nLen2 < nLen))
 				{
-					bFound = true;
 					rsPath.Set(pszBuffer);
+					iFoundLen = static_cast<int>(rsPath.GetLen());
 				}
 				free(pszBuffer);
 			}
 		}
 	}
 
-	return bFound ? rsPath.GetLen() : 0;
+	return (iFoundLen > 0) ? iFoundLen : 0;
 }
 
 bool FileSearchInDir(LPCWSTR asFilePath, CEStr& rsFound)
@@ -489,7 +499,7 @@ wrap:
 
 DWORD GetModulePathName(HMODULE hModule, CEStr& lsPathName)
 {
-	size_t cchMax = MAX_PATH;
+	DWORD cchMax = MAX_PATH;
 	wchar_t* pszData = lsPathName.GetBuffer(cchMax);
 	if (!pszData)
 		return 0; // Memory allocation error
@@ -498,11 +508,13 @@ DWORD GetModulePathName(HMODULE hModule, CEStr& lsPathName)
 	if (!nRc)
 		return 0;
 
+	const DWORD errCode = GetLastError();
+
 	// Not enough space?
-	if (nRc == cchMax)
+	if (nRc == cchMax || errCode == ERROR_INSUFFICIENT_BUFFER)
 	{
-		cchMax = 32767;
-		wchar_t* pszData = lsPathName.GetBuffer(cchMax);
+		cchMax = MAX_WIDE_PATH_LENGTH;
+		pszData = lsPathName.GetBuffer(cchMax);
 		if (!pszData)
 			return 0; // Memory allocation error
 		nRc = GetModuleFileName(hModule, pszData, cchMax);
@@ -1026,7 +1038,7 @@ LPCWSTR GetComspecFromEnvVar(wchar_t* pszComspec, DWORD cchMax, ComSpecBits Bits
 	}
 
 	*pszComspec = 0;
-	BOOL bWin64 = IsWindows64();
+	const auto bWin64 = IsWindows64();
 
 	if (!((Bits == csb_x32) || (Bits == csb_x64)))
 	{
@@ -1120,7 +1132,7 @@ wchar_t* GetComspec(const ConEmuComspec* pOpt)
 	}
 	else
 	{
-		_ASSERTE(pOpt && L"pOpt должен быть передан, по идее");
+		_ASSERTE(pOpt && L"pOpt should be passed");
 	}
 
 	if (!pszComSpec)

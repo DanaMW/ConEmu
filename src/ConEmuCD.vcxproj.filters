@@ -40,12 +40,15 @@
       <Filter>Console</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\ConEmuCmd.h">
-      <Filter>Headers</Filter>
+      <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\ConEmuSrv.h">
       <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\ConProcess.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ConEmuCD\ConsoleArgs.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\ConsoleHelp.h">
@@ -54,14 +57,23 @@
     <ClInclude Include="ConEmuCD\ConsoleMain.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="ConEmuCD\ConsoleState.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="ConEmuCD\Debugger.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\DownloaderCall.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="ConEmuCD\DumpOnException.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="ConEmuCD\ExitCodes.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ConEmuCD\ExportedFunctions.h">
+      <Filter>Exports</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\GuiHooks.h">
       <Filter>Headers</Filter>
@@ -87,6 +99,9 @@
     <ClInclude Include="ConEmuCD\Queue.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="ConEmuCD\RunMode.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="ConEmuCD\Shutdown.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -99,8 +114,17 @@
     <ClInclude Include="ConEmuCD\StartEnv.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="ConEmuCD\StdCon.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="ConEmuCD\UnicodeTest.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ConEmuCD\WinConExports.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ConEmuCD\WorkerBase.h">
+      <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="ConEmuCD\crc32.h">
       <Filter>Headers</Filter>
@@ -129,7 +153,7 @@
       <Filter>Console</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuCD\ConEmuCmd.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Server</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuCD\ConEmuSrv.cpp">
       <Filter>Server</Filter>
@@ -137,13 +161,22 @@
     <ClCompile Include="ConEmuCD\ConProcess.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="ConEmuCD\ConsoleArgs.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="ConEmuCD\ConsoleMain.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ConEmuCD\ConsoleState.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuCD\Debugger.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuCD\DownloaderCall.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ConEmuCD\DumpOnException.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuCD\GuiHooks.cpp">
@@ -170,6 +203,9 @@
     <ClCompile Include="ConEmuCD\Queue.cpp">
       <Filter>Interface</Filter>
     </ClCompile>
+    <ClCompile Include="ConEmuCD\RunMode.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="ConEmuCD\Shutdown.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -182,8 +218,14 @@
     <ClCompile Include="ConEmuCD\StartEnv.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="ConEmuCD\StdCon.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="ConEmuCD\UnicodeTest.cpp">
       <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ConEmuCD\WorkerBase.cpp">
+      <Filter>Server</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuHk\Injects.cpp">
       <Filter>Sources</Filter>

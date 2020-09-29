@@ -29,13 +29,15 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ConsoleMain.h"
 #include "InjectRemote.h"
 #include "Infiltrate.h"
+
 #include "../common/MAssert.h"
 #include "../common/MProcessBits.h"
+#include "../common/shlobj.h"
 #include "../common/WFiles.h"
 #include "../common/WModuleCheck.h"
-#include "../ConEmuHk/Injects.h"
 #include "../ConEmu/version.h"
-#include "../common/shlobj.h"
+#include "../ConEmuHk/Injects.h"
+
 #include <Tlhelp32.h>
 
 // 0 - OK, иначе - ошибка
@@ -461,7 +463,7 @@ CINFILTRATE_EXIT_CODES InjectRemote(DWORD nRemotePID, bool abDefTermOnly /*= fal
 		goto wrap;
 	}
 	wcscpy_c(szKernelName, gfLoadLibrary.szModule);
-	CharLowerBuff(szKernelName, wcslen(szKernelName));
+	CharLowerBuff(szKernelName, static_cast<DWORD>(wcslen(szKernelName)));
 
 
 	LogString(L"CreateToolhelp32Snapshot(TH32CS_SNAPMODULE)");
@@ -604,7 +606,7 @@ CINFILTRATE_EXIT_CODES InjectRemote(DWORD nRemotePID, bool abDefTermOnly /*= fal
 
 
 	// Let's do the inject
-	_wcscpy_c(pszNamePtr, 16, is32bit ? L"ConEmuHk.dll" : L"ConEmuHk64.dll");
+	_wcscpy_c(pszNamePtr, 16, is32bit ? ConEmuHk_32_DLL : ConEmuHk_64_DLL);
 	if (!FileExists(szHooks))
 	{
 		iRc = CIR_ConEmuHkNotFound/*-250*/;

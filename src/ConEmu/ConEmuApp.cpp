@@ -48,7 +48,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/EnvVar.h"
 #include "../common/MBSTR.h"
 #include "../common/MSetter.h"
-#include "../common/MStrEsc.h"
 #include "../common/WFiles.h"
 #include "helper.h"
 #include "AboutDlg.h"
@@ -58,8 +57,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DefaultTerm.h"
 #include "DontEnable.h"
 #include "DpiAware.h"
-#include "DwmHelper.h"
 #include "FontMgr.h"
+#include "GlobalHotkeys.h"
 #include "HooksUnlocker.h"
 #include "IconList.h"
 #include "Inside.h"
@@ -163,7 +162,7 @@ bool gbIsDBCS = false;
 wchar_t gsDefGuiFont[32] = L"Lucida Console"; // gbIsWine ? L"Liberation Mono" : L"Lucida Console"
 wchar_t gsAltGuiFont[32] = L"Courier New"; // "Lucida Console" is not installed?
 // Set this font (default) in real console window to enable unicode support
-wchar_t gsDefConFont[32] = L"Lucida Console"; // DBCS ? L"Liberation Mono" : L"Lucida Console"
+wchar_t gsDefConFont[32] = DEFAULT_CONSOLE_FONT_NAME; // DBCS ? L"Liberation Mono" : L"Lucida Console"
 wchar_t gsAltConFont[32] = L"Courier New"; // "Lucida Console" is not installed?
 // Use this (default) in ConEmu interface, where allowed (tabs, status, panel views, ...)
 wchar_t gsDefMUIFont[32] = L"Tahoma";         // WindowsVista ? L"Segoe UI" : L"Tahoma"
@@ -734,10 +733,17 @@ void SkipOneShowWindow()
 		return; // уже
 	bProcessed = true;
 
-	STARTUPINFO si = {sizeof(si)};
+	wchar_t szInfo[128];
+	STARTUPINFO si = {}; si.cb = sizeof(si);
 	GetStartupInfo(&si);
-	if (si.wShowWindow == SW_SHOWNORMAL)
+	swprintf_c(szInfo, L"StartupInfo: flags=0x%04X showWindow=%u", si.dwFlags, static_cast<uint32_t>(si.wShowWindow));
+	
+	if (!(si.dwFlags & STARTF_USESHOWWINDOW) || (si.wShowWindow == SW_SHOWNORMAL))
+	{
+		wcscat_c(szInfo, L", SkipOneShowWindow is not required");
+		gpConEmu->LogString(szInfo);
 		return; // финты не требуются
+	}
 
 	const wchar_t szSkipClass[] = L"ConEmuSkipShowWindow";
 	WNDCLASSEX wc = {sizeof(WNDCLASSEX), 0, SkipShowWindowProc, 0, 0,
@@ -750,7 +756,8 @@ void SkipOneShowWindow()
 		return;
 
 
-	gpConEmu->LogString(L"SkipOneShowWindow");
+	wcscat_c(szInfo, L", processing SkipOneShowWindow");
+	gpConEmu->LogString(szInfo);
 
 
 	gpConEmu->Taskbar_Init();
@@ -772,7 +779,6 @@ void SkipOneShowWindow()
 
 		if (gpSet->isLogging())
 		{
-			wchar_t szInfo[128];
 			swprintf_c(szInfo, L"Skip window 0x%08X was created and destroyed", LODWORD(hSkip));
 			gpConEmu->LogString(szInfo);
 		}
@@ -1204,7 +1210,7 @@ bool ProcessMessage(MSG& Msg)
 				goto wrap;
 			break;
 		case WM_HOTKEY:
-			gpConEmu->OnWmHotkey(Msg.wParam, Msg.time);
+			gpConEmu->GetGlobalHotkeys().OnWmHotkey(Msg.wParam, Msg.time);
 			goto wrap;
 		case WM_LBUTTONDOWN:
 		case WM_RBUTTONDOWN:
@@ -2061,9 +2067,9 @@ int CheckZoneIdentifiers(bool abAutoUnblock)
 		NULL};
 	LPCWSTR pszFiles[] = {
 		L"ConEmu.exe", L"ConEmu64.exe",
-		L"ConEmuC.exe", L"ConEmuC64.exe",
-		L"ConEmuCD.dll", L"ConEmuCD64.dll",
-		L"ConEmuHk.dll", L"ConEmuHk64.dll",
+		ConEmuC_32_EXE, ConEmuC_64_EXE,
+		ConEmuCD_32_DLL, ConEmuCD_64_DLL,
+		ConEmuHk_32_DLL, ConEmuHk_64_DLL,
 		NULL};
 
 	for (int i = 0; i <= 1; i++)
@@ -2386,7 +2392,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	srand(GetTickCount() + GetCurrentProcessId());
 
 	#ifdef _DEBUG
-	HMODULE hConEmuHk = GetModuleHandle(WIN3264TEST(L"ConEmuHk.dll",L"ConEmuHk64.dll"));
+	HMODULE hConEmuHk = GetModuleHandle(ConEmuHk_DLL_3264);
 	_ASSERTE(hConEmuHk==NULL && "Hooks must not be loaded into ConEmu[64].exe!");
 	#endif
 

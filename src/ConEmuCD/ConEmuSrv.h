@@ -32,79 +32,33 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/defines.h"
 #include <WinCon.h>
 #ifdef _DEBUG
-#include <stdio.h>
+#include <cstdio>
 #endif
 #include <Shlwapi.h>
 
-#include "../common/RConStartArgs.h"
 
-
-
+#include "WorkerBase.h"
 #include "../common/Common.h"
-#include "../common/ConEmuCheck.h"
-#include "../common/MConHandle.h"
 #include "../common/MFileMapping.h"
-#include "../common/MFileLogEx.h"
 #include "../common/MSection.h"
-#include "../common/WObjects.h"
 #include "../common/ConsoleAnnotation.h"
 #include "../common/InQueue.h"
-#include "ExitCodes.h"
-
-
-
-BOOL ReloadFullConsoleInfo(BOOL abForceSend);
-bool CheckWasFullScreen();
-DWORD WINAPI RefreshThread(LPVOID lpvParam); // Thread reloading console contents
-bool FreezeRefreshThread();
-bool ThawRefreshThread();
-int ServerInit(); // Создать необходимые события и нити
-void ServerDone(int aiRc, bool abReportShutdown = false);
-BOOL ServerInitConsoleMode();
-BOOL MyReadConsoleOutput(HANDLE hOut, CHAR_INFO *pData, COORD& bufSize, SMALL_RECT& rgn);
-BOOL MyWriteConsoleOutput(HANDLE hOut, CHAR_INFO *pData, COORD& bufSize, COORD& crBufPos, SMALL_RECT& rgn);
-
-void CmdOutputStore(bool abCreateOnly = false);
-void CmdOutputRestore(bool abSimpleMode);
-
-void CheckConEmuHwnd();
-
-HWND Attach2Gui(DWORD nTimeout);
-
-bool AltServerWasStarted(DWORD nPID, HANDLE hAltServer, bool ForceThaw = false);
-
-int CreateMapHeader();
-void CloseMapHeader();
-void CopySrvMapFromGuiMap();
-void UpdateConsoleMapHeader(LPCWSTR asReason = NULL);
-void InitAnsiLog(const ConEmuAnsiLog& AnsiLog);
-int Compare(const CESERVER_CONSOLE_MAPPING_HDR* p1, const CESERVER_CONSOLE_MAPPING_HDR* p2);
-void FixConsoleMappingHdr(CESERVER_CONSOLE_MAPPING_HDR *pMap);
-
-int CreateColorerHeader(bool bForceRecreate = false);
-
-int MySetWindowRgn(CESERVER_REQ_SETWINDOWRGN* pRgn);
-
-bool IsAutoAttachAllowed();
 
 /* Console Handles */
-extern MConHandle ghConOut;
 extern MConHandle gPrimaryBuffer, gAltBuffer;
 extern USHORT gnPrimaryBufferLastRow;
-void ConOutCloseHandle();
-bool CmdOutputOpenMap(CONSOLE_SCREEN_BUFFER_INFO& lsbi, CESERVER_CONSAVE_MAPHDR*& pHdr, CESERVER_CONSAVE_MAP*& pData);
-bool isReopenHandleAllowed();
 
 #ifdef WIN64
 #ifndef __GNUC__
-#pragma message("ComEmuC compiled in X64 mode")
+#pragma message("ComEmuC compiled in X64 mode")  // NOLINT(clang-diagnostic-#pragma-messages)
 #endif
+// ReSharper disable once IdentifierTypo
 #define NTVDMACTIVE FALSE
 #else
 #ifndef __GNUC__
 #pragma message("ComEmuC compiled in X86 mode")
 #endif
-#define NTVDMACTIVE (gpSrv->processes->bNtvdmActive)
+#define NTVDMACTIVE (gpWorker->Processes().bNtvdmActive)
 #endif
 
 #include "../common/PipeServer.h"
@@ -118,6 +72,13 @@ struct AltServerInfo
 	DWORD  nPrevPID;
 };
 
+enum SleepIndicatorType
+{
+	sit_None = 0,
+	sit_Num,
+	sit_Title,
+};
+
 struct ConProcess;
 
 #include "Debugger.h"
@@ -126,13 +87,6 @@ struct SrvInfo
 {
 	void InitFields();
 	void FinalizeFields();
-
-	HANDLE hRootProcess, hRootThread;
-	DWORD dwRootProcess, dwRootThread; DWORD dwRootStartTime;
-	DWORD dwParentFarPID;
-
-	// Full information about our console processes
-	ConProcess* processes;
 
 	CESERVER_REQ_PORTABLESTARTED Portable;
 
@@ -156,26 +110,17 @@ struct SrvInfo
 	DWORD  dwRefreshThread;
 	BOOL   bRefreshTermination;
 	LONG   nRefreshFreezeRequests;
-	LONG   nRefreshIsFreezed; // atomic
+	LONG   nRefreshIsFrozen; // atomic
 	HANDLE hFreezeRefreshThread;
 	MSectionSimple csRefreshControl;
 
-	DWORD  nPrevAltServer; // Informational, only for RM_ALTSERVER
+	DWORD  nPrevAltServer; // Informational, only for RunMode::RM_ALTSERVER
 
 	// CECMD_SETCONSCRBUF
 	HANDLE hWaitForSetConBufThread;    // Remote thread (check it for abnormal termination)
 	HANDLE hInWaitForSetConBufThread;  // signal that RefreshThread is ready to wait for hWaitForSetConBufThread
 	HANDLE hOutWaitForSetConBufThread; // signal that RefreshThread may continue
 
-	HWND   hRootProcessGui; // Если работаем в Gui-режиме (Notepad, Putty, ...), ((HWND)-1) пока фактичеки окно еще не создано, но exe-шник уже есть
-	DebuggerInfo DbgInfo;
-	DWORD  dwGuiAID; // ConEmu internal ID of started CRealConsole
-	HWND   hGuiWnd; // передается через аргумент "/GHWND=%08X", чтобы окно не искать
-	BOOL   bRequestNewGuiWnd;
-	DWORD  nActiveFarPID; // PID последнего активного Far
-	BOOL   bWasDetached; // Выставляется в TRUE при получении CECMD_DETACHCON
-	BOOL   bWasReattached; // Если TRUE - то при следующем цикле нужно передернуть ReloadFullConsoleInfo(true)
-	BOOL   bStationLocked; // Don't read console output while station is locked
 	//
 	PipeServer<CESERVER_REQ> CmdServer;
 	PipeServer<MSG64> InputServer;
@@ -204,7 +149,6 @@ struct SrvInfo
 	CESERVER_REQ_CONINFO_FULL *pConsole;
 	CHAR_INFO *pConsoleDataCopy; // Local (Alloc)
 	MSectionSimple csReadConsoleInfo;
-	bool wasFullscreenMode;
 	// Input
 	HANDLE hInputThread;
 	DWORD dwInputThread; BOOL bInputTermination;
@@ -227,9 +171,8 @@ struct SrvInfo
 	DWORD dwCiRc; CONSOLE_CURSOR_INFO ci; // GetConsoleCursorInfo
 	DWORD dwConsoleCP, dwConsoleOutputCP;
 	WORD dwConsoleInMode, dwConsoleOutMode;
-	DWORD dwSbiRc; CONSOLE_SCREEN_BUFFER_INFO sbi; // MyGetConsoleScreenBufferInfo
+
 	CESERVER_CONSOLE_PALETTE ConsolePalette;
-	DWORD dwDisplayMode;
 	BOOL  bAltBufferEnabled;
 	//USHORT nUsedHeight; // Высота, используемая в GUI - вместо него используем gcrBufferSize.Y
 	TOPLEFTCOORD TopLeft; // Прокрутка в GUI может быть заблокирована. Если -1 - без блокировки, используем текущее значение
@@ -258,32 +201,109 @@ struct SrvInfo
 	//
 	LONG nLastPacketID; // ИД пакета для отправки в GUI
 
-	// Keyboard layout name
-	wchar_t szKeybLayout[KL_NAMELENGTH+1];
-
-	// Optional console font (may be specified in registry)
-	wchar_t szConsoleFont[LF_FACESIZE];
-	//wchar_t szConsoleFontFile[MAX_PATH]; -- не помогает
-	SHORT nConFontWidth, nConFontHeight;
-
 	// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
 	ConEmuAnsiLog AnsiLog;
 
 	// Когда была последняя пользовательская активность
 	DWORD dwLastUserTick;
 
-	// Если нужно заблокировать нить RefreshThread
-	//HANDLE hLockRefreshBegin, hLockRefreshReady;
-
 	// Console Aliases
 	wchar_t* pszAliases; DWORD nAliasesSize;
 
-	// ComSpec mode
-	BOOL  bK;
-	BOOL  bNewConsole;
-	wchar_t szComSpecName[32];
-	wchar_t szSelfName[32];
-	wchar_t *pszPreAliases;
-	DWORD nPreAliasSize;
+};
 
+class WorkerServer final : public WorkerBase
+{
+public:
+	virtual ~WorkerServer();
+
+	WorkerServer();
+
+	static WorkerServer& Instance();
+
+	WorkerServer(const WorkerServer&) = delete;
+	WorkerServer(WorkerServer&&) = delete;
+	WorkerServer& operator=(const WorkerServer&) = delete;
+	WorkerServer& operator=(WorkerServer&&) = delete;
+
+	int Init() override;
+	void Done(int exitCode, bool reportShutdown = false) override;
+
+	int ProcessCommandLineArgs() override;
+
+	void EnableProcessMonitor(bool enable) override;
+
+	// #SERVER Recheck visibility
+public:
+	int ReadConsoleInfo();
+	bool ReadConsoleData();
+	BOOL ReloadFullConsoleInfo(BOOL abForceSend);
+
+	static DWORD WINAPI RefreshThread(LPVOID lpvParam); // Thread reloading console contents
+	static DWORD WINAPI SetOemCpProc(LPVOID lpParameter);
+
+public:
+	void ServerInitFont();
+	void WaitForServerActivated(DWORD anServerPID, HANDLE ahServer, DWORD nTimeout = 30000);
+	int AttachRootProcess();
+	int ServerInitCheckExisting(bool abAlternative);
+	void ServerInitConsoleSize(bool allowUseCurrent, CONSOLE_SCREEN_BUFFER_INFO* pSbiOut = nullptr);
+	int ServerInitAttach2Gui();
+	int ServerInitGuiTab();
+	void ServerInitEnvVars();
+	void SetConEmuFolders(LPCWSTR asExeDir, LPCWSTR asBaseDir);
+	bool TryConnect2Gui(HWND hGui, DWORD anGuiPid, CESERVER_REQ* pIn);
+	SleepIndicatorType CheckIndicateSleepNum();
+	void ShowSleepIndicator(SleepIndicatorType sleepType, bool bSleeping);
+
+	void ConOutCloseHandle();
+	bool CmdOutputOpenMap(CONSOLE_SCREEN_BUFFER_INFO& lsbi, CESERVER_CONSAVE_MAPHDR*& pHdr, CESERVER_CONSAVE_MAP*& pData);
+	static bool IsReopenHandleAllowed();
+	static bool IsCrashHandlerAllowed();
+
+	bool FreezeRefreshThread();
+	bool ThawRefreshThread();
+	BOOL MyReadConsoleOutput(HANDLE hOut, CHAR_INFO* pData, COORD& bufSize, SMALL_RECT& rgn);
+	BOOL MyWriteConsoleOutput(HANDLE hOut, CHAR_INFO* pData, COORD& bufSize, COORD& crBufPos, SMALL_RECT& rgn);
+
+	void CmdOutputStore(bool abCreateOnly = false);
+	void CmdOutputRestore(bool abSimpleMode);
+
+	void CheckConEmuHwnd();
+
+	HWND Attach2Gui(DWORD nTimeout);
+
+	bool AltServerWasStarted(DWORD nPID, HANDLE hAltServer, bool forceThaw = false);
+
+	int CreateMapHeader();
+	void CloseMapHeader();
+	void CopySrvMapFromGuiMap();
+	void UpdateConsoleMapHeader(LPCWSTR asReason = NULL);
+	void InitAnsiLog(const ConEmuAnsiLog& AnsiLog);
+	int Compare(const CESERVER_CONSOLE_MAPPING_HDR* p1, const CESERVER_CONSOLE_MAPPING_HDR* p2);
+	void FixConsoleMappingHdr(CESERVER_CONSOLE_MAPPING_HDR* pMap);
+
+	int CreateColorerHeader(bool bForceRecreate = false);
+
+	int MySetWindowRgn(CESERVER_REQ_SETWINDOWRGN* pRgn);
+
+	void SetFarPid(DWORD pid);
+	DWORD GetLastActiveFarPid() const;
+
+protected:
+	static int CALLBACK FontEnumProc(ENUMLOGFONTEX* lpelfe, NEWTEXTMETRICEX* lpntme, DWORD FontType, LPARAM lParam);
+
+	void ApplyProcessSetEnvCmd();
+	void ApplyEnvironmentCommands(LPCWSTR pszCommands);
+
+private:
+	/// Optional console font (may be specified in registry). Up to LF_FACESIZE chars, including \0.
+	CEStr consoleFontName_;
+	/// Width for real console font
+	SHORT consoleFontWidth_ = 0;
+	/// Height for real console font
+	SHORT consoleFontHeight_ = 0;
+
+	/// Last active Far Manager PID
+	DWORD  nActiveFarPID_ = 0;
 };

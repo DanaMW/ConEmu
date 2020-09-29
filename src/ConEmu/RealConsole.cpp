@@ -60,9 +60,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/WSession.h"
 #include "../common/WThreads.h"
 #include "../common/WUser.h"
-#include "AltNumpad.h"
 #include "ConEmu.h"
-#include "ConEmuApp.h"
 #include "ConEmuPipe.h"
 #include "ConfirmDlg.h"
 #include "CreateProcess.h"
@@ -78,6 +76,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RConPalette.h"
 #include "RealBuffer.h"
 #include "RealConsole.h"
+
+#include "GlobalHotkeys.h"
 #include "RunQueue.h"
 #include "SetColorPalette.h"
 #include "SetPgDebug.h"
@@ -167,12 +167,11 @@ WARNING("Часто после разблокирования компьютер
 static BOOL gbInSendConEvent = FALSE;
 
 
-const wchar_t gsCloseGui[] = L"Confirm closing active child window?";
-const wchar_t gsCloseCon[] = L"Confirm closing console?";
-const wchar_t gsTerminateAllButShell[] = L"Terminate all but shell processes?";
-//const wchar_t gsCloseAny[] = L"Confirm closing console?";
-const wchar_t gsCloseEditor[] = L"Confirm closing Far editor?";
-const wchar_t gsCloseViewer[] = L"Confirm closing Far viewer?";
+#define gsCloseGui CLngRc::getRsrc(lng_ConfirmCloseChildGuiQ/*"Confirm closing active child window?"*/)
+#define gsCloseCon CLngRc::getRsrc(lng_ConfirmCloseConsoleQ/*"Confirm closing console?"*/)
+#define gsTerminateAllButShell CLngRc::getRsrc(lng_ConfirmKillButShellQ/*"Terminate all but shell processes?"*/)
+#define gsCloseEditor CLngRc::getRsrc(lng_ConfirmCloseEditorQ/*"Confirm closing Far editor?"*/)
+#define gsCloseViewer CLngRc::getRsrc(lng_ConfirmCloseViewerQ/*"Confirm closing Far viewer?"*/)
 
 #define GUI_MACRO_PREFIX L'#'
 
@@ -588,6 +587,9 @@ bool CRealConsole::PreCreate(RConStartArgsEx *args)
 	}
 
 	bool bCopied = m_Args.AssignFrom(*args);
+
+	if (!gpConEmu->CanUseInjects())
+		m_Args.InjectsDisable = crb_On;
 
 	// Don't leave security information (passwords) in memory
 	if (bCopied && args->pszUserName)
@@ -10753,7 +10755,7 @@ void CRealConsole::OnActivate(int nNewNum, int nOldNum)
 
 	if (isActive(false))
 	{
-		mp_ConEmu->UpdateActiveGhost(mp_VCon);
+		mp_ConEmu->GetGlobalHotkeys().UpdateActiveGhost(mp_VCon);
 		mp_ConEmu->OnSetCursor(-1,-1);
 		mp_ConEmu->UpdateWindowRgn();
 	}
@@ -14263,7 +14265,9 @@ HWND CRealConsole::isPictureView(bool abIgnoreNonModal/*=FALSE*/)
 		HWND hBack = mp_VCon->GetBack();
 		HWND hChild = NULL;
 		DEBUGTEST(DWORD nSelf = GetCurrentProcessId());
+		#ifdef _DEBUG // due to unittests
 		_ASSERTE(nSelf != m_ChildGui.Process.ProcessID);
+		#endif
 
 		while ((hChild = FindWindowEx(hBack, hChild, NULL, NULL)) != NULL)
 		{
@@ -16333,7 +16337,7 @@ void CRealConsole::PostMacro(LPCWSTR asMacro, bool abAsync /*= FALSE*/)
 	}
 }
 
-wchar_t* CRealConsole::PostponeMacro(wchar_t* RVAL_REF asMacro)
+wchar_t* CRealConsole::PostponeMacro(wchar_t*&& asMacro)
 {
 	if (!this || !asMacro)
 	{

@@ -30,9 +30,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ConsoleMain.h"
 #include "ConEmuCmd.h"
 #include "ConEmuSrv.h"
+#include "ConsoleArgs.h"
+#include "ConsoleState.h"
+#include "DumpOnException.h"
+#include "ExitCodes.h"
+#include "../common/EnvVar.h"
 #include "../common/WFiles.h"
 
-bool GetAliases(wchar_t* asExeName, wchar_t** rsAliases, LPDWORD rnAliasesSize);
 
 #ifndef _WIN32_WINNT
 PRAGMA_ERROR("_WIN32_WINNT not defined");
@@ -74,7 +78,19 @@ PRAGMA_ERROR("AddConsoleAlias was not defined");
 #endif
 
 
-int ComspecInit()
+WorkerComspec::~WorkerComspec()  // NOLINT(modernize-use-equals-default)
+{
+	_ASSERTE(gState.runMode_ == RunMode::Comspec || gState.runMode_ == RunMode::Undefined);
+}
+
+WorkerComspec::WorkerComspec()  // NOLINT(modernize-use-equals-default)
+	: WorkerBase()
+{
+	_ASSERTE(gState.runMode_ == RunMode::Comspec || gState.runMode_ == RunMode::Undefined);
+	SetupCreateDumpOnException();
+}
+
+int WorkerComspec::Init()
 {
 	TODO("Определить код родительского процесса, и если это FAR - запомнить его (для подключения к пайпу плагина)");
 	TODO("Размер получить из GUI, если оно есть, иначе - по умолчанию");
@@ -86,87 +102,39 @@ int ComspecInit()
 #ifdef SHOW_STARTED_MSGBOX
 	MessageBox(GetConEmuHWND(2), L"ConEmuC (comspec mode) is about to START", L"ConEmuC.ComSpec", 0);
 #endif
-	//int nNewBufferHeight = 0;
-	//COORD crNewSize = {0,0};
-	//SMALL_RECT rNewWindow = gpSrv->sbi.srWindow;
-	BOOL lbSbiRc = FALSE;
 	gbRootWasFoundInCon = 2; // не добавлять к "Press Enter to close console" - "or wait"
 	gbComspecInitCalled = TRUE; // Нельзя вызывать ComspecDone, если не было вызова ComspecInit
 	// в режиме ComSpec - запрещено!
-	gbAlwaysConfirmExit = FALSE; gbAutoDisableConfirmExit = FALSE;
+	gState.alwaysConfirmExit_ = false;
+	gState.autoDisableConfirmExit_ = false;
 #ifdef _DEBUG
 	xf_validate();
 	xf_dump_chk();
 #endif
-	// Это наверное и не нужно, просто для информации...
-	lbSbiRc = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &gpSrv->sbi);
-	#ifdef _DEBUG
-	DWORD nErrCode = lbSbiRc ? 0 : GetLastError();
-	// Процесс запущен с редиректом вывода?
-	_ASSERTE(lbSbiRc || (nErrCode == ERROR_INVALID_HANDLE));
-	#endif
 
-#if 0
-	// 111211 - "-new_console" теперь передается в GUI и исполняется в нем
-	// Сюда мы попадаем если был ключик -new_console
-	// А этом случае нужно завершить ЭТОТ экземпляр и запустить в ConEmu новую вкладку
-	if (gpSrv->bNewConsole)
+	// sbi is used to restore properties
+	const auto lbSbiRc = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &this->consoleInfo.sbi);
+	if (!lbSbiRc)
 	{
-#ifdef _DEBUG
-		xf_validate();
-		xf_dump_chk();
-#endif
-		PROCESS_INFORMATION pi; memset(&pi, 0, sizeof(pi));
-		STARTUPINFOW si; memset(&si, 0, sizeof(si)); si.cb = sizeof(si);
-		si.dwFlags = STARTF_USESHOWWINDOW|STARTF_USECOUNTCHARS;
-		si.dwXCountChars = gpSrv->sbi.dwSize.X;
-		si.dwYCountChars = gpSrv->sbi.dwSize.Y;
-		si.wShowWindow = SW_HIDE;
-		PRINT_COMSPEC(L"Creating new console for:\n%s\n", gpszRunCmd);
-#ifdef _DEBUG
-		xf_validate();
-		xf_dump_chk();
-#endif
-		// CREATE_NEW_PROCESS_GROUP - низя, перестает работать Ctrl-C
-		// Запускается новый сервер (новая консоль), сюда хуки ставить не надо.
-		BOOL lbRc = createProcess(TRUE, NULL, gpszRunCmd, NULL,NULL, TRUE,
-		                           NORMAL_PRIORITY_CLASS|CREATE_NEW_CONSOLE,
-		                           NULL, NULL, &si, &pi);
-		DWORD dwErr = GetLastError();
-
-		if (!lbRc)
-		{
-			PrintExecuteError(gpszRunCmd, dwErr);
-			return CERR_CREATEPROCESS;
-		}
-
-#ifdef _DEBUG
-		xf_validate();
-		xf_dump_chk();
-#endif
-		//delete psNewCmd; psNewCmd = NULL;
-		AllowSetForegroundWindow(pi.dwProcessId);
-		PRINT_COMSPEC(L"New console created. PID=%i. Exiting...\n", pi.dwProcessId);
-		SafeCloseHandle(pi.hProcess); SafeCloseHandle(pi.hThread);
-		DisableAutoConfirmExit();
-		//gpSrv->nProcessStartTick = GetTickCount() - 2*CHECK_ROOTSTART_TIMEOUT; // менять nProcessStartTick не нужно. проверка только по флажкам
-#ifdef _DEBUG
-		xf_validate();
-		xf_dump_chk();
-#endif
-		return CERR_RUNNEWCONSOLE;
+		if (!((this->consoleInfo.dwSbiRc = GetLastError())))
+			this->consoleInfo.dwSbiRc = -1;
 	}
-#endif
+	else
+	{
+		this->consoleInfo.dwSbiRc = 0;
+	}
+	// Process was started with redirection?
+	_ASSERTE(lbSbiRc || (this->consoleInfo.dwSbiRc == ERROR_INVALID_HANDLE));
 
 	wchar_t szComSpec[MAX_PATH+1];
-	const wchar_t* pszComSpecName = NULL;
+	const wchar_t* pszComSpecName = nullptr;
 
 	WARNING("TCC/ComSpec");
 	if (GetEnvironmentVariable(L"ComSpec", szComSpec, MAX_PATH) && szComSpec[0] != 0)
 	{
-		pszComSpecName = (wchar_t*)PointToName(szComSpec);
+		pszComSpecName = const_cast<wchar_t*>(PointToName(szComSpec));
 		if (IsConsoleServer(pszComSpecName))
-			pszComSpecName = NULL;
+			pszComSpecName = nullptr;
 	}
 	if (!pszComSpecName || !*pszComSpecName)
 	{
@@ -174,23 +142,23 @@ int ComspecInit()
 		pszComSpecName = L"cmd.exe";
 	}
 
-	lstrcpyn(gpSrv->szComSpecName, pszComSpecName, countof(gpSrv->szComSpecName));
+	lstrcpyn(szComSpecName, pszComSpecName, countof(szComSpecName));
 
 	if (pszComSpecName)
 	{
 		wchar_t szSelf[MAX_PATH+1];
 
-		if (GetModuleFileName(NULL, szSelf, MAX_PATH))
+		if (GetModuleFileName(nullptr, szSelf, MAX_PATH))
 		{
-			lstrcpyn(gpSrv->szSelfName, (wchar_t*)PointToName(szSelf), countof(gpSrv->szSelfName));
+			lstrcpyn(szSelfName, PointToName(szSelf), countof(szSelfName));
 
-			if (!GetAliases(gpSrv->szSelfName, &gpSrv->pszPreAliases, &gpSrv->nPreAliasSize))
+			if (!GetAliases(szSelfName, &pszPreAliases, &nPreAliasSize))
 			{
-				if (gpSrv->pszPreAliases)
+				if (pszPreAliases)
 				{
-					_wprintf(gpSrv->pszPreAliases);
-					free(gpSrv->pszPreAliases);
-					gpSrv->pszPreAliases = NULL;
+					_wprintf(pszPreAliases);
+					free(pszPreAliases);
+					pszPreAliases = nullptr;
 				}
 			}
 		}
@@ -202,7 +170,7 @@ int ComspecInit()
 }
 
 
-void ComspecDone(int aiRc)
+void WorkerComspec::Done(const int exitCode, const bool reportShutdown)
 {
 #ifdef _DEBUG
 	xf_dump_chk();
@@ -216,14 +184,14 @@ void ComspecDone(int aiRc)
 	//ConOutCloseHandle()
 
 	// Поддержка алиасов
-	if (gpSrv->szComSpecName[0] && gpSrv->szSelfName[0])
+	if (szComSpecName[0] && szSelfName[0])
 	{
 		// Скопировать алиасы из cmd.exe в conemuc.exe
-		wchar_t *pszPostAliases = NULL;
+		wchar_t *pszPostAliases = nullptr;
 		DWORD nPostAliasSize;
-		BOOL lbChanged = (gpSrv->pszPreAliases == NULL);
+		bool lbChanged = (pszPreAliases == nullptr);
 
-		if (!GetAliases(gpSrv->szComSpecName, &pszPostAliases, &nPostAliasSize))
+		if (!GetAliases(szComSpecName, &pszPostAliases, &nPostAliasSize))
 		{
 			if (pszPostAliases)
 				_wprintf(pszPostAliases);
@@ -232,12 +200,12 @@ void ComspecDone(int aiRc)
 		{
 			if (!lbChanged)
 			{
-				lbChanged = (gpSrv->nPreAliasSize!=nPostAliasSize);
+				lbChanged = (nPreAliasSize!=nPostAliasSize);
 			}
 
-			if (!lbChanged && gpSrv->nPreAliasSize && gpSrv->pszPreAliases && pszPostAliases)
+			if (!lbChanged && nPreAliasSize && pszPreAliases && pszPostAliases)
 			{
-				lbChanged = memcmp(gpSrv->pszPreAliases,pszPostAliases,gpSrv->nPreAliasSize)!=0;
+				lbChanged = memcmp(pszPreAliases,pszPostAliases,nPreAliasSize)!=0;
 			}
 
 			if (lbChanged)
@@ -279,7 +247,7 @@ void ComspecDone(int aiRc)
 							pszNewTarget = NULL;
 					}
 
-					AddConsoleAlias(pszNewName, pszNewTarget, gpSrv->szSelfName);
+					AddConsoleAlias(pszNewName, pszNewTarget, szSelfName);
 					pszNewName = pszNewLine+1;
 				}
 
@@ -326,14 +294,8 @@ void ComspecDone(int aiRc)
 	xf_validate(NULL);
 	#endif
 
-	if (!gbNonGuiMode && (gpSrv->dwParentFarPID != 0))
+	if (!gbNonGuiMode && (gpWorker->ParentFarPid() != 0))
 	{
-		//// Вернуть размер буфера (высота И ширина)
-		//if (gpSrv->sbi.dwSize.X && gpSrv->sbi.dwSize.Y) {
-		//	SMALL_RECT rc = {0};
-		//	SetConsoleSize(0, gpSrv->sbi.dwSize, rc, "ComspecDone");
-		//}
-		//ConOutCloseHandle()
 		CONSOLE_SCREEN_BUFFER_INFO l_csbi = {{0}};
 		lbRc2 = GetConsoleScreenBufferInfo(hOut2 = GetStdHandle(STD_OUTPUT_HANDLE), &l_csbi);
 
@@ -343,7 +305,6 @@ void ComspecDone(int aiRc)
 		{
 			if (!pOut->StartStopRet.bWasBufferHeight)
 			{
-				//gpSrv->sbi.dwSize = pIn->StartStop.sbi.dwSize;
 				lbRc1 = FALSE; // Консольное приложение самостоятельно сбросило буферный режим. Не дергаться...
 			}
 			else
@@ -362,15 +323,15 @@ void ComspecDone(int aiRc)
 			if (sbi2.dwSize.Y > 200)
 			{
 				wchar_t szTitle[128]; swprintf_c(szTitle, L"ConEmuC (PID=%i)", GetCurrentProcessId());
-				MessageBox(NULL, L"BufferHeight was not turned OFF", szTitle, MB_SETFOREGROUND|MB_SYSTEMMODAL);
+				MessageBox(nullptr, L"BufferHeight was not turned OFF", szTitle, MB_SETFOREGROUND|MB_SYSTEMMODAL);
 			}
 			#endif
 
 			if (lbRc1 && lbRc2 && sbi2.dwSize.Y == sbi1.dwSize.Y)
 			{
-				// GUI не смог вернуть высоту буфера...
-				// Это плохо, т.к. фар высоту буфера не меняет и будет сильно глючить на N сотнях строк...
-				int nNeedHeight = gpSrv->sbi.dwSize.Y;
+				// If ConEmu GUI fails to return buffer height, it could be bad for Far Manager
+				// Far does not change buffer height and could feel dizzy on thousands of rows
+				int nNeedHeight = this->consoleInfo.sbi.dwSize.Y;
 
 				if (nNeedHeight < 10)
 				{
@@ -388,24 +349,152 @@ void ComspecDone(int aiRc)
 
 					SetConsoleSize(0, sbi2.dwSize, rc, "ComspecDone.Force");
 
-					if (gpLogSize) LogSize(NULL, 0, ":ComspecDone.RetSize.after");
+					if (gpLogSize) LogSize(nullptr, 0, ":ComspecDone.RetSize.after");
 				}
 			}
 		}
 	}
 
-	if (gpSrv->pszPreAliases) { free(gpSrv->pszPreAliases); gpSrv->pszPreAliases = NULL; }
+	if (pszPreAliases)
+	{
+		free(pszPreAliases);
+		pszPreAliases = nullptr;
+	}
 
-	//SafeCloseHandle(ghCtrlCEvent);
-	//SafeCloseHandle(ghCtrlBreakEvent);
+	// Final steps
+	WorkerBase::Done(exitCode, reportShutdown);
 }
 
-bool GetAliases(wchar_t* asExeName, wchar_t** rsAliases, LPDWORD rnAliasesSize)
+int WorkerComspec::ProcessCommandLineArgs()
+{
+	const int baseRc = WorkerBase::ProcessCommandLineArgs();
+	if (baseRc != 0)
+		return baseRc;
+	
+	LogFunction(L"ParseCommandLine{in-progress-comspec}");
+
+	SetCmdK(gpConsoleArgs->cmdK_.GetBool());
+	
+	return 0;
+}
+
+int WorkerComspec::ProcessNewConsoleArg(LPCWSTR asCmdLine)
+{
+	HWND hConWnd = gState.realConWnd_, hConEmu = gState.conemuWnd_;
+	if (!hConWnd)
+	{
+		// This may be ConEmuC started from WSL or connector
+		CEStr guiPid(GetEnvVar(ENV_CONEMUPID_VAR_W));
+		CEStr srvPid(GetEnvVar(ENV_CONEMUSERVERPID_VAR_W));
+		if (guiPid && srvPid)
+		{
+			DWORD GuiPID = wcstoul(guiPid, NULL, 10);
+			DWORD SrvPID = wcstoul(srvPid, NULL, 10);
+			ConEmuGuiMapping GuiMapping = { sizeof(GuiMapping) };
+			if (GuiPID && LoadGuiMapping(GuiPID, GuiMapping))
+			{
+				for (size_t i = 0; i < countof(GuiMapping.Consoles); ++i)
+				{
+					if (GuiMapping.Consoles[i].ServerPID == SrvPID)
+					{
+						hConWnd = GuiMapping.Consoles[i].Console;
+						hConEmu = GuiMapping.hGuiWnd;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	if (hConWnd)
+	{
+		xf_check();
+		// тогда обрабатываем
+		bNewConsole = true;
+
+		// По идее, должен запускаться в табе ConEmu (в существующей консоли), но если нет
+		if (!hConEmu || !IsWindow(hConEmu))
+		{
+			// попытаться найти открытый ConEmu
+			hConEmu = FindWindowEx(NULL, NULL, VirtualConsoleClassMain, NULL);
+			if (hConEmu)
+				gbNonGuiMode = TRUE; // Чтобы не пытаться выполнить SendStopped (ибо некому)
+		}
+
+		int iNewConRc = CERR_RUNNEWCONSOLE;
+
+		// Query current environment
+		CEnvStrings strs(GetEnvironmentStringsW());
+
+		DWORD nCmdLen = lstrlen(asCmdLine) + 1;
+		CESERVER_REQ* pIn = ExecuteNewCmd(CECMD_NEWCMD, sizeof(CESERVER_REQ_HDR) + sizeof(CESERVER_REQ_NEWCMD) + ((nCmdLen + strs.mcch_Length) * sizeof(wchar_t)));
+		if (pIn)
+		{
+			pIn->NewCmd.hFromConWnd = hConWnd;
+
+			// hConWnd may differ from parent process, but ENV_CONEMUDRAW_VAR_W would be inherited
+			wchar_t* pszDcWnd = GetEnvVar(ENV_CONEMUDRAW_VAR_W);
+			if (pszDcWnd && (pszDcWnd[0] == L'0') && (pszDcWnd[1] == L'x'))
+			{
+				wchar_t* pszEnd = NULL;
+				pIn->NewCmd.hFromDcWnd.u = wcstoul(pszDcWnd + 2, &pszEnd, 16);
+			}
+			SafeFree(pszDcWnd);
+
+			GetCurrentDirectory(countof(pIn->NewCmd.szCurDir), pIn->NewCmd.szCurDir);
+			pIn->NewCmd.SetCommand(asCmdLine);
+			pIn->NewCmd.SetEnvStrings(strs.ms_Strings, static_cast<DWORD>(strs.mcch_Length));
+
+			CESERVER_REQ* pOut = ExecuteGuiCmd(hConEmu, pIn, hConWnd);
+			if (pOut)
+			{
+				if (pOut->hdr.cbSize <= sizeof(pOut->hdr) || pOut->Data[0] == FALSE)
+				{
+					iNewConRc = CERR_RUNNEWCONSOLEFAILED;
+				}
+				ExecuteFreeResult(pOut);
+			}
+			else
+			{
+				_ASSERTE(pOut != NULL);
+				iNewConRc = CERR_RUNNEWCONSOLEFAILED;
+			}
+			ExecuteFreeResult(pIn);
+		}
+		else
+		{
+			iNewConRc = CERR_NOTENOUGHMEM1;
+		}
+
+		gState.DisableAutoConfirmExit();
+		return iNewConRc;
+	}
+
+	// Executed outside of ConEmu, impossible to bypass command to new console
+	_ASSERTE(hConWnd != NULL);
+	return 0; // try to continue as usual
+}
+
+bool WorkerComspec::IsCmdK() const
+{
+	_ASSERTE(gpConsoleArgs->cmdK_.GetBool() == bK);
+	return bK;
+}
+
+void WorkerComspec::SetCmdK(bool useCmdK)
+{
+	bK = useCmdK;
+}
+
+
+bool WorkerComspec::GetAliases(wchar_t* asExeName, wchar_t** rsAliases, LPDWORD rnAliasesSize) const
 {
 	bool lbRc = false;
-	DWORD nAliasRC, nAliasErr, nAliasAErr = 0, nSizeA = 0;
+	// ReSharper disable once CppJoinDeclarationAndAssignment
+	DWORD nAliasRC, nAliasErr;
+	DWORD nAliasAErr = 0, nSizeA = 0;
 	_ASSERTE(asExeName && rsAliases && rnAliasesSize);
-	_ASSERTE(*rsAliases == NULL);
+	_ASSERTE(*rsAliases == nullptr);
 	*rnAliasesSize = GetConsoleAliasesLength(asExeName);
 
 	if (*rnAliasesSize == 0)

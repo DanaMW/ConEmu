@@ -35,14 +35,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/Common.h"
 #include "../common/ConEmuCheck.h"
 #include "../common/CmdLine.h"
-#include "../common/ConsoleAnnotation.h"
-#include "../common/UnicodeChars.h"
 #include "../common/WConsole.h"
-#include "../common/WErrGuard.h"
 #include "../ConEmu/version.h"
 
 #include "ConAnsiImpl.h"
 #include "ConEmuSrv.h"
+#include "ConsoleState.h"
 
 #ifdef _DEBUG
 	#define DUMP_CONSOLE_OUTPUT
@@ -110,7 +108,7 @@ bool SrvAnsiImpl::OurWriteConsole(const wchar_t* lpBuffer, DWORD nNumberOfCharsT
 			if (iMBCSLen > 0)
 			{
 				CEStrA szTemp;
-				if (char* pszTemp = szTemp.getbuffer(iMBCSLen))
+				if (char* pszTemp = szTemp.GetBuffer(iMBCSLen))
 				{
 					BOOL bFailed = FALSE; // Do not do conversion if some chars can't be mapped
 					iMBCSLen = WideCharToMultiByte(m_Owner->gCpConv.nFromCP, 0, (LPCWSTR)lpBuffer, nNumberOfCharsToWrite, pszTemp, iMBCSLen, NULL, &bFailed);
@@ -150,12 +148,12 @@ bool SrvAnsiImpl::OurWriteConsole(const wchar_t* lpBuffer, DWORD nNumberOfCharsT
 		{
 			ExecutePrepareCmd(pIn, CECMD_FLASHWINDOW, sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_FLASHWINFO)); //-V119
 			pIn->Flash.fType = eFlashBeep;
-			pIn->Flash.hWnd = ghConWnd;
+			pIn->Flash.hWnd = gState.realConWnd_;
 			pIn->Flash.bInvert = FALSE;
 			pIn->Flash.dwFlags = FLASHW_ALL;
 			pIn->Flash.uCount = 1;
 			pIn->Flash.dwTimeout = 0;
-			auto pOut = ExecuteGuiCmd(ghConWnd, pIn, ghConWnd);
+			auto pOut = ExecuteGuiCmd(gState.realConWnd_, pIn, gState.realConWnd_);
 			if (pOut) ExecuteFreeResult(pOut);
 			ExecuteFreeResult(pIn);
 		}
@@ -770,7 +768,7 @@ void SrvAnsiImpl::DoMessage(LPCWSTR asMsg, ssize_t cchLen)
 		wchar_t szTitle[MAX_PATH+64];
 		msprintf(szTitle, countof(szTitle), L"PID=%u, %s", GetCurrentProcessId(), PointToName(szExe));
 
-		GuiMessageBox(ghConEmuWnd, pszText, szTitle, MB_ICONINFORMATION|MB_SYSTEMMODAL);
+		GuiMessageBox(gState.conemuWnd_, pszText, szTitle, MB_ICONINFORMATION|MB_SYSTEMMODAL);
 
 		free(pszText);
 	}
@@ -814,7 +812,7 @@ bool SrvAnsiImpl::IsAnsiExecAllowed(LPCWSTR asCmd)
 		_ASSERTE(sizeof(pIn->wData[0])==sizeof(*asCmd));
 		memmove(pIn->wData, asCmd, cchLen*sizeof(pIn->wData[0]));
 
-		pOut = ExecuteGuiCmd(ghConWnd, pIn, ghConWnd);
+		pOut = ExecuteGuiCmd(gState.realConWnd_, pIn, gState.realConWnd_);
 		if (pOut && (pOut->DataSize() == sizeof(pOut->dwData[0])))
 		{
 			bAllowed = (pOut->dwData[0] == TRUE);
@@ -839,7 +837,7 @@ void SrvAnsiImpl::DoGuiMacro(LPCWSTR asCmd, ssize_t cchLen)
 
 		if (IsAnsiExecAllowed(pIn->GuiMacro.sMacro))
 		{
-			pOut = ExecuteGuiCmd(ghConWnd, pIn, ghConWnd);
+			pOut = ExecuteGuiCmd(gState.realConWnd_, pIn, gState.realConWnd_);
 		}
 	}
 
@@ -944,7 +942,7 @@ void SrvAnsiImpl::DoSendCWD(LPCWSTR asCmd, ssize_t cchLen)
 		EscCopyCtrlString(pszCWD, asCmd, cchLen);
 
 		// Sends CECMD_STORECURDIR into RConServer
-		SendCurrentDirectory(ghConWnd, pszCWD);
+		SendCurrentDirectory(gState.realConWnd_, pszCWD);
 
 		free(pszCWD);
 	}
@@ -966,7 +964,7 @@ void SrvAnsiImpl::DoSetProgress(WORD st, WORD pr, LPCWSTR pszName /*= NULL*/)
 			lstrcpy((wchar_t*)(pIn->wData+2), pszName);
 		}
 
-		CESERVER_REQ* pOut = ExecuteGuiCmd(ghConWnd, pIn, ghConWnd);
+		CESERVER_REQ* pOut = ExecuteGuiCmd(gState.realConWnd_, pIn, gState.realConWnd_);
 		ExecuteFreeResult(pIn);
 		ExecuteFreeResult(pOut);
 	}
@@ -1026,13 +1024,13 @@ void SrvAnsiImpl::ReportTerminalPixelSize()
 	int width = 0, height = 0;
 	RECT rcWnd = {};
 
-	if (ghConEmuWndDC && GetClientRect(ghConEmuWndDC, &rcWnd))
+	if (gState.conemuWndDC_ && GetClientRect(gState.conemuWndDC_, &rcWnd))
 	{
 		width = RectWidth(rcWnd);
 		height = RectHeight(rcWnd);
 	}
 
-	if ((width <= 0 || height <= 0) && ghConWnd && GetClientRect(ghConWnd, &rcWnd))
+	if ((width <= 0 || height <= 0) && gState.realConWnd_ && GetClientRect(gState.realConWnd_, &rcWnd))
 	{
 		width = RectWidth(rcWnd);
 		height = RectHeight(rcWnd);
@@ -1186,7 +1184,7 @@ bool SrvAnsiImpl::WriteAnsiCodes(LPCWSTR lpBuffer, DWORD nNumberOfCharsToWrite, 
 						// User may disable flashing in ConEmu settings
 						// #ANSI Implement GuiFlashWindow in common
 						DumpKnownEscape(Code.pszEscStart, Code.nTotalLen, de_Ignored);
-						// GuiFlashWindow(eFlashBeep, ghConWnd, FALSE, FLASHW_ALL, 1, 0);
+						// GuiFlashWindow(eFlashBeep, gState.realConWnd, FALSE, FLASHW_ALL, 1, 0);
 						break;
 					case L'H':
 						// #ANSI gh-1827: support 'H' to set tab stops
@@ -2247,7 +2245,7 @@ void SrvAnsiImpl::WriteAnsiCode_OSC(AnsiEscCode& Code)
 				if (pIn)
 				{
 					EscCopyCtrlString((wchar_t*)pIn->wData, Code.ArgSZ+4, Code.cchArgSZ-4);
-					CESERVER_REQ* pOut = ExecuteGuiCmd(ghConWnd, pIn, ghConWnd);
+					CESERVER_REQ* pOut = ExecuteGuiCmd(gState.realConWnd_, pIn, gState.realConWnd_);
 					ExecuteFreeResult(pIn);
 					ExecuteFreeResult(pOut);
 				}

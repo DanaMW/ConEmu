@@ -33,6 +33,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Header.h"
 #include "ConEmu.h"
 #include "HooksUnlocker.h"
+#include "GlobalHotkeys.h"
 
 bool HooksUnlockerProc(bool bUnlock)
 {
@@ -43,7 +44,7 @@ bool HooksUnlockerProc(bool bUnlock)
 		// Unlock keyboard hooks to avoid problem with debuggers
 		if (gpConEmu && (gpConEmu->GetStartupStage() > CConEmuMain::ss_Starting))
 		{
-			gpConEmu->UnRegisterHooks();
+			gpConEmu->GetGlobalHotkeys().UnRegisterHooks();
 			lbUnlocked = true;
 		}
 	}
@@ -52,7 +53,7 @@ bool HooksUnlockerProc(bool bUnlock)
 		// Return normal behavior
 		if (gpConEmu)
 		{
-			gpConEmu->RegisterHooks();
+			gpConEmu->GetGlobalHotkeys().RegisterHooks();
 		}
 	}
 

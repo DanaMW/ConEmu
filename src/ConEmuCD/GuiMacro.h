@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "../common/defines.h"
+#include "../common/CEStr.h"
 
 struct MacroInstance
 {
@@ -39,23 +40,27 @@ struct MacroInstance
 	DWORD nPID;
 };
 
-extern bool gbPreferSilentMode; // = false;
-extern bool gbMacroExportResult; // = false;
+/// Bitmasked flags to execute GuiMacro
+enum class GuiMacroFlags
+{
+	None = 0,
+	SetEnvVar = 1,
+	ExportEnvVar = 2,
+	PrintResult = 4,
+	/// Return result via EnvVar only
+	PreferSilentMode = 8,
+};
 
-typedef DWORD GuiMacroFlags;
-const GuiMacroFlags
-	gmf_SetEnvVar    = 1,
-	gmf_ExportEnvVar = 2,
-	gmf_PrintResult  = 4,
-	gmf_None         = 0;
+/// test if all flags of f2 are set in f1
+bool operator&(GuiMacroFlags f1, GuiMacroFlags f2);
+/// append flags from f2 to f1
+GuiMacroFlags operator|(GuiMacroFlags f1, GuiMacroFlags f2);
 
-void ArgGuiMacro(CEStr& szArg, MacroInstance& Inst);
+void ArgGuiMacro(const CEStr& szArg, MacroInstance& inst);
 
-int DoGuiMacro(LPCWSTR asCmdArg, MacroInstance& Inst, GuiMacroFlags Flags, BSTR* bsResult = NULL);
+int DoGuiMacro(LPCWSTR asCmdArg, MacroInstance& inst, GuiMacroFlags flags, BSTR* bsResult = nullptr);
 
-#if defined(__GNUC__)
-extern "C"
-#endif
-int __stdcall GuiMacro(LPCWSTR asInstance, LPCWSTR asMacro, BSTR* bsResult = NULL);
+// defined in ExportedFunctions.h
+// int __stdcall GuiMacro(LPCWSTR asInstance, LPCWSTR asMacro, BSTR* bsResult = NULL);
 
 int GuiMacroCommandLine(LPCWSTR asCmdLine);

@@ -44,6 +44,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ConEmuApp.h"
 #include "ConfirmDlg.h"
 #include "DefaultTerm.h"
+#include "GlobalHotkeys.h"
 #include "HotkeyDlg.h"
 #include "LngRc.h"
 #include "Options.h"
@@ -57,7 +58,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SetPgComspec.h"
 #include "SetPgDebug.h"
 #include "SetPgFeatures.h"
-#include "SetPgIntegr.h"
 #include "SetPgKeys.h"
 #include "SetPgPaste.h"
 #include "SetPgSizePos.h"
@@ -68,6 +68,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TrayIcon.h"
 #include "VConGroup.h"
 #include "VirtualConsole.h"
+
 
 #ifdef _DEBUG
 void CSetDlgButtons::UnitTests()
@@ -165,6 +166,9 @@ bool CSetDlgButtons::ProcessButtonClick(HWND hDlg, WORD CB, BYTE uCheck)
 			break;
 		case cbConfirmDetach:
 			OnBtn_ConfirmDetach(hDlg, CB, uCheck);
+			break;
+		case cbConfirmResetTerminal:
+			OnBtn_ConfirmResetTerminal(hDlg, CB, uCheck);
 			break;
 		case cbLongOutput:
 			OnBtn_LongOutput(hDlg, CB, uCheck);
@@ -1922,7 +1926,7 @@ void CSetDlgButtons::OnBtn_MultiCon(HWND hDlg, WORD CB, BYTE uCheck)
 	_ASSERTE(CB==cbMultiCon);
 
 	gpSet->mb_isMulti = _bool(uCheck);
-	gpConEmu->UpdateWinHookSettings();
+	gpConEmu->GetGlobalHotkeys().UpdateWinHookSettings();
 
 } // cbMultiCon
 
@@ -1982,6 +1986,14 @@ void CSetDlgButtons::OnBtn_ConfirmDetach(HWND hDlg, WORD CB, BYTE uCheck)
 	gpSet->isMultiDetachConfirm = _bool(uCheck);
 
 } // cbConfirmDetach
+
+//cbConfirmResetTerminal
+void CSetDlgButtons::OnBtn_ConfirmResetTerminal(HWND hDlg, WORD CB, BYTE uCheck)
+{
+	_ASSERTE(CB == cbConfirmResetTerminal);
+
+	gpSet->isResetTerminalConfirm = _bool(uCheck);
+}  // cbConfirmResetTerminal
 
 
 // cbLongOutput
@@ -2620,9 +2632,9 @@ void CSetDlgButtons::OnBtn_DebugLog(HWND hDlg, WORD CB, BYTE uCheck)
 	{
 		if (!gpSet->isDebugLog && !gpConEmu->opt.AdvLogging.Exists)
 			gpSet->isDebugLog = 1;
-		_ASSERTE(gpSet->isLogging());
 		gpSet->EnableLogging();
-		CSetPgFeatures* pFeat = NULL;
+		_ASSERTE(gpSet->isLogging());
+		CSetPgFeatures* pFeat = nullptr;
 		if (gpSetCls->GetPageObj(pFeat))
 			pFeat->UpdateLogLocation();
 	}
@@ -2631,6 +2643,7 @@ void CSetDlgButtons::OnBtn_DebugLog(HWND hDlg, WORD CB, BYTE uCheck)
 		if (gpSet->isDebugLog && !gpConEmu->opt.AdvLogging.Exists)
 			gpSet->isDebugLog = 0;
 		gpSet->DisableLogging();
+		_ASSERTE(!gpSet->isLogging());
 	}
 
 } // cbDebugLog
@@ -3481,7 +3494,7 @@ void CSetDlgButtons::OnBtn_UseWinArrowNumTab(HWND hDlg, WORD CB, BYTE uCheck)
 	#endif
 	}
 
-	gpConEmu->UpdateWinHookSettings();
+	gpConEmu->GetGlobalHotkeys().UpdateWinHookSettings();
 
 } // cbUseWinArrows || cbUseWinNumber || cbUseWinTab
 
@@ -3517,7 +3530,7 @@ void CSetDlgButtons::OnBtn_SendConsoleSpecials(HWND hDlg, WORD CB, BYTE uCheck)
 	#endif
 	}
 
-	gpConEmu->UpdateWinHookSettings();
+	gpConEmu->GetGlobalHotkeys().UpdateWinHookSettings();
 
 } // cbSendAltTab || cbSendAltEsc || cbSendAltPrintScrn || cbSendPrintScrn || cbSendCtrlEsc
 
@@ -3529,12 +3542,19 @@ void CSetDlgButtons::OnBtn_InstallKeybHooks(HWND hDlg, WORD CB, BYTE uCheck)
 
 	switch (uCheck)
 	{
-		// Разрешено
-	case BST_CHECKED: gpSet->m_isKeyboardHooks = 1; gpConEmu->RegisterHooks(); break;
-		// Запрещено
-	case BST_UNCHECKED: gpSet->m_isKeyboardHooks = 2; gpConEmu->UnRegisterHooks(); break;
-		// Запрос при старте
-	case BST_INDETERMINATE: gpSet->m_isKeyboardHooks = 0; break;
+	case BST_CHECKED: // allowed
+		gpSet->m_isKeyboardHooks = 1;
+		gpConEmu->GetGlobalHotkeys().RegisterHooks();
+		break;
+
+	case BST_UNCHECKED: // prohibited
+		gpSet->m_isKeyboardHooks = 2;
+		gpConEmu->GetGlobalHotkeys().UnRegisterHooks();
+		break;
+
+	case BST_INDETERMINATE: // ask on startup
+		gpSet->m_isKeyboardHooks = 0;
+		break;
 	}
 } // cbInstallKeybHooks
 

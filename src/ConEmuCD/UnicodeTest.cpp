@@ -31,17 +31,18 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SHOWDEBUGSTR
 
 #include "ConsoleMain.h"
+#include "ConEmuSrv.h"
+#include "ExitCodes.h"
+#include "UnicodeTest.h"
 
+
+#include "ConsoleState.h"
 #include "../common/Common.h"
 #include "../common/ConsoleRead.h"
 #include "../common/EnvVar.h"
 #include "../common/StartupEnvEx.h"
 #include "../common/UnicodeChars.h"
 #include "../common/WCodePage.h"
-#include "../ConEmu/version.h"
-
-#include "ConEmuSrv.h"
-#include "UnicodeTest.h"
 
 void PrintConsoleInfo()
 {
@@ -65,9 +66,9 @@ void PrintConsoleInfo()
 	CONSOLE_SCREEN_BUFFER_INFO csbi = {};
 	CONSOLE_CURSOR_INFO ci = {};
 
-	msprintf(szInfo, countof(szInfo), L"ConHWND=0x%08X, Class=\"", LODWORD(ghConWnd));
-	if (ghConWnd)
-		GetClassName(ghConWnd, szInfo+lstrlen(szInfo), 255);
+	msprintf(szInfo, countof(szInfo), L"ConHWND=0x%08X, Class=\"", LODWORD(gState.realConWnd_));
+	if (gState.realConWnd_)
+		GetClassName(gState.realConWnd_, szInfo+lstrlen(szInfo), 255);
 	lstrcpyn(szInfo+lstrlen(szInfo), L"\"\r\n", 4);
 	_wprintf(szInfo);
 
@@ -76,7 +77,7 @@ void PrintConsoleInfo()
 	if (gui.GetLen() > 64) gui.ms_Val[64] = 0;
 	CEStr srv(GetEnvVar(L"ConEmuServerPID"));
 	if (srv.GetLen() > 64) srv.ms_Val[64] = 0;
-	msprintf(szInfo, countof(szInfo), L"GuiPID=%u, ConEmuPID=%s, ConEmuServerPID=%s\n", gnConEmuPID, gui.c_str(L""), srv.c_str(L""));
+	msprintf(szInfo, countof(szInfo), L"GuiPID=%u, ConEmuPID=%s, ConEmuServerPID=%s\n", gState.conemuPid_, gui.c_str(L""), srv.c_str(L""));
 	_wprintf(szInfo);
 	}
 
@@ -150,7 +151,7 @@ void PrintConsoleInfo()
 	CPINFOEX cpinfo = {};
 	DWORD dwLayout = 0, dwLayoutRc = -1;
 	SetLastError(0);
-	IsKeyboardLayoutChanged(dwLayout, &dwLayoutRc);
+	gpWorker->IsKeyboardLayoutChanged(dwLayout, &dwLayoutRc);
 
 	msprintf(szInfo, countof(szInfo), L"ConsoleCP=%u, ConsoleOutputCP=%u, Layout=%08X (%s errcode=%u)\r\n",
 		nCP, nOutCP, dwLayout, dwLayoutRc ? L"failed" : L"OK", dwLayoutRc);

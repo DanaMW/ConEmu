@@ -187,6 +187,7 @@ project "common-kernel"
   exceptionhandling "Off"
 
   files (common_kernel)
+  files {"src/common/defines.h"}
 
   removefiles (common_remove)
   removefiles (tests_remove)
@@ -274,6 +275,7 @@ project "ConEmu"
     "src/ConEmu/*.bmp",
     "src/ConEmu/*.cur",
     "src/ConEmu/*.ico",
+    "Release/ConEmu/ConEmu.l10n",
     "src/ConEmu/conemu.gcc.manifest",
   }
 
@@ -284,6 +286,7 @@ project "ConEmu"
   vpaths {
     { ["Common"]    = {"src/common/*.h"} },
     { ["Resources"] = {"**/*.rc", "**/*.rc2", "**/*.manifest", "**/*.bmp", "**/*.cur", "**/*.ico"} },
+    { ["Localizations"] = {"**/Lng*.*", "Release/ConEmu/ConEmu.l10n"} },
     { ["Exports"]   = {"**.def"} },
     { ["Macro"]     = {"**/Macro*.*"} },
     { ["Graphics"]  = {"**/GdiObjects.*", "**/Font*.*", "**/CustomFonts.*", "**/Background.*", "**/ColorFix.*",
@@ -329,6 +332,8 @@ project "ConEmuC"
     "src/ConEmuC/ConEmuC.exe.manifest",
   }
 
+  removefiles (tests_remove)
+
   vpaths {
     { ["Headers"] = {"**.h"} },
     { ["Sources"] = {"**.cpp"} },
@@ -368,6 +373,8 @@ project "ConEmuCD"
     linkoptions { "--image-base=0x6F780000000" }
   filter {}
 
+  defines { "DLL_CONEMUCD_EXPORTS" }
+
   links {
     "common-kernel",
     "common-user",
@@ -381,6 +388,8 @@ project "ConEmuCD"
     "src/ConEmuCD/*.rc",
   }
 
+  removefiles (tests_remove)
+
   filter "action:vs*"
     files "src/ConEmuCD/export.def"
   filter "action:gmake"
@@ -388,14 +397,14 @@ project "ConEmuCD"
   filter {}
 
   vpaths {
+    { ["Exports"]   = {"**.def", "**/ExportedFunctions.h"} },
     { ["Interface"] = {"**/Common.h", "**/SrvCommands.*", "**/Queue.*", "**/SrvPipes.*"} },
     { ["Automation"] = {"**/Actions.*", "**/GuiMacro.*"} },
     { ["Console"] = {"**/ConAnsi.*", "**/ConAnsiImpl.*", "**/ConData.*"} },
-    { ["Server"] = {"**/ServerLegacy.*", "**/ConEmuSrv.*"} },
+    { ["Server"] = {"**/ConEmuSrv.*", "**/ConEmuCmd.*", "**/WorkerBase.*"} },
     { ["Headers"] = {"**.h"} },
     { ["Sources"] = {"**.cpp"} },
     { ["Resources"] = {"**.rc", "**.rc2", "**.manifest"} },
-    { ["Exports"]   = {"**.def"} },
   }
 
   target_dir("ConEmu/")
@@ -458,6 +467,7 @@ project "ConEmuHk"
     "**/CETaskBar_.*",
     "**/*-orig.*",
   }
+  removefiles (tests_remove)
 
   filter { "files:**/HDE/*.*" }
     flags {"ExcludeFromBuild"}
@@ -860,7 +870,7 @@ project "Tests"
   language "C++"
   exceptionhandling "On"
 
-  defines {"TESTS_MEMORY_MODE"}
+  defines {"TESTS_MEMORY_MODE", "CE_UNIT_TEST=1"}
 
   files {
     -- tests
@@ -875,6 +885,8 @@ project "Tests"
     "src/ConEmu/*.cpp",
     "src/ConEmu/*.h",
     "src/ConEmu/conemu.gcc.manifest",
+    -- server sources
+    "src/ConEmuCD/StartEnv.cpp",
     -- googletest
     "src/modules/googletest/googletest/src/gtest-all.cc",
   }

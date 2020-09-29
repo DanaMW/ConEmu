@@ -186,7 +186,18 @@ public:
 	virtual bool SelectNextItem(bool bNext, bool bProcess) { return false; };
 
 public:
-	// Members
-	static void setHotkeyCheckbox(HWND hDlg, WORD nCtrlId, int iHotkeyId, LPCWSTR pszFrom, LPCWSTR pszTo, UINT uChecked);
-	static void setCtrlTitleByHotkey(HWND hDlg, WORD nCtrlId, int iHotkeyId, LPCWSTR pszFrom, LPCWSTR pszTo);
+	/// Update string like "Win+Numbers - activate console" or "Paste mode #1 (Shift+Ins)" with actual hotkey
+	/// Examples:
+	///    gbPasteM1 has title "Paste mode #1 (Shift+Ins)", pszFrom=L"(", pszTo=L")"
+	///      `Shift+Ins` is replaced replaced with current user defined hotkey value
+	///    cbMouseDragWindow has title "Ctrl+Alt - drag ConEmu window", pszFrom=NULL, pszTo=L" - "
+	///      `Ctrl+Alt` is replaced
+	/// If pszGroup is specified, the key is replaced with pszGroup before processing the control label
+	/// e.g. pszGroup="Numbers" than replace szFull="Ctrl+1" with "Ctrl+Numbers"
+	static void setCtrlTitleByHotkey(HWND hDlg, WORD nCtrlId, int iHotkeyId, LPCWSTR pszFrom, LPCWSTR pszTo, LPCWSTR pszGroup);
+	/// Helper function for setCtrlTitleByHotkey
+	/// e.g. pszGroup="Numbers" than replace szFull="Ctrl+1" with "Ctrl+Numbers"
+	static void ApplyHotkeyGroupName(wchar_t (&szFull)[128], LPCWSTR pszGroup);
+	/// Helper function for setCtrlTitleByHotkey
+	static CEStr ApplyHotkeyToTitle(CEStr& label, LPCWSTR pszFrom, LPCWSTR pszTo, LPCWSTR pszHotkey);
 };

@@ -53,6 +53,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Options.h"
 #include "OptionsClass.h"
 #include "ConEmu.h"
+#include "LngRc.h"
 #include "VirtualConsole.h"
 #include "TrayIcon.h"
 #include "VConChild.h"
@@ -101,7 +102,9 @@ WARNING("TB_GETIDEALSIZE - awailable on XP only, use insted TB_GETMAXSIZE");
 CTabBarClass::CTabBarClass()
 {
 	mp_DummyTab = new CTabID(NULL, NULL, fwt_Panels|fwt_CurrentFarWnd, 0, 0, 0);
+	#ifdef _DEBUG // due to unittests
 	_ASSERTE(mp_DummyTab->RefCount()==1);
+	#endif
 
 	#ifdef TAB_REF_PLACE
 	m_Tabs.SetPlace("TabBar.cpp:tabs.m_Tabs",0);
@@ -455,7 +458,9 @@ bool CTabBarClass::IsTabsActive() const
 		_ASSERTE(this!=NULL);
 		return false;
 	}
+	#ifdef _DEBUG // due to unittests
 	_ASSERTE(!_active || inActivate.load()>0 || IsTabsCreated());
+	#endif
 	return _active;
 }
 
@@ -1069,6 +1074,8 @@ bool CTabBarClass::OnNotify(LPNMHDR nmhdr, LRESULT& lResult)
 
 	if (!_active)
 		return false;
+	if (!nmhdr)
+		return false;
 
 	lResult = 0;
 
@@ -1081,12 +1088,12 @@ bool CTabBarClass::OnNotify(LPNMHDR nmhdr, LRESULT& lResult)
 		if (!gpSet->isMultiShowButtons)
 			return false;
 
-		LPNMTBGETINFOTIP pDisp = (LPNMTBGETINFOTIP)nmhdr;
+		auto& getInfoTip = *reinterpret_cast<LPNMTBGETINFOTIP>(nmhdr);
 
-		//if (pDisp->iItem>=1 && pDisp->iItem<=MAX_CONSOLE_COUNT)
-		if (pDisp->iItem == TID_ACTIVE_NUMBER)
+		//if (getInfoTip.iItem>=1 && getInfoTip.iItem<=MAX_CONSOLE_COUNT)
+		if (getInfoTip.iItem == TID_ACTIVE_NUMBER)
 		{
-			if (!pDisp->pszText || !pDisp->cchTextMax)
+			if (!getInfoTip.pszText || !getInfoTip.cchTextMax)
 				return true;
 
 			CVConGuard VCon;
@@ -1095,50 +1102,52 @@ bool CTabBarClass::OnNotify(LPNMHDR nmhdr, LRESULT& lResult)
 
 			if (pszTitle)
 			{
-				lstrcpyn(pDisp->pszText, pszTitle, pDisp->cchTextMax);
+				lstrcpyn(getInfoTip.pszText, pszTitle, getInfoTip.cchTextMax);
 			}
 			else
 			{
-				pDisp->pszText[0] = 0;
+				getInfoTip.pszText[0] = 0;
 			}
 		}
-		else if (pDisp->iItem == TID_CREATE_CON)
+		else if (getInfoTip.iItem == TID_CREATE_CON)
 		{
-			lstrcpyn(pDisp->pszText, _T("Create new console"), pDisp->cchTextMax);
+			lstrcpyn(getInfoTip.pszText, CLngRc::getRsrc(lng_CreateNewConsoleHint/*"Create new console"*/), getInfoTip.cchTextMax);
 		}
-		else if (pDisp->iItem == TID_ALTERNATIVE)
+		else if (getInfoTip.iItem == TID_ALTERNATIVE)
 		{
-			bool lbChecked = mp_Rebar->GetToolBtnChecked(TID_ALTERNATIVE);
-			lstrcpyn(pDisp->pszText,
-			         lbChecked ? L"Alternative mode is ON (console freezed)" : L"Alternative mode is off",
-			         pDisp->cchTextMax);
+			const bool lbChecked = mp_Rebar->GetToolBtnChecked(TID_ALTERNATIVE);
+			lstrcpyn(getInfoTip.pszText, lbChecked
+				? CLngRc::getRsrc(lng_AlternativeIsOnHint/*"Alternative mode is ON (console frozen)"*/)
+				: CLngRc::getRsrc(lng_AlternativeIsOffHint/*"Alternative mode is off"*/),
+				getInfoTip.cchTextMax);
 		}
-		else if (pDisp->iItem == TID_SCROLL)
+		else if (getInfoTip.iItem == TID_SCROLL)
 		{
-			bool lbChecked = mp_Rebar->GetToolBtnChecked(TID_SCROLL);
-			lstrcpyn(pDisp->pszText,
-			         lbChecked ? L"BufferHeight mode is ON (scrolling enabled)" : L"BufferHeight mode is off",
-			         pDisp->cchTextMax);
+			const bool lbChecked = mp_Rebar->GetToolBtnChecked(TID_SCROLL);
+			lstrcpyn(getInfoTip.pszText, lbChecked
+				? CLngRc::getRsrc(lng_BufferHeightOnHint/*"BufferHeight mode is ON (scrolling enabled)"*/)
+				: CLngRc::getRsrc(lng_BufferHeightOffHint/*"BufferHeight mode is off"*/),
+				getInfoTip.cchTextMax);
 		}
-		else if (pDisp->iItem == TID_MINIMIZE)
+		else if (getInfoTip.iItem == TID_MINIMIZE)
 		{
-			lstrcpyn(pDisp->pszText, _T("Minimize window"), pDisp->cchTextMax);
+			lstrcpyn(getInfoTip.pszText, CLngRc::getRsrc(lng_MinimizeWindowHint/*"Minimize window"*/), getInfoTip.cchTextMax);
 		}
-		else if (pDisp->iItem == TID_MAXIMIZE)
+		else if (getInfoTip.iItem == TID_MAXIMIZE)
 		{
-			lstrcpyn(pDisp->pszText, _T("Maximize window"), pDisp->cchTextMax);
+			lstrcpyn(getInfoTip.pszText, CLngRc::getRsrc(lng_MaximizeWindowHint/*"Maximize window"*/), getInfoTip.cchTextMax);
 		}
-		else if (pDisp->iItem == TID_APPCLOSE)
+		else if (getInfoTip.iItem == TID_APPCLOSE)
 		{
-			lstrcpyn(pDisp->pszText, _T("Close ALL consoles"), pDisp->cchTextMax);
+			lstrcpyn(getInfoTip.pszText, CLngRc::getRsrc(lng_CloseAllConsolesHint/*"Close ALL consoles"*/), getInfoTip.cchTextMax);
 		}
-		//else if (pDisp->iItem == TID_COPYING)
+		//else if (getInfoTip.iItem == TID_COPYING)
 		//{
-		//	lstrcpyn(pDisp->pszText, _T("Show copying queue"), pDisp->cchTextMax);
+		//	lstrcpyn(getInfoTip.pszText, _T("Show copying queue"), getInfoTip.cchTextMax);
 		//}
-		else if (pDisp->iItem == TID_SYSMENU)
+		else if (getInfoTip.iItem == TID_SYSMENU)
 		{
-			lstrcpyn(pDisp->pszText, _T("Show system menu (RClick for Settings)"), pDisp->cchTextMax);
+			lstrcpyn(getInfoTip.pszText, CLngRc::getRsrc(lng_ShowSystemMenuHint/*"Show system menu (RClick for Settings)"*/), getInfoTip.cchTextMax);
 		}
 		else
 		{

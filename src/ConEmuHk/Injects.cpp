@@ -30,14 +30,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/Common.h"
 #include "../common/ConEmuCheck.h"
-#include "../common/execute.h"
 #include "../common/WModuleCheck.h"
 #include "Injects.h"
 #include "InjectsBootstrap.h"
 #include "hlpProcess.h"
 
 extern HMODULE ghOurModule;
-extern HWND ghConWnd;
 
 InjectsFnPtr gfLoadLibrary;
 InjectsFnPtr gfLdrGetDllHandleByName;
@@ -61,7 +59,7 @@ UINT_PTR GetLoadLibraryAddress()
 		return 0;
 	}
 
-	HMODULE hConEmuHk = ::GetModuleHandle(WIN3264TEST(L"ConEmuHk.dll", L"ConEmuHk64.dll"));
+	HMODULE hConEmuHk = ::GetModuleHandle(ConEmuHk_DLL_3264);
 	if (hConEmuHk && (hConEmuHk != ghOurModule))
 	{
 		typedef FARPROC (WINAPI* GetLoadLibraryW_t)();
@@ -120,7 +118,7 @@ UINT_PTR GetLdrGetDllHandleByNameAddress()
 // The handle must have the PROCESS_CREATE_THREAD, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_WRITE, and PROCESS_VM_READ
 // The function may start appropriate bitness of ConEmuC.exe with "/SETHOOKS=..." switch
 // If bitness matches, use WriteProcessMemory and SetThreadContext immediately
-CINJECTHK_EXIT_CODES InjectHooks(PROCESS_INFORMATION pi, BOOL abLogProcess, LPCWSTR asConEmuHkDir /*= NULL*/)
+CINJECTHK_EXIT_CODES InjectHooks(PROCESS_INFORMATION pi, BOOL abLogProcess, LPCWSTR asConEmuHkDir, HWND hConWnd)
 {
 	CINJECTHK_EXIT_CODES iRc = CIH_OK/*0*/;
 	wchar_t szDllDir[MAX_PATH*2];
@@ -177,21 +175,13 @@ CINJECTHK_EXIT_CODES InjectHooks(PROCESS_INFORMATION pi, BOOL abLogProcess, LPCW
 	}
 	else
 	{
-		wchar_t* pszSlash;
-		if (!GetModuleFileName(ghOurModule, szDllDir, MAX_PATH))
-		{
-			#ifdef _DEBUG
-			DWORD dwErr = GetLastError();
-			_CrtDbgBreak();
-			#endif
-			//_printf("GetModuleFileName failed! ErrCode=0x%08X\n", dwErr);
-			iRc = CIH_GetModuleFileName/*-501*/;
-			goto wrap;
-		}
-		pszSlash = wcsrchr(szDllDir, L'\\');
-		if (!pszSlash)
-			pszSlash = szDllDir;
-		*pszSlash = 0;
+		#ifdef _DEBUG
+		//_CrtDbgBreak();
+		_ASSERTE(FALSE && "asConEmuHkDir is empty, can't set hooks");
+		#endif
+		//_printf("GetModuleFileName failed! ErrCode=0x%08X\n", dwErr);
+		iRc = CIH_GetModuleFileName/*-501*/;
+		goto wrap;
 	}
 
 	if (hKernel)
@@ -392,12 +382,12 @@ CINJECTHK_EXIT_CODES InjectHooks(PROCESS_INFORMATION pi, BOOL abLogProcess, LPCW
 				#endif
 
 				CESERVER_REQ* pIn = ExecuteNewCmdOnCreate(
-					NULL, ghConWnd, eSrvLoaded,
+					NULL, hConWnd, eSrvLoaded,
 					L"", szInfo, L"", L"", NULL, NULL, NULL, NULL,
 					SelfImageBits, ImageSystem, NULL, NULL, NULL);
 				if (pIn)
 				{
-					CESERVER_REQ* pOut = ExecuteGuiCmd(ghConWnd, pIn, ghConWnd);
+					CESERVER_REQ* pOut = ExecuteGuiCmd(hConWnd, pIn, hConWnd);
 					ExecuteFreeResult(pIn);
 					if (pOut) ExecuteFreeResult(pOut);
 				}
@@ -423,6 +413,7 @@ wrap:
 			_ASSERTEX(ghInjectsInMainThread!=NULL);
 		}
 
+		// ReSharper disable once CppDeclaratorDisambiguatedAsFunction
 		extern CESERVER_CONSOLE_APP_MAPPING* GetAppMapPtr();
 		CESERVER_CONSOLE_APP_MAPPING* pAppMap = GetAppMapPtr();
 		if (pAppMap)

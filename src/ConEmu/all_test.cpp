@@ -44,10 +44,14 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/WModuleCheck.h"
 #include "../common/WUser.h"
 #include "ConEmu.h"
-#include "Hotkeys.h"
-#include "Macro.h"
-#include "Match.h"
 #include "SettingsStorage.h"
+
+#if CE_UNIT_TEST==1
+#include "../common/MAssert.h"
+extern bool gbVerifyVerbose;
+#else
+#error "CE_UNIT_TEST should be defined for unit tests"
+#endif
 
 
 // Hide from global namespace
@@ -327,13 +331,14 @@ void DebugNeedCmdUnitTests()
 		{L"notepad text & start explorer", FALSE},
 	};
 	LPCWSTR psArgs;
-	BOOL bNeedCut, bRootIsCmd, bAlwaysConfirm, bAutoDisable;
+	bool bNeedCut, bRootIsCmd, bAlwaysConfirm, bAutoDisable;
 	CEStr szExe;
 	for (INT_PTR i = 0; i < countof(Tests); i++)
 	{
 		szExe.Empty();
 		RConStartArgsEx rcs; rcs.pszSpecialCmd = lstrdup(Tests[i].pszCmd);
 		rcs.ProcessNewConArg();
+		// ReSharper disable once CppJoinDeclarationAndAssignment
 		b = IsNeedCmd(TRUE, rcs.pszSpecialCmd, szExe, &psArgs, &bNeedCut, &bRootIsCmd, &bAlwaysConfirm, &bAutoDisable);
 		_ASSERTE(b == Tests[i].bNeed);
 	}
@@ -355,7 +360,7 @@ void DebugCmdParserTests()
 		pszCmp = Tests[i].szCmp;
 		while ((pszSrc = NextArg(pszSrc, ls)))
 		{
-			DemangleArg(ls, ls.mb_Quoted);
+			DemangleArg(ls, ls.m_bQuoted);
 			iCmp = wcscmp(ls.ms_Val, pszCmp);
 			if (iCmp != 0)
 			{
@@ -670,79 +675,95 @@ void XmlValueConvertTest()
 
 } // end of namespace
 
-TEST(ConEmuTest, DebugNeedCmdUnitTests)
+class General : public testing::Test
+{
+public:
+	void SetUp() override
+	{
+		gbVerifyFailed = false;
+		gbVerifyStepFailed = false;
+		gbVerifyVerbose = false;
+	}
+
+	void TearDown() override
+	{
+	}
+};
+
+
+TEST_F(General, DebugNeedCmdUnitTests)
 {
 	DebugNeedCmdUnitTests();
 }
-TEST(ConEmuTest, DebugCmdParserTests)
+TEST_F(General, DebugCmdParserTests)
 {
 	DebugCmdParserTests();
 }
-TEST(ConEmuTest, UnitMaskTests)
+TEST_F(General, UnitMaskTests)
 {
 	UnitMaskTests();
 }
-TEST(ConEmuTest, UnitDriveTests)
+TEST_F(General, UnitDriveTests)
 {
 	UnitDriveTests();
 }
-TEST(ConEmuTest, UnitPathTests)
+TEST_F(General, UnitPathTests)
 {
 	UnitPathTests();
 }
-TEST(ConEmuTest, UnitFileNamesTest)
+TEST_F(General, UnitFileNamesTest)
 {
 	UnitFileNamesTest();
 }
-TEST(ConEmuTest, UnitExpandTest)
+TEST_F(General, UnitExpandTest)
 {
 	UnitExpandTest();
 }
-TEST(ConEmuTest, UnitModuleTest)
+TEST_F(General, UnitModuleTest)
 {
 	UnitModuleTest();
 }
-TEST(ConEmuTest, DebugUnitMprintfTest)
+TEST_F(General, DebugUnitMprintfTest)
 {
 	DebugUnitMprintfTest();
 }
-TEST(ConEmuTest, DebugVersionTest)
+TEST_F(General, DebugVersionTest)
 {
 	DebugVersionTest();
 }
-TEST(ConEmuTest, DebugFileExistTests)
+TEST_F(General, DebugFileExistTests)
 {
 	DebugFileExistTests();
 }
-TEST(ConEmuTest, DebugStrUnitTest)
+TEST_F(General, DebugStrUnitTest)
 {
 	DebugStrUnitTest();
 }
-TEST(ConEmuTest, DebugCpUnitTest)
+TEST_F(General, DebugCpUnitTest)
 {
 	DebugCpUnitTest();
 }
-TEST(ConEmuTest, DebugProcessNameTest)
+TEST_F(General, DebugProcessNameTest)
 {
 	DebugProcessNameTest();
 }
-TEST(ConEmuTest, DebugTestSetParser)
+TEST_F(General, DebugTestSetParser)
 {
 	DebugTestSetParser();
 }
-TEST(ConEmuTest, DebugMapsTests)
+TEST_F(General, DebugMapsTests)
 {
 	DebugMapsTests();
 }
-TEST(ConEmuTest, DebugArrayTests)
+TEST_F(General, DebugArrayTests)
 {
 	DebugArrayTests();
 }
-TEST(ConEmuTest, DebugJsonTest)
+TEST_F(General, DebugJsonTest)
 {
 	DebugJsonTest();
 }
-TEST(ConEmuTest, XmlValueConvertTest)
+TEST_F(General, XmlValueConvertTest)
 {
 	XmlValueConvertTest();
 }

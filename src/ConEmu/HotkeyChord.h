@@ -31,8 +31,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/Common.h"
 
-// Strings
-#define gsNoHotkey L"<None>"
+// #include "LngRc.h"
+#define gsNoHotkey CLngRc::getRsrc(lng_KeyNone/*"<None>"*/)
 
 #define CEHOTKEY_MODMASK    0xFFFFFF00
 #define CEHOTKEY_NUMHOSTKEY 0xFFFFFF00
@@ -103,7 +103,7 @@ public:
 	static DWORD GetModifier(DWORD VkMod, int idx/*1..3*/);
 
 	void  SetHotKey(const ConEmuHotKeyType HkType, BYTE Vk, BYTE vkMod1 = 0, BYTE vkMod2 = 0, BYTE vkMod3 = 0);
-	void  SetVkMod(const ConEmuHotKeyType HkType, DWORD VkMod);
+	void  SetVkMod(const ConEmuHotKeyType HkType, DWORD VkMod, bool rawMod = false);
 	DWORD GetVkMod(const ConEmuHotKeyType HkType) const;
 
 	void  Set(BYTE aVk = 0, ConEmuModifiers aMod = cvk_NULL);

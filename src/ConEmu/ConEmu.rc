@@ -308,26 +308,27 @@ STYLE DS_SETFONT | DS_FIXEDSYS | DS_CONTROL | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    GROUPBOX        "Confirm actions",gbConfirmActions,4,1,375,53
+    GROUPBOX        "Confirm actions",gbConfirmActions,4,1,375,66
     CONTROL         "Confirm creating new console/tab (Win+W, toolbar [+])",cbNewConfirm,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,14,363,8
     CONTROL         "Confirm tab duplicating (Duplicate root menu item)",cbDupConfirm,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,26,363,10
     CONTROL         "Confirm console detach",cbConfirmDetach,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,39,363,8
-    GROUPBOX        "Close confirmations",gbConfirmClose,4,63,375,81
+    CONTROL         "Confirm terminal reset",cbConfirmResetTerminal,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,51,363,8
+    GROUPBOX        "Close confirmations",gbConfirmClose,4,72,375,81
     CONTROL         "Confirm window closing (cross click)",cbCloseWindowConfirm,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,76,363,8
-    CONTROL         "Confirm tab closing",cbCloseConsoleConfirm,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,89,363,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,85,363,8
+    CONTROL         "Confirm tab closing",cbCloseConsoleConfirm,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,98,363,8
     CONTROL         "When running process was detected",cbConfirmCloseRunning,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,102,363,8
-    GROUPBOX        "Far Manager",gbConfirmCloseFar,4,115,375,29
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,111,363,8
+    GROUPBOX        "Far Manager",gbConfirmCloseFar,4,124,375,29
     CONTROL         "Confirm Far Manager Editor/Viewer tab closing",cbCloseEditViewConfirm,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,128,363,8
-    GROUPBOX        "Miscellaneous",gbConfirmMisc,4,150,375,39
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,137,363,8
+    GROUPBOX        "Miscellaneous",gbConfirmMisc,4,159,375,39
     CONTROL         "Show ‘... was hidden’ warning in TSA",cbShowWasHiddenMsg,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,163,363,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,172,363,8
     CONTROL         "Show ‘... brought ConEmu OnTop. Revert?’ confirmation box",cbShowWasSetOnTopMsg,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,176,363,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,185,363,8
 END
 
 IDD_SPG_HISTORY DIALOGEX 0, 0, 381, 242
@@ -631,37 +632,39 @@ BEGIN
     LTEXT           "https://conemu.github.io/en/Settings.html",stSetPgWikiLink,125,264,373,8,SS_NOTIFY
 END
 
-IDD_SPG_INFO DIALOGEX 0, 0, 381, 224
+IDD_SPG_INFO DIALOGEX 0, 0, 381, 249
 STYLE DS_SETFONT | DS_FIXEDSYS | DS_CONTROL | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     GROUPBOX        "Performance counters",gbPerformance,4,1,375,30
     GROUPBOX        "Console states",IDC_CONSOLE_STATES,4,35,375,28
-    GROUPBOX        "Processes",gbInfoProcesses,4,65,204,125
+    GROUPBOX        "Processes",gbInfoProcesses,4,65,204,144
     EDITTEXT        tsTopPID,40,45,69,12,ES_AUTOHSCROLL | ES_READONLY
-    LISTBOX         lbProcesses,9,76,194,109,NOT LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP
+    LISTBOX         lbProcesses,9,76,194,127,NOT LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP
     EDITTEXT        tPerfCounters,9,13,363,12,ES_AUTOHSCROLL | ES_READONLY
-    GROUPBOX        "Current command line",gbInfoCmdLine,4,190,375,29
-    EDITTEXT        tCurCmdLine,9,201,363,12,ES_AUTOHSCROLL | ES_READONLY
-    GROUPBOX        "Sizes",gbInfoSizes,214,65,165,125
-    RTEXT           "Console (chars):",stConsoleSizeChars,218,76,78,8
-    EDITTEXT        tConSizeChr,299,74,75,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "(pixels):",stConsoleSizePixels,218,91,78,8
-    EDITTEXT        tConSizePix,299,89,75,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "DC window:",stDcWndSize,218,107,78,8
-    EDITTEXT        tDCSize,299,105,75,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "Left:",stFarPanelLeft,217,139,66,8
-    EDITTEXT        tPanelLeft,284,137,90,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "Right:",stFarPanelRight,216,155,66,8
-    EDITTEXT        tPanelRight,284,153,90,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "Main:",stVConFontMain,218,175,40,8
-    EDITTEXT        tRealFontMain,262,173,46,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "Fix:",stVConFontFix,310,175,29,8
-    EDITTEXT        tRealFontBorders,343,173,31,12,ES_AUTOHSCROLL | ES_READONLY
-    GROUPBOX        "Font",gbVConFont,214,164,165,26
-    EDITTEXT        tCursorPos,299,121,75,12,ES_AUTOHSCROLL | ES_READONLY
-    RTEXT           "Cursor (x,y,h):",stRConCursorInfo,218,123,78,8
+    GROUPBOX        "Current command line",gbInfoCmdLine,4,211,375,29
+    EDITTEXT        tCurCmdLine,9,222,363,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Sizes",gbInfoSizes,214,65,165,144
+    RTEXT           "Buffer (chars):",stConsoleBufferChars,217,77,66,8
+    EDITTEXT        tConBufferChr,284,75,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Console (chars):",stConsoleSizeChars,217,93,66,8
+    EDITTEXT        tConSizeChr,284,91,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Left x Top:",stConsoleLeftTop,217,108,66,8
+    EDITTEXT        tConLeftTop,284,106,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "DC window:",stDcWndSize,217,124,66,8
+    EDITTEXT        tDCSize,284,122,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Left:",stFarPanelLeft,217,156,66,8
+    EDITTEXT        tPanelLeft,284,154,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Right:",stFarPanelRight,217,172,66,8
+    EDITTEXT        tPanelRight,284,170,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Main:",stVConFontMain,218,194,40,8
+    EDITTEXT        tRealFontMain,262,192,46,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Fix:",stVConFontFix,310,194,29,8
+    EDITTEXT        tRealFontBorders,343,192,31,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Font",gbVConFont,214,183,165,26
+    EDITTEXT        tCursorPos,284,138,90,12,ES_AUTOHSCROLL | ES_READONLY
+    RTEXT           "Cursor (x,y,h):",stRConCursorInfo,217,140,66,8
     RTEXT           "Far PID:",stFarPID,8,47,29,8
     RTEXT           "States:",stRConStates,113,47,36,8
     EDITTEXT        tsRConFlags,152,45,222,12,ES_AUTOHSCROLL | ES_READONLY
@@ -1417,14 +1420,14 @@ EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     GROUPBOX        "",IDC_STATIC,1,0,349,27
-    GROUPBOX        "",IDC_STATIC,1,34,349,122
-    GROUPBOX        "",IDC_STATIC,1,94,349,62
-    GROUPBOX        "",IDC_STATIC,1,162,349,33
-    GROUPBOX        "",IDC_STATIC,1,202,349,182
-    CTEXT           "End of scroll area",stAppDistinctBottom,25,390,171,8
-    GROUPBOX        "Copying text override",gbCopyingOverride,7,212,339,26
-    GROUPBOX        "Starting selection with arrows",gbSelectingOverride,7,243,339,28
-    GROUPBOX        "Prompt override",gbPromptOverride,7,335,339,42
+    GROUPBOX        "",IDC_STATIC,1,34,349,135
+    GROUPBOX        "",IDC_STATIC,1,94,349,75
+    GROUPBOX        "",IDC_STATIC,1,174,349,33
+    GROUPBOX        "",IDC_STATIC,1,214,349,182
+    CTEXT           "End of scroll area",stAppDistinctBottom,25,402,171,8
+    GROUPBOX        "Copying text override",gbCopyingOverride,7,224,339,26
+    GROUPBOX        "Starting selection with arrows",gbSelectingOverride,7,255,339,28
+    GROUPBOX        "Prompt override",gbPromptOverride,7,347,339,42
     CONTROL         "Extend font styles override",cbExtendFontsOverride,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,0,116,8
     CONTROL         "Extend font styles",cbExtendFonts,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,12,90,10
@@ -1443,25 +1446,25 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,61,191,8
     CONTROL         "Blinking",cbCursorBlink,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,200,61,146,8
     CONTROL         "Fixed cursor size",cbCursorIgnoreSize,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,76,88,8
-    CONTROL         "Color palette override",cbColorsOverride,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,162,120,8
-    COMBOBOX        lbColorsOverride,7,175,337,196,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Color palette override",cbColorsOverride,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,174,120,8
+    COMBOBOX        lbColorsOverride,7,187,337,196,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Clipboard (Copy/Paste) override",cbClipboardOverride,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,202,123,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,214,123,8
     CONTROL         "Change prompt (cmd, powershell) text cursor position with Left Click",cbCTSClickPromptPosition,
-                    "Button",BS_AUTO3STATE | WS_TABSTOP,13,348,330,8
-    CONTROL         "Detect line ends",cbCTSDetectLineEnd,"Button",BS_AUTO3STATE | WS_TABSTOP,13,224,90,8
-    CONTROL         "Bash margin",cbCTSBashMargin,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,105,224,71,8
-    CONTROL         "Trim trailing spaces",cbCTSTrimTrailing,"Button",BS_AUTO3STATE | WS_TABSTOP,183,224,99,8
-    RTEXT           "EOL:",stCTSEOL,275,224,25,8
-    COMBOBOX        lbCTSEOL,304,221,40,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+                    "Button",BS_AUTO3STATE | WS_TABSTOP,13,360,330,8
+    CONTROL         "Detect line ends",cbCTSDetectLineEnd,"Button",BS_AUTO3STATE | WS_TABSTOP,13,236,90,8
+    CONTROL         "Bash margin",cbCTSBashMargin,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,105,236,71,8
+    CONTROL         "Trim trailing spaces",cbCTSTrimTrailing,"Button",BS_AUTO3STATE | WS_TABSTOP,183,236,99,8
+    RTEXT           "EOL:",stCTSEOL,275,236,25,8
+    COMBOBOX        lbCTSEOL,304,233,40,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     EDITTEXT        tCursorFixedSize,98,74,40,12,ES_AUTOHSCROLL
     LTEXT           "(5-100) %",stCursorFixedSize,142,76,38,8
     RTEXT           "Min size (pix):",stCursorMinSize,185,76,70,8
     EDITTEXT        tCursorMinSize,260,74,40,12,ES_AUTOHSCROLL
     CONTROL         "Ctrl+BackSpace - delete word leftward to the text cursor",cbCTSDeleteLeftWord,
-                    "Button",BS_AUTO3STATE | WS_TABSTOP,13,362,330,8
+                    "Button",BS_AUTO3STATE | WS_TABSTOP,13,374,330,8
     CONTROL         "Start selection with Shift+Arrow (Text = Left/Right/Home/End, Block = Up/Down)",cbCTSShiftArrowStartSel,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,256,330,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,268,330,8
     CONTROL         "Inactive console Text Cursor",cbInactiveCursor,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,94,120,8
     CONTROL         "Horizontal (as console)",rInactiveCursorH,"Button",BS_AUTORADIOBUTTON | WS_GROUP,7,108,108,8
     CONTROL         "Vertical (as GUI)",rInactiveCursorV,"Button",BS_AUTORADIOBUTTON,116,108,82,8
@@ -1475,20 +1478,22 @@ BEGIN
     LTEXT           "(0-100) %",stInactiveCursorFixedSize,142,139,38,8
     RTEXT           "Min size (pix):",stInactiveCursorMinSize,185,139,70,8
     EDITTEXT        tInactiveCursorMinSize,260,137,40,12,ES_AUTOHSCROLL
-    GROUPBOX        "Paste mode #1 (Shift+Ins)",gbPasteM1,7,276,167,55,WS_GROUP
-    CONTROL         "Multi lines",rPasteM1MultiLine,"Button",BS_AUTORADIOBUTTON | WS_GROUP,13,289,78,8
-    CONTROL         "First line",rPasteM1FirstLine,"Button",BS_AUTORADIOBUTTON,13,304,78,8
-    CONTROL         "Single line",rPasteM1SingleLine,"Button",BS_AUTORADIOBUTTON,93,289,78,8
-    CONTROL         "Do nothing",rPasteM1Nothing,"Button",BS_AUTORADIOBUTTON,93,304,78,8
-    GROUPBOX        "Paste mode #2 (Ctrl+V)",gbPasteM2,180,276,166,55,WS_GROUP
-    CONTROL         "Multi lines",rPasteM2MultiLine,"Button",BS_AUTORADIOBUTTON | WS_GROUP,186,289,78,8
-    CONTROL         "First line",rPasteM2FirstLine,"Button",BS_AUTORADIOBUTTON,186,304,78,8
-    CONTROL         "Single line",rPasteM2SingleLine,"Button",BS_AUTORADIOBUTTON,264,289,78,8
-    CONTROL         "Do nothing",rPasteM2Nothing,"Button",BS_AUTORADIOBUTTON,264,304,78,8
+    CONTROL         "Treat hidden cursor as inactive",cbInactiveCursorSubstHidden,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,153,192,8
+    GROUPBOX        "Paste mode #1 (Shift+Ins)",gbPasteM1,7,288,167,55,WS_GROUP
+    CONTROL         "Multi lines",rPasteM1MultiLine,"Button",BS_AUTORADIOBUTTON | WS_GROUP,13,301,78,8
+    CONTROL         "First line",rPasteM1FirstLine,"Button",BS_AUTORADIOBUTTON,13,316,78,8
+    CONTROL         "Single line",rPasteM1SingleLine,"Button",BS_AUTORADIOBUTTON,93,301,78,8
+    CONTROL         "Do nothing",rPasteM1Nothing,"Button",BS_AUTORADIOBUTTON,93,316,78,8
+    GROUPBOX        "Paste mode #2 (Ctrl+V)",gbPasteM2,180,288,166,55,WS_GROUP
+    CONTROL         "Multi lines",rPasteM2MultiLine,"Button",BS_AUTORADIOBUTTON | WS_GROUP,186,301,78,8
+    CONTROL         "First line",rPasteM2FirstLine,"Button",BS_AUTORADIOBUTTON,186,316,78,8
+    CONTROL         "Single line",rPasteM2SingleLine,"Button",BS_AUTORADIOBUTTON,264,301,78,8
+    CONTROL         "Do nothing",rPasteM2Nothing,"Button",BS_AUTORADIOBUTTON,264,316,78,8
     CONTROL         "Allow Windows to POSIX path conversion",cbPasteM1Posix,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,316,156,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,328,156,10
     CONTROL         "Allow Windows to POSIX path conversion",cbPasteM2Posix,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,186,316,155,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,186,328,155,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 425, 205

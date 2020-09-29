@@ -416,6 +416,7 @@ void Settings::InitSettings()
 	isMultiDupConfirm = true;
 	isMultiDetachConfirm = true;
 	nCloseConfirmFlags = cc_Running;
+	isResetTerminalConfirm = true;
 	isUseWinNumber = true; isUseWinArrows = false; isUseWinTab = false;
 	nSplitWidth = nSplitHeight = 4;
 	//nSplitClr1 = nSplitClr2 = RGB(160,160,160);
@@ -711,8 +712,8 @@ void Settings::InitSettings()
 	#ifdef _DEBUG
 	isCTSForceLocale = 0x0419; // russian locale
 	#endif
-	isCTSRBtnAction = 3; // Auto (Выделения нет - Paste, Есть - Copy)
-	isCTSMBtnAction = 0; // <None>
+	isCTSRBtnAction = MouseButtonAction::Auto;
+	isCTSMBtnAction = MouseButtonAction::None;
 	isCTSColorIndex = DefaultSelectionConsoleColor/*0xE0*/;
 	isPasteConfirmEnter = true;
 	nPasteConfirmLonger = 200;
@@ -2486,7 +2487,7 @@ void Settings::LoadSettings(bool& rbNeedCreateVanilla, const SettingsStorage* ap
 		reg->Load(L"DefaultTerminalDebugLog", isDefaultTerminalDebugLog);
 		reg->Load(L"DefaultTerminalConfirm", nDefaultTerminalConfirmClose);
 		{
-		wchar_t* pszApps = NULL;
+		wchar_t* pszApps = nullptr;
 		reg->Load(L"DefaultTerminalApps", &pszApps);
 		SetDefaultTerminalApps((pszApps && *pszApps) ? pszApps : DEFAULT_TERMINAL_APPS); // "|"-delimited string -> MSZ
 		SafeFree(pszApps);
@@ -2581,6 +2582,7 @@ void Settings::LoadSettings(bool& rbNeedCreateVanilla, const SettingsStorage* ap
 		reg->Load(L"Multi.SplitHeight", nSplitHeight); MinMax(nSplitHeight, MAX_SPLITTER_SIZE);
 		//reg->Load(L"Multi.SplitClr1", nSplitClr1);
 		//reg->Load(L"Multi.SplitClr2", nSplitClr2);
+		reg->Load(L"ResetTerminalConfirm", isResetTerminalConfirm);
 
 		reg->Load(L"KeyboardHooks", m_isKeyboardHooks); if (m_isKeyboardHooks>2) m_isKeyboardHooks = 0;
 
@@ -2698,9 +2700,11 @@ void Settings::LoadSettings(bool& rbNeedCreateVanilla, const SettingsStorage* ap
 		reg->Load(L"CTS.HtmlFormat", isCTSHtmlFormat);
 		reg->Load(L"CTS.ForceLocale", isCTSForceLocale);
 
-		reg->Load(L"CTS.RBtnAction", isCTSRBtnAction); if (isCTSRBtnAction>3) isCTSRBtnAction = 0;
+		reg->Load(L"CTS.RBtnAction", reinterpret_cast<BYTE&>(isCTSRBtnAction));
+		if (isCTSRBtnAction >= MouseButtonAction::MaxId) isCTSRBtnAction = MouseButtonAction::None;
 
-		reg->Load(L"CTS.MBtnAction", isCTSMBtnAction); if (isCTSMBtnAction>3) isCTSMBtnAction = 0;
+		reg->Load(L"CTS.MBtnAction", reinterpret_cast<BYTE&>(isCTSMBtnAction));
+		if (isCTSMBtnAction >= MouseButtonAction::MaxId) isCTSMBtnAction = MouseButtonAction::None;
 
 		reg->Load(L"CTS.ColorIndex", isCTSColorIndex); if (CONFORECOLOR(isCTSColorIndex) == CONBACKCOLOR(isCTSColorIndex)) isCTSColorIndex = DefaultSelectionConsoleColor;
 
@@ -3668,6 +3672,7 @@ BOOL Settings::SaveSettings(BOOL abSilent /*= FALSE*/, const SettingsStorage* ap
 		reg->Save(L"Multi.SplitHeight", nSplitHeight);
 		//reg->Save(L"Multi.SplitClr1", nSplitClr1);
 		//reg->Save(L"Multi.SplitClr2", nSplitClr2);
+		reg->Save(L"ResetTerminalConfirm", isResetTerminalConfirm);
 
 		//reg->Save(L"MinimizeRestore", vmMinimizeRestore);
 		_ASSERTE(m_isKeyboardHooks!=0);
@@ -3759,8 +3764,8 @@ BOOL Settings::SaveSettings(BOOL abSilent /*= FALSE*/, const SettingsStorage* ap
 		reg->Save(L"CTS.SelectText", isCTSSelectText);
 		reg->Save(L"CTS.HtmlFormat", isCTSHtmlFormat);
 		reg->Save(L"CTS.ForceLocale", isCTSForceLocale);
-		reg->Save(L"CTS.RBtnAction", isCTSRBtnAction);
-		reg->Save(L"CTS.MBtnAction", isCTSMBtnAction);
+		reg->Save(L"CTS.RBtnAction", static_cast<BYTE>(isCTSRBtnAction));
+		reg->Save(L"CTS.MBtnAction", static_cast<BYTE>(isCTSMBtnAction));
 		reg->Save(L"CTS.ColorIndex", isCTSColorIndex);
 
 		reg->Save(L"ClipboardConfirmEnter", isPasteConfirmEnter);
@@ -5050,11 +5055,6 @@ void Settings::EnableLogging()
 void Settings::DisableLogging()
 {
 	mb_DisableLogging = true;
-}
-
-LPCWSTR Settings::GetLogFileName()
-{
-	return gpConEmu->mp_Log ? gpConEmu->mp_Log->GetLogFileName() : L"";
 }
 
 bool Settings::isCloseOnLastTabClose()

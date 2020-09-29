@@ -34,16 +34,22 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/MArray.h"
 
 // enum LngResources
+// ReSharper disable once CppUnusedIncludeDirective
 #include "LngDataEnum.h"
 
 //struct MSectionSimple;
 class MJsonValue;
 
-class CLngRc
+class CLngRc final
 {
 public:
 	CLngRc();
 	~CLngRc();
+
+	CLngRc(const CLngRc&) = delete;
+	CLngRc(CLngRc&&) = delete;
+	CLngRc& operator=(const CLngRc&) = delete;
+	CLngRc& operator=(CLngRc&&) = delete;
 
 	static bool isLocalized();
 	static void Initialize();
@@ -76,14 +82,14 @@ protected:
 
 protected:
 	// Routines
-	void Clean(MArray<LngRcItem>& arr);
-	void Clear(MArray<LngDefinition>& arr);
+	static void Clean(MArray<LngRcItem>& arr);
+	static void Clear(MArray<LngDefinition>& arr);
 	bool LoadLanguages(MJsonValue* pJson);
 	bool LoadResources(LPCWSTR asLanguage, LPCWSTR asFile);
-	bool LoadSection(MJsonValue* pJson, MArray<LngRcItem>& arr, int idDiff);
-	bool SetResource(MArray<LngRcItem>& arr, int idx, LPCWSTR asValue, bool bLocalized);
-	bool SetResource(MArray<LngRcItem>& arr, int idx, MJsonValue* pJson);
-	bool GetResource(MArray<LngRcItem>& arr, int idx, CEStr& lsText, LPCWSTR asDefault);
+	bool LoadSection(MJsonValue* pJson, MArray<LngRcItem>& arr, int idDiff) const;
+	static bool SetResource(MArray<LngRcItem>& arr, int idx, LPCWSTR asValue, bool bLocalized);
+	static bool SetResource(MArray<LngRcItem>& arr, int idx, MJsonValue* pJson);
+	static bool GetResource(MArray<LngRcItem>& arr, int idx, CEStr& lsText, LPCWSTR asDefault);
 
 	static bool loadString(UINT id, LPWSTR lpBuffer, size_t nBufferMax);
 

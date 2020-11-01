@@ -30,8 +30,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 
-#include <Windows.h>
-#include <WinCon.h>
+#include <windows.h>
+#include <wincon.h>
 
 
 /*  Global  */
@@ -223,7 +223,7 @@ extern DWORD gnTimeEnvVarLastCheck;
 extern wchar_t gszTimeEnvVarSave[32];
 /* ************ Hooking time functions ************ */
 
-void GuiSetProgress(WORD st, WORD pr, LPCWSTR pszName = NULL);
+void GuiSetProgress(AnsiProgressStatus st, WORD pr, LPCWSTR pszName = NULL);
 
 #if defined(__GNUC__)
 extern "C" {

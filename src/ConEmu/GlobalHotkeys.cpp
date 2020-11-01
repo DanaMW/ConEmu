@@ -141,12 +141,12 @@ void GlobalHotkeys::RegisterHooks()
 		{
 			static LRESULT CallRegisterHooks(LPARAM lParam)
 			{
-				_ASSERTE(gpConEmu == reinterpret_cast<CConEmuMain*>(lParam));
+				_ASSERTE((&gpConEmu->GetGlobalHotkeys()) == reinterpret_cast<GlobalHotkeys*>(lParam));
 				gpConEmu->GetGlobalHotkeys().RegisterHooks();
 				return 0;
 			}
 		};
-		gpConEmu->CallMainThread(false, Impl::CallRegisterHooks, reinterpret_cast<LPARAM>(this));
+		gpConEmu->CallMainThread(false, Impl::CallRegisterHooks, reinterpret_cast<LPARAM>( this));
 		return;
 	}
 
@@ -197,7 +197,7 @@ void GlobalHotkeys::RegisterHooks()
 							sprintf_c(szErr, "GlobalHotkeys::RegisterHooks() failed, Code=%u", dwErr);
 							if (pLogger) pLogger->LogString(szErr, TRUE);
 						}
-						_ASSERTE(mh_LLKeyHook!=NULL);
+						_ASSERTE(mh_LLKeyHook!=nullptr);
 					}
 					else
 					{
@@ -570,5 +570,5 @@ void GlobalHotkeys::UpdateActiveGhost(CVirtualConsole* apVCon) const
 
 void GlobalHotkeys::OnTerminate() const
 {
-	_ASSERTE(mh_LLKeyHookDll==NULL);
+	_ASSERTE(mh_LLKeyHookDll==nullptr);
 }

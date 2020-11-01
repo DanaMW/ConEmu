@@ -28,7 +28,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define HIDE_USE_EXCEPTION_INFO
 #include "Header.h"
-#include <Wininet.h>
+#include <wininet.h>
 #include "../common/shlobj.h"
 #include "Update.h"
 #include "UpdateConst.h"
@@ -1315,11 +1315,7 @@ wrap:
 
 CConEmuUpdate::UpdateStep CConEmuUpdate::InUpdate()
 {
-	if (!this)
-	{
-		_ASSERTE(this);
-		return UpdateStep::NotStarted;
-	}
+	AssertThisRet(UpdateStep::NotStarted);
 
 	DWORD nWait = WAIT_OBJECT_0;
 

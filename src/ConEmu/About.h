@@ -373,8 +373,9 @@ _DBGHLP(L"-ZoneId - Try to drop :Zone.Identifier without confirmation.\r\n") \
 	L"  - Set progress state on taskbar and ConEmu title\r\n" \
 	L"     Type=0: remove progress\r\n" \
 	L"     Type=1: set progress value to <Value> (0-100)\r\n" \
-	L"     Type=2: set error state in progress\r\n" \
+	L"     Type=2: set error state in progress with <Value>\r\n" \
 	L"     Type=3: set indeterminate state in progress\r\n" \
+	L"     Type=4: set paused state in progress with <Value>\r\n" \
 	L"Recreate(<Action>[,<Confirm>[,<AsAdmin>]]), alias \"Create\"\r\n" \
 	L"  - Create new tab or restart existing one\r\n" \
 	L"     Action: 0 - create tab, 1 - restart tab, 2 - create window\r\n" \
@@ -506,7 +507,7 @@ _DBGHLP(L"-ZoneId - Try to drop :Zone.Identifier without confirmation.\r\n") \
 	L"WindowMode([\"<Mode>\"])\r\n" \
 	L"  - Returns or set current window mode\r\n" \
 	L"     \"NOR\", \"MAX\", \"FS\" (fullscreen), \"MIN\", \"TSA\",\r\n" \
-	L"     \"TLEFT\", \"TRIGHT\" (tile to left/right), \"THEIGHT\",\r\n" \
+	L"     \"TLEFT\", \"TRIGHT\" (tile to left/right), \"THEIGHT\", \"TWIDTH\"\r\n" \
 	L"     \"MPREV\", \"MNEXT\" (move ConEmu to prev/next monitor)\r\n" \
 	L"     \"HERE\" (move ConEmu to monitor with mouse cursor)\r\n" \
 	L"WindowPosSize(\"<X>\",\"<Y>\",\"<W>\",\"<H>\")\r\n" \

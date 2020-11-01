@@ -116,8 +116,8 @@ HWND getForegroundWindow();
 
 extern HWND ghDlgPendingFrom;
 extern LONG gnInMsgBox;
-int MsgBox(LPCTSTR lpText, UINT uType, LPCTSTR lpCaption = NULL, HWND ahParent = (HWND)-1, bool abModal = true);
-void AssertBox(LPCTSTR szText, LPCTSTR szFile, UINT nLine, LPEXCEPTION_POINTERS ExceptionInfo = NULL);
+int MsgBox(LPCTSTR lpText, UINT uType, LPCTSTR lpCaption = nullptr, HWND ahParent = (HWND)-1, bool abModal = true);
+void AssertBox(LPCTSTR szText, LPCTSTR szFile, UINT nLine, LPEXCEPTION_POINTERS ExceptionInfo = nullptr);
 void PatchMsgBoxIcon(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam);
 
 #include "../ConEmu/version_stage.h"
@@ -146,4 +146,4 @@ struct NestedCallCounter
 #define NestedCallAssert(level) \
 	static LONG NestedCallLevel = 0; \
 	NestedCallCounter ncCounter(NestedCallLevel); \
-	Assert(NestedCallLevel <= level);
+	Assert(NestedCallLevel <= (level));

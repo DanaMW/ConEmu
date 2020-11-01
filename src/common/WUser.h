@@ -53,3 +53,20 @@ void UpdateComspec(ConEmuComspec* pOpt, bool DontModifyPath = false);
 
 /// Set env.var from `asName` to *expanded* value from `asValue`
 void SetEnvVarExpanded(LPCWSTR asName, LPCWSTR asValue);
+
+namespace WinApi
+{
+	/// <summary>
+	/// Helper function to return WINDOWPLACEMENT in functional style
+	/// </summary>
+	/// <param name="hWnd">HWND</param>
+	/// <returns>WINDOWPLACEMENT</returns>
+	WINDOWPLACEMENT GetWindowPlacement(HWND hWnd);
+
+	/// <summary>
+	/// Helper function to return Window RECT in functional style
+	/// </summary>
+	/// <param name="hWnd">HWND</param>
+	/// <returns>RECT</returns>
+	RECT GetWindowRect(HWND hWnd);
+}

@@ -138,7 +138,7 @@ void SizeInfo::RequestRectInt(const RECT& _window, LPCWSTR asFrom)
 	{
 		const auto cur_mi = mp_ConEmu->NearestMonitorInfo(curRect);
 		const auto new_mi = mp_ConEmu->NearestMonitorInfo(_window);
-		if (cur_mi.hMon == new_mi.hMon && new_mi.Ydpi == m_opt.dpi)
+		if (cur_mi.hMon == new_mi.hMon && new_mi.dpi.Ydpi == m_opt.dpi)
 		{
 			// Ignore recalc request, just correct the window position
 			CEStr temp(asFrom, L" <pos-updated>");
@@ -154,7 +154,7 @@ void SizeInfo::RequestRectInt(const RECT& _window, LPCWSTR asFrom)
 	m_size.source_window = _window;
 	const auto new_mi = mp_ConEmu->NearestMonitorInfo(_window);
 	if (new_mi.hMon)
-		RequestDpi(DpiValue(new_mi.Xdpi, new_mi.Ydpi));
+		RequestDpi(new_mi.dpi);
 	RequestRecalc();
 }
 
@@ -203,7 +203,7 @@ RECT SizeInfo::VisibleRect()
 HRGN SizeInfo::CreateSelfFrameRgn()
 {
 	if (!mp_ConEmu->isCaptionHidden())
-		return NULL;
+		return nullptr;
 
 	DoCalculate();
 
@@ -212,7 +212,7 @@ HRGN SizeInfo::CreateSelfFrameRgn()
 	if (m_size.rr.real_client.left == 0 && m_size.rr.real_client.top == 0
 		&& RectWidth(m_size.rr.client) == RectWidth(m_size.rr.real_client)
 		&& RectHeight(m_size.rr.client) == RectHeight(m_size.rr.real_client))
-		return NULL;
+		return nullptr;
 
 	HRGN hWhole, hClient;
 	hWhole = CreateRectRgnIndirect(&m_size.rr.real_client);
@@ -223,7 +223,7 @@ HRGN SizeInfo::CreateSelfFrameRgn()
 		_ASSERTEX(iRc == COMPLEXREGION);
 		DeleteObject(hWhole);
 		DeleteObject(hClient);
-		return NULL;
+		return nullptr;
 	}
 	DeleteObject(hClient);
 	return hWhole;
@@ -236,8 +236,8 @@ const SizeInfo::WindowRectangles& SizeInfo::GetRectState() const
 
 int SizeInfo::GetDefaultTabbarHeight() const
 {
-	DpiValue dpi; dpi.SetDpi(m_opt.dpi, m_opt.dpi);
-	int lfHeight = gpSetCls->EvalSize(gpSet->nTabFontHeight, esf_Vertical|esf_CanUseDpi|esf_CanUseUnits, &dpi);
+	DpiValue dpi(m_opt.dpi, m_opt.dpi, DpiValue::DpiSource::Explicit);
+	const int lfHeight = gpSetCls->EvalSize(gpSet->nTabFontHeight, esf_Vertical|esf_CanUseDpi|esf_CanUseUnits, &dpi);
 	return gpFontMgr->EvalFontHeight(gpSet->sTabFontFace, lfHeight, gpSet->nTabFontCharSet)
 		+ gpSetCls->EvalSize((lfHeight < 0) ? 8 : 9, esf_Vertical, &dpi);
 }

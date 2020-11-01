@@ -48,10 +48,10 @@ bool operator!= (const CFont &a, const CFont &b)
 
 CFont::CFont()
 	: iType(CEFONT_NONE)
-	, pData(NULL)
+	, pData(nullptr)
 	, mb_Monospace(false)
 	, mb_RasterFont(false)
-	, mp_otm(NULL)
+	, mp_otm(nullptr)
 {
 	ZeroStruct(m_tm);
 
@@ -63,7 +63,7 @@ CFont::CFont(HFONT ahGdiFont)
 	, hFont(ahGdiFont)
 	, mb_Monospace(false)
 	, mb_RasterFont(false)
-	, mp_otm(NULL)
+	, mp_otm(nullptr)
 {
 	ZeroStruct(m_tm);
 
@@ -75,7 +75,7 @@ CFont::CFont(CustomFont* apFont)
 	, pCustomFont(apFont)
 	, mb_Monospace(true) // *.bdf are always treated as monospace
 	, mb_RasterFont(false)
-	, mp_otm(NULL)
+	, mp_otm(nullptr)
 {
 	ZeroStruct(m_tm);
 
@@ -112,20 +112,16 @@ bool CFont::Equal(const CFont* p) const
 
 bool CFont::IsSet() const
 {
-	if (!this)
-	{
-		_ASSERTE(this);  // -V571
-		return false;
-	}
+	AssertThisRet(false);
 
 	switch (iType)
 	{
 	case CEFONT_NONE:
 		return false;
 	case CEFONT_GDI:
-		return (hFont != NULL);
+		return (hFont != nullptr);
 	case CEFONT_CUSTOM:
-		return (pCustomFont != NULL);
+		return (pCustomFont != nullptr);
 	}
 
 	_ASSERT(iType==CEFONT_GDI || iType==CEFONT_CUSTOM);
@@ -148,7 +144,7 @@ bool CFont::Delete()
 		if (hFont)
 		{
 			result = DeleteObject(hFont);
-			hFont = NULL;
+			hFont = nullptr;
 		}
 		break;
 	case CEFONT_CUSTOM:
@@ -157,7 +153,7 @@ bool CFont::Delete()
 			result = TRUE;
 			WARNING("Who own the pCustomFont?");
 			// don't delete pCustomFont! Instance is owned by OptionsClass!
-			pCustomFont = NULL;
+			pCustomFont = nullptr;
 		}
 		break;
 	default:

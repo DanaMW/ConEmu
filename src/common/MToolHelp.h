@@ -31,9 +31,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "defines.h"
 
-#include <TlHelp32.h>
+#include <tlhelp32.h>
 
-#include "Common.h"
 #include "CmdLine.h"
 #include "MArray.h"
 #include "WObjects.h"

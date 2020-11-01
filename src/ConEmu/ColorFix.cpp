@@ -32,7 +32,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SHOWDEBUGSTR
 
 
-#include <Windows.h>
+#include <windows.h>
 #include <math.h>
 #include "ColorFix.h"
 
@@ -485,7 +485,7 @@ real_type ColorFix::DeltaE(ColorFix color)
 	return ColorSpace::DeltaE(*this, color);
 }
 
-bool ColorFix::PerceivableColor(COLORREF back/*, COLORREF alt*/, ColorFix& pColor, real_type* oldDE /*= NULL*/, real_type* newDE /*= NULL*/)
+bool ColorFix::PerceivableColor(COLORREF back/*, COLORREF alt*/, ColorFix& pColor, real_type* oldDE /*= nullptr*/, real_type* newDE /*= nullptr*/)
 {
 	bool bChanged = false;
 	ColorFix backLab(back);

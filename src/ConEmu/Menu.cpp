@@ -36,7 +36,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/defines.h"
 //
-#include "header.h"
+#include "Header.h"
 //
 #include "AboutDlg.h"
 #include "Attach.h"
@@ -2623,7 +2623,7 @@ LRESULT CConEmuMenu::OnSysCommand(HWND hWnd, WPARAM wParam, LPARAM lParam, UINT 
 
 void CConEmuMenu::CmdTaskPopupItem::Reset(CmdTaskPopupItemType newItemType, int newCmdId, LPCWSTR asName)
 {
-	_ASSERTE(this);
+	AssertThis();
 	*this = CmdTaskPopupItem{};
 
 	this->ItemType = newItemType;

@@ -38,7 +38,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/defines.h"
 
-#include <Shlwapi.h>
+#include <shlwapi.h>
 //#include <vector>
 //#if !defined(__GNUC__)
 //#include <crtdbg.h>
@@ -137,26 +137,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MAX_RENAME_TAB_LEN 128
 
 #define MBox(rt) MsgBox(rt, /*MB_SYSTEMMODAL |*/ MB_ICONINFORMATION, Title)
-#define MBoxA(rt) MsgBox(rt, /*MB_SYSTEMMODAL |*/ MB_ICONINFORMATION, NULL)
-#define MBoxError(rt) MsgBox(rt, /*MB_SYSTEMMODAL |*/ MB_ICONSTOP, NULL)
-
-//#define MBoxAssert(V) if ((V)==FALSE) { TCHAR szAMsg[MAX_PATH*2]; StringCchPrintf(szAMsg, countof(szAMsg), _T("Assertion (%s) at\n%s:%i"), _T(#V), _T(__FILE__), __LINE__); MBoxA(szAMsg); }
+#define MBoxA(rt) MsgBox(rt, /*MB_SYSTEMMODAL |*/ MB_ICONINFORMATION, nullptr)
+#define MBoxError(rt) MsgBox(rt, /*MB_SYSTEMMODAL |*/ MB_ICONSTOP, nullptr)
 #define MBoxAssert(V) _ASSERTE(V)
-//__inline BOOL isMeForeground() {
-//	HWND h = GetForegroundWindow();
-//	return h && (h == ghWnd || h == ghOpWnd || h == ghConWnd);
-//}
-//#endif
-//#define isPressed(inp) ((GetKeyState(inp) & 0x8000) == 0x8000)
-//#define isDriveLetter(c) ((c>=L'A' && c<=L'Z') || (c>=L'a' && c<=L'z'))
-//#define isDigit(c) (c>=L'0' && c<=L'9')
-
-//#define PTDIFFTEST(C,D) (((abs(C.x-LOWORD(lParam)))<D) && ((abs(C.y-HIWORD(lParam)))<D))
-
-//#define INVALIDATE() InvalidateRect(HDCWND, NULL, FALSE)
-
-//#define SafeCloseHandle(h) { if ((h)!=NULL) { HANDLE hh = (h); (h) = NULL; if (hh!=INVALID_HANDLE_VALUE) CloseHandle(hh); } }
-//#define SafeFree(p) { if ((p)!=NULL) { LPVOID pp = (p); (p) = NULL; free(pp); } }
+#define AssertThis() if (this == nullptr) { _ASSERT(this!=nullptr); return; }
+#define AssertThisRet(dummy) if (this == nullptr) { _ASSERT(this!=nullptr); return (dummy); }
 
 #define isWheelEvent(messg) (((messg) == WM_MOUSEWHEEL) || ((messg) == WM_MOUSEHWHEEL/*0x020E*/))
 
@@ -226,7 +211,7 @@ void LogFocusInfo(LPCWSTR asInfo, int Level=1);
 
 bool PtMouseDblClickTest(const MSG& msg1, const MSG msg2);
 
-bool IntFromString(int& rnValue, LPCWSTR asValue, int anBase = 10, LPCWSTR* rsEnd = NULL);
+bool IntFromString(int& rnValue, LPCWSTR asValue, int anBase = 10, LPCWSTR* rsEnd = nullptr);
 bool GetDlgItemSigned(HWND hDlg, WORD nID, int& nValue, int nMin = 0, int nMax = 0);
 bool GetDlgItemUnsigned(HWND hDlg, WORD nID, DWORD& nValue, DWORD nMin = 0, DWORD nMax = 0);
 wchar_t* GetDlgItemTextPtr(HWND hDlg, WORD nID);
@@ -244,8 +229,8 @@ enum CESelectFileFlags
 	sff_Cygwin       = 2,
 	sff_SaveNewFile  = 4,
 };
-wchar_t* SelectFolder(LPCWSTR asTitle, LPCWSTR asDefFolder = NULL, HWND hParent = ghWnd, DWORD/*CESelectFileFlags*/ nFlags = sff_AutoQuote, CRealConsole* apRCon = NULL);
-wchar_t* SelectFile(LPCWSTR asTitle, LPCWSTR asDefFile = NULL, LPCWSTR asDefPath = NULL, HWND hParent = ghWnd, LPCWSTR asFilter = NULL, DWORD/*CESelectFileFlags*/ nFlags = sff_AutoQuote, CRealConsole* apRCon = NULL);
+wchar_t* SelectFolder(LPCWSTR asTitle, LPCWSTR asDefFolder = nullptr, HWND hParent = ghWnd, DWORD/*CESelectFileFlags*/ nFlags = sff_AutoQuote, CRealConsole* apRCon = nullptr);
+wchar_t* SelectFile(LPCWSTR asTitle, LPCWSTR asDefFile = nullptr, LPCWSTR asDefPath = nullptr, HWND hParent = ghWnd, LPCWSTR asFilter = nullptr, DWORD/*CESelectFileFlags*/ nFlags = sff_AutoQuote, CRealConsole* apRCon = nullptr);
 
 #include "../common/RConStartArgsEx.h"
 

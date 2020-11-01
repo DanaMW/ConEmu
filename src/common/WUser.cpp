@@ -28,7 +28,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define HIDE_USE_EXCEPTION_INFO
 #include "Common.h"
-#include <Sddl.h> // ConvertSidToStringSid
+#include <sddl.h> // ConvertSidToStringSid
 #include "CmdLine.h"
 #include "EnvVar.h"
 #include "MModule.h"
@@ -636,4 +636,27 @@ void SetEnvVarExpanded(LPCWSTR asName, LPCWSTR asValue)
 	SetEnvironmentVariable(asName, asValue);
 
 	SafeFree(pszTemp);
+}
+
+// ReSharper disable once CppParameterMayBeConst
+WINDOWPLACEMENT WinApi::GetWindowPlacement(HWND hWnd)
+{
+	WINDOWPLACEMENT wpl{};
+	wpl.length = sizeof(wpl);
+	if (!::GetWindowPlacement(hWnd, &wpl))
+	{
+		wpl = WINDOWPLACEMENT{};
+	}
+	return wpl;
+}
+
+// ReSharper disable once CppParameterMayBeConst
+RECT WinApi::GetWindowRect(HWND hWnd)
+{
+	RECT rect{};
+	if (!::GetWindowRect(hWnd, &rect))
+	{
+		rect = RECT{};
+	}
+	return rect;
 }

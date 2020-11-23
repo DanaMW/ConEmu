@@ -1,18 +1,15 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Setupper", "Setupper.vcproj", "{F7818E82-2AB7-4E31-8CDA-98EFECC47237}"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 16
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Setupper", "Setupper.vcxproj", "{5D37E08A-4904-3B96-721D-293E5E497024}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Win32 = Debug|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F7818E82-2AB7-4E31-8CDA-98EFECC47237}.Debug|Win32.ActiveCfg = Debug|Win32
-		{F7818E82-2AB7-4E31-8CDA-98EFECC47237}.Debug|Win32.Build.0 = Debug|Win32
-		{F7818E82-2AB7-4E31-8CDA-98EFECC47237}.Release|Win32.ActiveCfg = Release|Win32
-		{F7818E82-2AB7-4E31-8CDA-98EFECC47237}.Release|Win32.Build.0 = Release|Win32
+		{5D37E08A-4904-3B96-721D-293E5E497024}.Release|Win32.ActiveCfg = Release|Win32
+		{5D37E08A-4904-3B96-721D-293E5E497024}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

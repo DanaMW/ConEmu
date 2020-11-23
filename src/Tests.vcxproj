@@ -457,8 +457,10 @@
     <ClInclude Include="ConEmu\version.h" />
     <ClInclude Include="ConEmu\version_macro.h" />
     <ClInclude Include="ConEmu\version_stage.h" />
+    <ClInclude Include="UnitTests\test_mock_file.h" />
     <ClInclude Include="common\CEHandle.h" />
     <ClInclude Include="common\CEStr.h" />
+    <ClInclude Include="common\CmdArg.h" />
     <ClInclude Include="common\CmdLine.h" />
     <ClInclude Include="common\Common.h" />
     <ClInclude Include="common\ConEmuCheck.h" />
@@ -698,10 +700,12 @@
     <ClCompile Include="ConEmuCD\StartEnv.cpp" />
     <ClCompile Include="ConEmuCD\StartEnv_test.cpp" />
     <ClCompile Include="UnitTests\main_test.cpp" />
+    <ClCompile Include="UnitTests\test_mock_file.cpp" />
     <ClCompile Include="UnitTests\test_stubs.cpp" />
     <ClCompile Include="common\CEHandle.cpp" />
     <ClCompile Include="common\CEStr.cpp" />
     <ClCompile Include="common\CEStr_test.cpp" />
+    <ClCompile Include="common\CmdArg.cpp" />
     <ClCompile Include="common\CmdLine.cpp" />
     <ClCompile Include="common\CmdLine_test.cpp" />
     <ClCompile Include="common\Common.cpp" />
@@ -774,4 +778,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>
+</Project> 

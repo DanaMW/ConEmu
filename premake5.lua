@@ -1,6 +1,6 @@
 -- ConEmu's solution generator script
 -- 1. Download premake5 from https://premake.github.io/download.html
--- 2. Run `premake5 vs2017`
+-- 2. Run `premake5 vs2019`
 
 workspace "CE"
   configurations { "Release", "Debug", "Remote" }
@@ -124,6 +124,7 @@ local tests_remove = {
 local common_kernel = {
   "src/common/CEHandle.*",
   "src/common/CEStr.*",
+  "src/common/CmdArg.*",
   "src/common/CmdLine.*",
   "src/common/Common.cpp",
   "src/common/Common.h",
@@ -876,6 +877,7 @@ project "Tests"
     -- tests
     "src/UnitTests/*_test.cpp",
     "src/UnitTests/test_stubs.cpp",
+    "src/UnitTests/test_mock*.*",
     "src/**/*_test.cpp",
     -- common files
     "src/common/*.cpp",
@@ -898,7 +900,8 @@ project "Tests"
   }
 
   vpaths {
-    { ["tests"] = {"**/*_test.*", "**/test_stubs.cpp"} },
+    { ["mocks"] = {"**/test_stubs.cpp", "**/test_mock*.*"} },
+    { ["tests"] = {"**/*_test.*"} },
     { ["Resources"] = {"**/*.rc", "**/*.rc2", "**/*.manifest", "**/*.bmp", "**/*.cur", "**/*.ico"} },
   }
 

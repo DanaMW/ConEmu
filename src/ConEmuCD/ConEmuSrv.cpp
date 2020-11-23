@@ -192,7 +192,7 @@ void WorkerServer::ServerInitFont()
 		DeleteDC(hdc);
 		// if ttfFontExists is true, consoleFontName_ could be updated
 		if (!ttfFontExists)
-			consoleFontName_.Empty(); // fill it with "Lucida Console" below
+			consoleFontName_.Clear(); // fill it with "Lucida Console" below
 	}
 
 	if (consoleFontName_.IsEmpty())
@@ -578,8 +578,8 @@ void WorkerServer::ServerInitConsoleSize(bool allowUseCurrent, CONSOLE_SCREEN_BU
 
 	if (allowUseCurrent && gcrVisibleSize.X && gcrVisibleSize.Y)
 	{
-		SMALL_RECT rc = {0};
-		SetConsoleSize(gnBufferHeight, gcrVisibleSize, rc, ":ServerInit.SetFromArg"); // может обломаться? если шрифт еще большой
+		// could fail if the font is still too large
+		SetConsoleSize(gnBufferHeight, gcrVisibleSize, SMALL_RECT{}, ":ServerInit.SetFromArg");
 
 		if (pSbiOut)
 		{

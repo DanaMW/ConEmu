@@ -33,6 +33,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <winnt.h>
 #include <tchar.h>
 #include <limits>
+#include <chrono>
 #include "../common/Common.h"
 #include "../common/ConEmuCheck.h"
 #include "../common/CmdLine.h"
@@ -806,8 +807,9 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 }
 
 
-void CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
+int CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 {
+	int result = 0;
 #if defined(DUMP_UNKNOWN_ESCAPES) || defined(DUMP_WRITECONSOLE_LINES)
 	if (!buf || !cchLen)
 	{
@@ -818,7 +820,7 @@ void CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 
 	wchar_t szDbg[200];
 	size_t nLen = cchLen;
-	static int nWriteCallNo = 0;
+	static std::atomic_int32_t nWriteCallNo{ 0 };
 
 	switch (iUnknown)
 	{
@@ -844,16 +846,17 @@ void CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 		msprintf(szDbg, countof(szDbg), L"[%u] ###Internal comment: ", GetCurrentThreadId());
 		break;
 	default:
-		msprintf(szDbg, countof(szDbg), L"[%u] AnsiDump #%u: ", GetCurrentThreadId(), ++nWriteCallNo);
+		result = nWriteCallNo.fetch_add(1) + 1;
+		msprintf(szDbg, countof(szDbg), L"[%u] AnsiDump #%u: ", GetCurrentThreadId(), result);
 	}
 
-	size_t nStart = lstrlenW(szDbg);
+	const size_t nStart = lstrlenW(szDbg);
 	wchar_t* pszDst = szDbg + nStart;
 	wchar_t* pszFrom = szDbg;
 
 	if (buf && cchLen)
 	{
-		const wchar_t* pszSrc = (wchar_t*)buf;
+		const wchar_t* pszSrc = static_cast<const wchar_t*>(buf);
 		size_t nCur = 0;
 		while (nLen)
 		{
@@ -910,7 +913,7 @@ void CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 	{
 		pszDst -= 2;
 		const wchar_t* psEmptyMessage = L" - <empty sequence>";
-		size_t nMsgLen = lstrlenW(psEmptyMessage);
+		const size_t nMsgLen = lstrlenW(psEmptyMessage);
 		wmemcpy(pszDst, psEmptyMessage, nMsgLen);
 		pszDst += nMsgLen;
 	}
@@ -929,14 +932,15 @@ void CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 		_ASSERTEX(FALSE && "Unknown Esc Sequence!");
 	}
 #endif
+	return result;
 }
 
 #ifdef DUMP_UNKNOWN_ESCAPES
 #define DumpUnknownEscape(buf, cchLen) DumpEscape(buf, cchLen, de_Unknown)
 #define DumpKnownEscape(buf, cchLen, eType) DumpEscape(buf, cchLen, eType)
 #else
-#define DumpUnknownEscape(buf,cchLen)
-#define DumpKnownEscape(buf, cchLen, eType)
+#define DumpUnknownEscape(buf,cchLen) (0)
+#define DumpKnownEscape(buf, cchLen, eType) (0)
 #endif
 
 static LONG nLastReadId = 0;
@@ -1372,7 +1376,7 @@ BOOL CEAnsi::OurWriteConsoleW(HANDLE hConsoleOutput, const VOID *lpBuffer, DWORD
 	bool bIsConOut = false;
 	bool bIsAnsi = false;
 
-	FIRST_ANSI_CALL((const BYTE*)lpBuffer, nNumberOfCharsToWrite);
+	FIRST_ANSI_CALL(static_cast<const BYTE*>(lpBuffer), nNumberOfCharsToWrite);
 
 #if 0
 	// Store prompt(?) for clink 0.1.1
@@ -1385,9 +1389,31 @@ BOOL CEAnsi::OurWriteConsoleW(HANDLE hConsoleOutput, const VOID *lpBuffer, DWORD
 #endif
 
 	// In debug builds: Write to debug console all console Output
-	DumpKnownEscape((wchar_t*)lpBuffer, nNumberOfCharsToWrite, de_Normal);
+	const auto ansiIndex = DumpKnownEscape(static_cast<const wchar_t*>(lpBuffer), nNumberOfCharsToWrite, de_Normal);
 
-	CEAnsi* pObj = NULL;
+#ifdef _DEBUG
+	struct AnsiDuration  // NOLINT(cppcoreguidelines-special-member-functions)
+	{
+		const int ansiIndex_;
+		const std::chrono::steady_clock::time_point startTime_;
+
+		AnsiDuration(const int ansiIndex)
+			: ansiIndex_(ansiIndex), startTime_(std::chrono::steady_clock::now())
+		{
+		}
+
+		~AnsiDuration()
+		{
+			const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime_);
+			wchar_t info[80] = L"";
+			msprintf(info, countof(info), L"[%u] AnsiDump #%u duration(ms): %u\n", GetCurrentThreadId(), ansiIndex_, duration.count());
+			OutputDebugStringW(info);
+		}
+	};
+	AnsiDuration duration(ansiIndex);
+#endif
+
+	CEAnsi* pObj = nullptr;
 	CEStr CpCvt;
 
 	if (lpBuffer && nNumberOfCharsToWrite && hConsoleOutput)
@@ -1717,9 +1743,9 @@ int CEAnsi::NextEscCode(LPCWSTR lpBuffer, LPCWSTR lpEnd, wchar_t (&szPreDump)[CE
 										Code.ArgV[Code.ArgC++] = nValue;
 									return true;
 								}
-								else if (!nDigits && !Code.ArgC)
+								else
 								{
-									if ((Code.PvtLen+1) < (int)countof(Code.Pvt))
+									if ((size_t(Code.PvtLen) + 2) < countof(Code.Pvt))
 									{
 										Code.Pvt[Code.PvtLen++] = wc; // Skip private symbols
 										Code.Pvt[Code.PvtLen] = 0;
@@ -1925,23 +1951,25 @@ wrap2:
 // From the cursor position!
 BOOL CEAnsi::ScrollLine(HANDLE hConsoleOutput, int nDir)
 {
-	ExtScrollScreenParm scrl = {sizeof(scrl), essf_Current|essf_Commit, hConsoleOutput, nDir, {}, L' '};
-	BOOL lbRc = ExtScrollLine(&scrl);
+	ExtScrollScreenParm scroll = {sizeof(scroll), essf_Current|essf_Commit, hConsoleOutput, nDir, {}, L' ', {}};
+	const BOOL lbRc = ExtScrollLine(&scroll);
 	return lbRc;
 }
 
 BOOL CEAnsi::ScrollScreen(HANDLE hConsoleOutput, int nDir)
 {
-	ExtScrollScreenParm scrl = {sizeof(scrl), essf_Current|essf_Commit, hConsoleOutput, nDir, {}, L' '};
+	const auto srView = GetWorkingRegion(hConsoleOutput, true);
+	ExtScrollScreenParm scroll = {
+		sizeof(scroll), essf_Current | essf_Commit | essf_Region, hConsoleOutput, nDir, {}, L' ',
+		RECT{ srView.Left, srView.Top, srView.Right, srView.Bottom } };
 	if (gDisplayOpt.ScrollRegion)
 	{
 		_ASSERTEX(gDisplayOpt.ScrollStart>=0 && gDisplayOpt.ScrollEnd>=gDisplayOpt.ScrollStart);
-		scrl.Region.top = gDisplayOpt.ScrollStart;
-		scrl.Region.bottom = gDisplayOpt.ScrollEnd;
-		scrl.Flags |= essf_Region;
+		scroll.Region.top = gDisplayOpt.ScrollStart;
+		scroll.Region.bottom = gDisplayOpt.ScrollEnd;
 	}
 
-	BOOL lbRc = ExtScrollScreen(&scrl);
+	const BOOL lbRc = ExtScrollScreen(&scroll);
 
 	return lbRc;
 }
@@ -2046,6 +2074,12 @@ BOOL CEAnsi::LinesInsert(HANDLE hConsoleOutput, const unsigned LinesCount)
 	// Apply default color before scrolling!
 	ReSetDisplayParm(hConsoleOutput, FALSE, TRUE);
 
+	if (static_cast<int>(LinesCount) <= 0)
+	{
+		_ASSERTEX(static_cast<int>(LinesCount) >= 0);
+		return FALSE;
+	}
+
 	BOOL lbRc = FALSE;
 
 	int TopLine, BottomLine;
@@ -2057,14 +2091,14 @@ BOOL CEAnsi::LinesInsert(HANDLE hConsoleOutput, const unsigned LinesCount)
 		TopLine = csbi.dwCursorPosition.Y;
 		BottomLine = std::max<int>(gDisplayOpt.ScrollEnd, 0);
 
-		if ((TopLine + (int)LinesCount) <= BottomLine)
+		if (static_cast<int>(LinesCount) <= (BottomLine - TopLine))
 		{
-			ExtScrollScreenParm scrl = {
-				sizeof(scrl), essf_Current|essf_Commit|essf_Region, hConsoleOutput,
-				LinesCount, {}, L' ',
+			ExtScrollScreenParm scroll = {
+				sizeof(scroll), essf_Current|essf_Commit|essf_Region, hConsoleOutput,
+				static_cast<int>(LinesCount), {}, L' ',
 				// region to be scrolled (that is not a clipping region)
 				{0, TopLine, csbi.dwSize.X - 1, BottomLine}};
-			lbRc |= ExtScrollScreen(&scrl);
+			lbRc |= ExtScrollScreen(&scroll);
 		}
 		else
 		{
@@ -2082,10 +2116,10 @@ BOOL CEAnsi::LinesInsert(HANDLE hConsoleOutput, const unsigned LinesCount)
 			? csbi.srWindow.Bottom
 			: csbi.dwSize.Y - 1;
 
-		ExtScrollScreenParm scrl = {
-			sizeof(scrl), essf_Current|essf_Commit|essf_Region, hConsoleOutput,
-			LinesCount, {}, L' ', {0, TopLine, csbi.dwSize.X-1, BottomLine}};
-		lbRc |= ExtScrollScreen(&scrl);
+		ExtScrollScreenParm scroll = {
+			sizeof(scroll), essf_Current|essf_Commit|essf_Region, hConsoleOutput,
+			static_cast<int>(LinesCount), {}, L' ', {0, TopLine, csbi.dwSize.X-1, BottomLine}};
+		lbRc |= ExtScrollScreen(&scroll);
 	}
 
 	return lbRc;
@@ -2915,7 +2949,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 
 			int nCmd = (Code.ArgC > 0) ? Code.ArgV[0] : 0;
 			bool resetCursor = false;
-			COORD cr0 = {};
+			COORD cr0 = {0, csbi.srWindow.Top};
 			int nChars = 0;
 			int nScroll = 0;
 
@@ -2925,16 +2959,16 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 				// clear from cursor to end of screen
 				cr0 = csbi.dwCursorPosition;
 				nChars = (csbi.dwSize.X - csbi.dwCursorPosition.X)
-					+ csbi.dwSize.X * (csbi.dwSize.Y - csbi.dwCursorPosition.Y - 1);
+					+ csbi.dwSize.X * (csbi.srWindow.Bottom - csbi.dwCursorPosition.Y);
 				break;
 			case 1:
 				// clear from cursor to beginning of the screen
 				nChars = csbi.dwCursorPosition.X + 1
-					+ csbi.dwSize.X * csbi.dwCursorPosition.Y;
+					+ csbi.dwSize.X * (csbi.dwCursorPosition.Y - csbi.srWindow.Top);
 				break;
 			case 2:
 				// clear entire screen and moves cursor to upper left
-				nChars = csbi.dwSize.X * csbi.dwSize.Y;
+				nChars = csbi.dwSize.X * (csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
 				resetCursor = true;
 				break;
 			case 3:
@@ -2943,18 +2977,18 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 				{
 					nScroll = -csbi.srWindow.Top;
 					cr0.X = csbi.dwCursorPosition.X;
-					cr0.Y = std::max(0,(csbi.dwCursorPosition.Y-csbi.srWindow.Top));
+					cr0.Y = std::max(0, (csbi.dwCursorPosition.Y - csbi.srWindow.Top));
 					resetCursor = true;
 				}
 				break;
 			default:
-				DumpUnknownEscape(Code.pszEscStart,Code.nTotalLen);
+				DumpUnknownEscape(Code.pszEscStart, Code.nTotalLen);
 			}
 
 			if (nChars > 0)
 			{
 				ExtFillOutputParm fill = {sizeof(fill), efof_Current|efof_Attribute|efof_Character,
-					hConsoleOutput, {}, L' ', cr0, (DWORD)nChars};
+					hConsoleOutput, {}, L' ', cr0, static_cast<DWORD>(nChars)};
 				ExtFillOutput(&fill);
 			}
 
@@ -3771,13 +3805,15 @@ void CEAnsi::WriteAnsiCode_OSC(OnWriteConsoleW_t _WriteConsoleW, HANDLE hConsole
 		// ESC ] 9 ; 1 ; ms ST           Sleep. ms - milliseconds
 		// ESC ] 9 ; 2 ; "txt" ST        Show GUI MessageBox ( txt ) for dubug purposes
 		// ESC ] 9 ; 3 ; "txt" ST        Set TAB text
-		// ESC ] 9 ; 4 ; st ; pr ST      When _st_ is 0: remove progress. When _st_ is 1: set progress value to _pr_ (number, 0-100). When _st_ is 2: set error state in progress on Windows 7 taskbar
+		// ESC ] 9 ; 4 ; st ; pr ST      When _st_ is 0: remove progress. When _st_ is 1: set progress value to _pr_ (number, 0-100).
+		//                               When _st_ is 2: set error state in progress on Windows 7 taskbar, _pr_ is optional.
+		//                               When _st_ is 3: set indeterminate state. When _st_ is 4: set paused state, _pr_ is optional.
 		// ESC ] 9 ; 5 ST                Wait for ENTER/SPACE/ESC. Set EnvVar "ConEmuWaitKey" to ENTER/SPACE/ESC on exit.
 		// ESC ] 9 ; 6 ; "txt" ST        Execute GuiMacro. Set EnvVar "ConEmuMacroResult" on exit.
 		// ESC ] 9 ; 7 ; "cmd" ST        Run some process with arguments
 		// ESC ] 9 ; 8 ; "env" ST        Output value of environment variable
 		// ESC ] 9 ; 9 ; "cwd" ST        Inform ConEmu about shell current working directory
-		// ESC ] 9 ; 10 ST               Request xterm keyboard emulation
+		// ESC ] 9 ; 10 ; p ST           Request xterm keyboard/output emulation
 		// ESC ] 9 ; 11; "*txt*" ST      Just a ‘comment’, skip it.
 		// ESC ] 9 ; 12 ST               Let ConEmu treat current cursor position as prompt start. Useful with `PS1`.
 		if (Code.ArgSZ[1] == L';')
@@ -3792,10 +3828,18 @@ void CEAnsi::WriteAnsiCode_OSC(OnWriteConsoleW_t _WriteConsoleW, HANDLE hConsole
 				else if (Code.ArgC >= 2 && Code.ArgV[1] == 10)
 				{
 					// ESC ] 9 ; 10 ST
-					if (!gbWasXTermOutput && (Code.ArgC == 2 || Code.ArgV[2] != 0))
+					// ESC ] 9 ; 10 ; 1 ST
+					if (!gbWasXTermOutput && (Code.ArgC == 2 || Code.ArgV[2] == 1))
 						CEAnsi::StartXTermMode(true);
+					// ESC ] 9 ; 10 ; 0 ST
 					else if (Code.ArgC >= 3 || Code.ArgV[2] == 0)
 						CEAnsi::StartXTermMode(false);
+					// ESC ] 9 ; 10 ; 3 ST
+					else if (Code.ArgC >= 3 || Code.ArgV[2] == 3)
+						CEAnsi::StartXTermOutput(true);
+					// ESC ] 9 ; 10 ; 2 ST
+					else if (Code.ArgC >= 3 || Code.ArgV[2] == 2)
+						CEAnsi::StartXTermOutput(false);
 				}
 				else if (Code.ArgSZ[3] == L'1' && Code.ArgSZ[4] == L';')
 				{
@@ -4320,15 +4364,21 @@ void CEAnsi::ChangeTermMode(TermModeCommand mode, DWORD value, DWORD nPID /*= 0*
 		gWasXTermModeSet[mode] = {value, nPID ? nPID : GetCurrentProcessId()};
 }
 
-void CEAnsi::StartXTermMode(bool bStart)
+void CEAnsi::StartXTermMode(const bool bStart)
 {
-	// May be triggered by ConEmuT, official Vim builds and in some other cases
-	//_ASSERTEX((gXTermAltBuffer.Flags & xtb_AltBuffer) && (gbWasXTermOutput!=bStart));
-	_ASSERTEX(gbWasXTermOutput!=bStart);
+	// May be triggered by connector, official Vim builds, ENABLE_VIRTUAL_TERMINAL_INPUT, "ESC ] 9 ; 10 ; 1 ST"
+	_ASSERTEX(gbWasXTermOutput != bStart);
 
+	StartXTermOutput(bStart);
+
+	// Remember last mode and pass to server
+	ChangeTermMode(tmc_TerminalType, bStart ? te_xterm : te_win32);
+}
+
+void CEAnsi::StartXTermOutput(const bool bStart)
+{
 	// Remember last mode
 	gbWasXTermOutput = bStart;
-	ChangeTermMode(tmc_TerminalType, bStart ? te_xterm : te_win32);
 }
 
 void CEAnsi::RefreshXTermModes()

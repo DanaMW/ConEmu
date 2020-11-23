@@ -57,7 +57,7 @@ struct Switch
 	// Format examples: `-single` or `-dir "..."`
 	Switch(wchar_t*&& asSwitch, wchar_t*&& asOpt)
 	{
-		switch_.Attach(std::move(asSwitch));
+		switch_.Attach(std::move(asSwitch));  // NOLINT(performance-move-const-arg)
 		opt_.Attach(std::move(asOpt));
 	}
 
@@ -160,7 +160,7 @@ struct SwitchParser
 		if (((psz = NextArg(psz, szNext))) && !szNext.IsPossibleSwitch())
 			rpsz = psz;
 		else
-			szNext.Clear();
+			szNext.Release();
 
 		auto* ps = new Switch(szArg.Detach(), szNext.Detach());
 		return ps;

@@ -250,7 +250,7 @@ bool CShellProc::GetLinkProperties(LPCWSTR asLnkFile, CEStr& rsExe, CEStr& rsArg
 	IPersistFile* pFile = NULL;
 	IShellLinkW*  pShellLink = NULL;
 	HRESULT hr;
-	DWORD nLnkSize;
+	uint64_t nLnkSize;
 	static bool bCoInitialized = false;
 
 	if (!FileExists(asLnkFile, &nLnkSize))
@@ -885,13 +885,10 @@ BOOL CShellProc::ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode
 
 		if (lbNewCmdCheck)
 		{
-			bool lbRootIsCmdExe = FALSE;
-			bool lbAlwaysConfirmExit = FALSE;
-			bool lbAutoDisableConfirmExit = FALSE;
-			bool lbNeedCutStartEndQuot = FALSE;
+			NeedCmdOptions opt{};
 			//DWORD nFileAttrs = (DWORD)-1;
-			ms_ExeTmp.Empty();
-			IsNeedCmd(false, SkipNonPrintable(asParam), ms_ExeTmp, nullptr, &lbNeedCutStartEndQuot, &lbRootIsCmdExe, &lbAlwaysConfirmExit, &lbAutoDisableConfirmExit);
+			ms_ExeTmp.Clear();
+			IsNeedCmd(false, SkipNonPrintable(asParam), ms_ExeTmp, &opt);
 			// это может быть команда ком.процессора!
 			// поэтому, наверное, искать и проверять битность будем только для
 			// файлов с указанным расширением.
@@ -911,7 +908,7 @@ BOOL CShellProc::ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode
 					case csb_SameOS:
 						ImageBits = IsWindows64() ? 64 : 32;
 						break;
-					case csb_x32:
+					case csb_x32:  // NOLINT(bugprone-branch-clone)
 						ImageBits = 32;
 						break;
 					default:
@@ -948,7 +945,7 @@ BOOL CShellProc::ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode
 		{
 			LPCWSTR pszCmdLine = asParam;
 
-			ms_ExeTmp.Empty();
+			ms_ExeTmp.Clear();
 			if ((pszCmdLine = NextArg(pszCmdLine, ms_ExeTmp)))
 			{
 				LPCWSTR pszExt = PointToExt(ms_ExeTmp);
@@ -1253,17 +1250,14 @@ BOOL CShellProc::ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode
 			if (!asFile || !*asFile)
 			{
 				// exe-шника в asFile указано НЕ было, значит он в asParam, нужно его вытащить, и сформировать команду DosBox
-				bool lbRootIsCmdExe = FALSE;
-				bool lbAlwaysConfirmExit = FALSE;
-				bool lbAutoDisableConfirmExit = FALSE;
-				bool lbNeedCutStartEndQuot = FALSE;
-				ms_ExeTmp.Empty();
-				IsNeedCmd(false, SkipNonPrintable(asParam), ms_ExeTmp, NULL, &lbNeedCutStartEndQuot, &lbRootIsCmdExe, &lbAlwaysConfirmExit, &lbAutoDisableConfirmExit);
+				NeedCmdOptions opt{};
+				ms_ExeTmp.Clear();
+				IsNeedCmd(false, SkipNonPrintable(asParam), ms_ExeTmp, &opt);
 
 				if (ms_ExeTmp[0])
 				{
 					LPCWSTR pszQuot = SkipNonPrintable(asParam);
-					if (lbNeedCutStartEndQuot)
+					if (opt.needCutStartEndQuot)
 					{
 						while (*pszQuot == L'"') pszQuot++;
 						pszQuot += lstrlen(ms_ExeTmp);
@@ -1454,7 +1448,7 @@ bool CShellProc::IsAnsiConLoader(LPCWSTR asFile, LPCWSTR asParam)
 		#ifdef _DEBUG
 		bool bAnsiConFound = false;
 		LPCWSTR pszDbg = psz;
-		ms_ExeTmp.Empty();
+		ms_ExeTmp.Clear();
 		if ((pszDbg = NextArg(pszDbg, ms_ExeTmp)))
 		{
 			CharUpperBuff(ms_ExeTmp.ms_Val, lstrlen(ms_ExeTmp));
@@ -1471,7 +1465,7 @@ bool CShellProc::IsAnsiConLoader(LPCWSTR asFile, LPCWSTR asParam)
 		}
 		#endif
 
-		ms_ExeTmp.Empty();
+		ms_ExeTmp.Clear();
 		if (!NextArg(psz, ms_ExeTmp))
 		{
 			// AnsiCon exists in command line?
@@ -1827,7 +1821,7 @@ int CShellProc::PrepareExecuteParms(
 		return -1;
 	}
 
-	ms_ExeTmp.Empty();
+	ms_ExeTmp.Clear();
 
 	BOOL bGoChangeParm = FALSE;
 	bool bConsoleMode = false;
@@ -1985,7 +1979,7 @@ int CShellProc::PrepareExecuteParms(
 	// In some cases we need to pre-replace command line,
 	// for example, in cmd prompt: start -new_console:z
 	CEStr lsReplaceFile, lsReplaceParm;
-	ms_ExeTmp.Empty();
+	ms_ExeTmp.Clear();
 	bForceCutNewConsole |= PrepareNewConsoleInFile(aCmd, asFile, asParam, lsReplaceFile, lsReplaceParm, ms_ExeTmp);
 
 	if (ms_ExeTmp.IsEmpty())
@@ -2502,7 +2496,7 @@ wrap:
 
 bool CShellProc::GetStartingExeName(LPCWSTR asFile, LPCWSTR asParam, CEStr& rsExeTmp)
 {
-	rsExeTmp.Empty();
+	rsExeTmp.Clear();
 
 	if (asFile && *asFile)
 	{
@@ -2543,7 +2537,7 @@ bool CShellProc::GetStartingExeName(LPCWSTR asFile, LPCWSTR asParam, CEStr& rsEx
 
 		// If path to executable contains specials (spaces, etc.) it may be quoted, or not...
 		// So, we can't just call NextArg, logic is more complicated.
-		IsNeedCmd(false, SkipNonPrintable(asParam), rsExeTmp, NULL, NULL, NULL, NULL, NULL);
+		IsNeedCmd(false, SkipNonPrintable(asParam), rsExeTmp);
 	}
 
 	return (!rsExeTmp.IsEmpty());

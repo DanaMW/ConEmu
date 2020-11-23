@@ -294,7 +294,7 @@ LPCTSTR CConEmuStart::GetCmd(bool *pIsCmdList, bool bNoTask /*= false*/)
 
 	// Хорошо бы более корректно определить версию фара, но это не всегда просто
 	// Например x64 файл сложно обработать в x86 ConEmu.
-	DWORD nFarSize = 0;
+	uint64_t nFarSize = 0;
 
 	if (lstrcmpi(GetDefaultCmd(), L"far") == 0)
 	{
@@ -667,8 +667,8 @@ bool CConEmuStart::ParseCommandLine(LPCWSTR pszCmdLine, int& iResult)
 
 
 	// Let parse the reset
-	szArg.Empty();
-	szNext.Empty();
+	szArg.Clear();
+	szNext.Clear();
 
 	// Processing loop begin
 	if (cmdLineRest && *cmdLineRest)
@@ -1449,7 +1449,8 @@ bool CConEmuStart::ParseCommandLine(LPCWSTR pszCmdLine, int& iResult)
 			// Main processing cycle end
 
 			// Avoid assertions in NextArg
-			szArg.Empty(); szNext.Empty();
+			szArg.Clear();
+			szNext.Clear();
 		} // while (NextArg(&cmdLineRest, szArg, &pszArgStart) == 0)
 	}
 	// Processing loop end

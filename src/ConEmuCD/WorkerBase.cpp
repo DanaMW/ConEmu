@@ -390,18 +390,20 @@ int WorkerBase::PostProcessPrepareCommandLine()
 	}
 	else
 	{
-		bool bAlwaysConfirmExit = gState.alwaysConfirmExit_;
-		bool bAutoDisableConfirmExit = gState.autoDisableConfirmExit_;
+		NeedCmdOptions opt{};
+		opt.alwaysConfirmExit = gState.alwaysConfirmExit_;
 
 		pszCheck4NeedCmd_ = lsCmdLine;
 
-		gState.runViaCmdExe_ = IsNeedCmd((gState.runMode_ == RunMode::Server), lsCmdLine, szExeTest,
-			&pszArguments4EnvVar, &gState.needCutStartEndQuot_, &gState.rootIsCmdExe_, &bAlwaysConfirmExit, &bAutoDisableConfirmExit);
+		gState.runViaCmdExe_ = IsNeedCmd((gState.runMode_ == RunMode::Server), lsCmdLine, szExeTest, &opt);
+
+		pszArguments4EnvVar = opt.arguments;
+		gState.needCutStartEndQuot_ = opt.needCutStartEndQuot;
+		gState.rootIsCmdExe_ = opt.rootIsCmdExe;
 
 		if (gpConsoleArgs->confirmExitParm_ == RConStartArgs::eConfDefault)
 		{
-			gState.alwaysConfirmExit_ = bAlwaysConfirmExit;
-			gState.autoDisableConfirmExit_ = bAutoDisableConfirmExit;
+			gState.alwaysConfirmExit_ = opt.alwaysConfirmExit;
 		}
 	}
 
@@ -416,9 +418,9 @@ int WorkerBase::PostProcessPrepareCommandLine()
 
 	if (!gState.runViaCmdExe_)
 	{
-		nCmdLine += 1; // только место под 0
+		nCmdLine += 1; // '\0' termination
 		if (pszArguments4EnvVar && *szExeTest)
-			nCmdLine += lstrlen(szExeTest)+3;
+			nCmdLine += lstrlen(szExeTest) + 3;
 	}
 	else
 	{

@@ -29,69 +29,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CEStr.h"
+#include "CmdArg.h"
 
 #define CmdEscapeNeededChars  L"<>()&|^\""
 #define QuotationNeededChars  (L" " CmdEscapeNeededChars)
-
-// CmdArg
-struct CmdArg : public CEStr
-{
-public:
-	/// Point to the end dblquot, if we need drop first and last quotation marks
-	LPCWSTR m_pszDequoted = nullptr;
-	/// true if it's a double-quoted argument from NextArg
-	bool m_bQuoted = false;
-	/// if 0 - this is must be first call (first token of command line)
-	/// so, we need to test for mpsz_Dequoted
-	int m_nTokenNo = 0;
-
-	enum class CmdCall { Undefined, CmdExeFound, CmdK, CmdC };
-	/// To be able correctly parse double quotes in commands like <br>
-	/// "C:\Windows\system32\cmd.exe" /C ""C:\Python27\python.EXE"" <br>
-	/// "reg.exe add "HKEY_CLASSES_ROOT\Directory\Background\shell\Command Prompt\command" /ve /t REG_EXPAND_SZ /d "\"D:\Applications\ConEmu\ConEmuPortable.exe\" /Dir \"%V\" /cmd \"cmd.exe\" \"-new_console:nC:cmd.exe\" \"-cur_console:d:%V\"" /f"
-	CmdCall m_nCmdCall = CmdCall::Undefined;
-
-	#ifdef _DEBUG
-	// Debug to catch dirty calls
-	LPCWSTR m_sLastTokenEnd = nullptr;
-	wchar_t m_sLastTokenSave[32] = L"";
-	#endif
-
-private:
-	bool CompareSwitch(LPCWSTR asSwitch, bool caseSensitive = false) const;
-
-public:
-	void Empty();
-
-	/// Copy service info from other CmdArg
-	/// Used during NextArg evaluation to use different CmdArg objects
-	void LoadPosFrom(const CmdArg& arg);
-
-	/// If this may be supported switch like "-run", "/run", "/inside=...", "-regfont:...", etc.
-	bool IsPossibleSwitch() const;
-	/// For example, compare if ms_Val is "-run", "/run", "/inside=...", "-regfont:...", etc.
-	bool IsSwitch(LPCWSTR asSwitch, bool caseSensitive = false) const;
-	/// Stops checking on first nullptr
-	bool OneOfSwitches(LPCWSTR asSwitch1, LPCWSTR asSwitch2 = nullptr, LPCWSTR asSwitch3 = nullptr, LPCWSTR asSwitch4 = nullptr, LPCWSTR asSwitch5 = nullptr, LPCWSTR asSwitch6 = nullptr, LPCWSTR asSwitch7 = nullptr, LPCWSTR asSwitch8 = nullptr, LPCWSTR asSwitch9 = nullptr, LPCWSTR asSwitch10 = nullptr) const;
-	/// <summary>
-	/// Returns tail of argument after ":" or "=". <br>
-	/// Examples: "0xABC" for switch "-inside:0xABC"
-	/// </summary>
-	/// <returns>non-null string</returns>
-	LPCWSTR GetExtra() const;
-
-	CmdArg(CmdArg&&) = delete;
-	CmdArg(const CmdArg&) = delete;
-
-	CmdArg& operator=(const wchar_t* str);
-	CmdArg& operator=(wchar_t*&& str) = delete;
-	CmdArg& operator=(CmdArg&& str) = delete;
-	CmdArg& operator=(const CmdArg&) = delete;
-
-	CmdArg();
-	CmdArg(const wchar_t* str);
-	~CmdArg();
-};
 
 
 const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg& rsArg, const wchar_t** rsArgStart=nullptr);
@@ -121,9 +62,37 @@ bool IsConsoleHelper(LPCWSTR pszProcessName);
 bool IsTerminalServer(LPCWSTR pszProcessName);
 bool IsGitBashHelper(LPCWSTR pszProcessName);
 bool IsSshAgentHelper(LPCWSTR pszProcessName);
-bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
-			   LPCWSTR* rsArguments = nullptr, bool* rpbNeedCutStartEndQuot = nullptr,
-			   bool* rpbRootIsCmdExe = nullptr, bool* rpbAlwaysConfirmExit = nullptr, bool* rpbAutoDisableConfirmExit = nullptr);
+
+/// <summary>
+/// Try to extract valid file-path-name of starting executable from space-delimited string with lack of double quotes
+/// </summary>
+/// <param name="commandLine">Command line to parse, it could be not properly double quoted</param>
+/// <param name="szExe">[OUT] the path to found executable</param>
+/// <param name="rsArguments">[OUT] the rest of command line, arguments</param>
+/// <returns>true - if file-path is found and szExe is not empty, false - on error</returns>
+bool GetFilePathFromSpaceDelimitedString(const wchar_t* commandLine, CEStr& szExe, const wchar_t*& rsArguments);
+
+/// <summary>
+/// Output arguments for IsNeedCmd function
+/// </summary>
+struct NeedCmdOptions
+{
+	bool isNeedCmd = false;
+	bool needCutStartEndQuot = false;
+	bool rootIsCmdExe = false;
+	bool alwaysConfirmExit = false;
+	LPCWSTR arguments = nullptr;
+};
+
+/// <summary>
+/// Determines if we need a cmd.exe to run the command line.
+/// </summary>
+/// <param name="bRootCmd"></param>
+/// <param name="asCmdLine"></param>
+/// <param name="szExe"></param>
+/// <param name="options">optional pointer to <ref>NeedCmdOptions</ref> struct</param>
+/// <returns>true - if to execute a command we have to add "cmd.exe /c ...", false - asCmdLine could be executed intact</returns>
+bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* options = nullptr);
 
 bool IsQuotationNeeded(LPCWSTR pszPath);
 const wchar_t* SkipNonPrintable(const wchar_t* asParams);
@@ -133,10 +102,18 @@ wchar_t* MergeCmdLine(LPCWSTR asExe, LPCWSTR asParams);
 wchar_t* JoinPath(LPCWSTR asPath, LPCWSTR asPart1, LPCWSTR asPart2 = nullptr);
 wchar_t* GetParentPath(LPCWSTR asPath);
 
+/// <summary>
+/// Simple check if the asFilePath could be valid path.
+/// We don't check if file really exists in filesystem here.
+/// </summary>
+/// <param name="asFilePath">File path</param>
+/// <param name="abFullRequired">if true we don't allow relative paths or bare file names</param>
+/// <returns>true - if path is valid</returns>
 bool IsFilePath(LPCWSTR asFilePath, bool abFullRequired = false);
 
-const wchar_t* PointToName(const wchar_t* asFullPath);
+const wchar_t* PointToName(const wchar_t* asFileOrPath);
 const char* PointToName(const char* asFileOrPath);
+
 const wchar_t* PointToExt(const wchar_t* asFullPath);
 const wchar_t* Unquote(wchar_t* asParm, bool abFirstQuote = false);
 

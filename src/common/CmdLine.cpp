@@ -35,161 +35,27 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "WObjects.h"
 
 #ifndef CONEMU_MINIMAL
-// В ConEmuHk редиректор НЕ отключаем
+// DON'T disable redirector in ConEmuHk, we shall not change the console app behavior
 #include "MWow64Disable.h"
 #endif
 
-
-CmdArg::CmdArg()
+namespace
 {
+	// These chars could not exist in paths or file names
+	const wchar_t ILLEGAL_CHARACTERS[] = L"?*<>|";
+	// Cmd special characters - pipelines, redirections, escaping
+	const wchar_t SPECIAL_CMD_CHARACTERS[] = L"&|<>^";
+
+	// The commands, which we shall not try to expand/convert into "*.exe"
+	const wchar_t* const CMD_INTERNAL_COMMANDS =
+		L"ACTIVATE\0ALIAS\0ASSOC\0ATTRIB\0BEEP\0BREAK\0CALL\0CDD\0CHCP\0COLOR\0COPY\0DATE\0DEFAULT\0DEL\0DELAY\0DESCRIBE"
+		L"\0DETACH\0DIR\0DIRHISTORY\0DIRS\0DRAWBOX\0DRAWHLINE\0DRAWVLINE\0ECHO\0ECHOERR\0ECHOS\0ECHOSERR\0ENDLOCAL\0ERASE"
+		L"\0ERRORLEVEL\0ESET\0EXCEPT\0EXIST\0EXIT\0FFIND\0FOR\0FREE\0FTYPE\0GLOBAL\0GOTO\0HELP\0HISTORY\0IF\0IFF\0INKEY"
+		L"\0INPUT\0KEYBD\0KEYS\0LABEL\0LIST\0LOG\0MD\0MEMORY\0MKDIR\0MOVE\0MSGBOX\0NOT\0ON\0OPTION\0PATH\0PAUSE\0POPD"
+		L"\0PROMPT\0PUSHD\0RD\0REBOOT\0REN\0RENAME\0RMDIR\0SCREEN\0SCRPUT\0SELECT\0SET\0SETDOS\0SETLOCAL\0SHIFT\0SHRALIAS"
+		L"\0START\0TEE\0TIME\0TIMER\0TITLE\0TOUCH\0TREE\0TRUENAME\0TYPE\0UNALIAS\0UNSET\0VER\0VERIFY\0VOL\0VSCRPUT\0WINDOW"
+		L"\0Y\0\0";
 }
-
-CmdArg::CmdArg(const wchar_t* str)
-	: CEStr(str)
-{
-}
-
-CmdArg::~CmdArg()
-{
-	Empty();
-}
-
-CmdArg& CmdArg::operator=(const wchar_t* str)
-{
-	Set(str);
-	return *this;
-}
-
-void CmdArg::Empty()
-{
-	CEStr::Empty();
-
-	m_nTokenNo = 0;
-	m_nCmdCall = CmdCall::Undefined;
-	m_pszDequoted = nullptr;
-	m_bQuoted = false;
-
-	#ifdef _DEBUG
-	m_sLastTokenEnd = nullptr;
-	m_sLastTokenSave[0] = 0;
-	#endif
-}
-
-void CmdArg::LoadPosFrom(const CmdArg& arg)
-{
-	m_pszDequoted = arg.m_pszDequoted;
-	m_bQuoted = arg.m_bQuoted;
-	m_nTokenNo = arg.m_nTokenNo;
-	m_nCmdCall = arg.m_nCmdCall;
-	#ifdef _DEBUG
-	m_sLastTokenEnd = arg.m_sLastTokenEnd;
-	lstrcpyn(m_sLastTokenSave, arg.m_sLastTokenSave, countof(m_sLastTokenSave));
-	#endif
-}
-
-bool CmdArg::IsPossibleSwitch() const
-{
-	// Nothing to compare?
-	if (IsEmpty())
-		return false;
-	if ((ms_Val[0] != L'-') && (ms_Val[0] != L'/'))
-		return false;
-
-	// We do not care here about "-new_console:..." or "-cur_console:..."
-	// They are processed by RConStartArgsEx
-
-	// But ':' removed from checks, because otherwise ConEmu will not warn
-	// on invalid usage of "-new_console:a" for example
-
-	// Also, support smth like "-inside=\eCD /d %1"
-	LPCWSTR pszDelim = wcspbrk(ms_Val+1, L"=:");
-	LPCWSTR pszInvalids = wcspbrk(ms_Val+1, L"\\/|.&<>^");
-
-	if (pszInvalids && (!pszDelim || (pszInvalids < pszDelim)))
-		return false;
-
-	// Well, looks like a switch (`-run` for example)
-	return true;
-}
-
-bool CmdArg::CompareSwitch(LPCWSTR asSwitch, bool caseSensitive /*= false*/) const
-{
-	if ((asSwitch[0] == L'-') || (asSwitch[0] == L'/'))
-	{
-		asSwitch++;
-	}
-	else
-	{
-		_ASSERTE((asSwitch[0] == L'-') || (asSwitch[0] == L'/'));
-	}
-
-	int iCmp = caseSensitive
-		? lstrcmp(ms_Val + 1, asSwitch)
-		: lstrcmpi(ms_Val + 1, asSwitch);
-	if (iCmp == 0)
-		return true;
-
-	// Support partial comparison for L"-inside=..." when (asSwitch == L"-inside=")
-	const int len = lstrlen(asSwitch);
-	if ((len > 1) && ((asSwitch[len-1] == L'=') || (asSwitch[len-1] == L':')))
-	{
-		iCmp = lstrcmpni(ms_Val+1, asSwitch, (len - 1));
-		if ((iCmp == 0) && ((ms_Val[len] == L'=') || (ms_Val[len] == L':')))
-			return true;
-	}
-
-	return false;
-}
-
-bool CmdArg::IsSwitch(LPCWSTR asSwitch, const bool caseSensitive /*= false*/) const
-{
-	// Not a switch?
-	if (!IsPossibleSwitch())
-	{
-		return false;
-	}
-
-	if (!asSwitch || !*asSwitch)
-	{
-		_ASSERTE(asSwitch && *asSwitch);
-		return false;
-	}
-
-	return CompareSwitch(asSwitch, caseSensitive);
-}
-
-// Stops on first NULL
-bool CmdArg::OneOfSwitches(LPCWSTR asSwitch1, LPCWSTR asSwitch2, LPCWSTR asSwitch3, LPCWSTR asSwitch4, LPCWSTR asSwitch5, LPCWSTR asSwitch6, LPCWSTR asSwitch7, LPCWSTR asSwitch8, LPCWSTR asSwitch9, LPCWSTR asSwitch10) const
-{
-	// Not a switch?
-	if (!IsPossibleSwitch())
-	{
-		return false;
-	}
-
-	LPCWSTR switches[] = {asSwitch1, asSwitch2, asSwitch3, asSwitch4, asSwitch5, asSwitch6, asSwitch7, asSwitch8, asSwitch9, asSwitch10};
-
-	for (const auto& name : switches)
-	{
-		if (!name)
-			break;
-		if (CompareSwitch(name))
-			return true;
-	}
-
-	return false;
-}
-
-LPCWSTR CmdArg::GetExtra() const
-{
-	if (!IsPossibleSwitch())
-		return L"";
-	const auto* delimiter = wcspbrk(ms_Val, L":=");
-	if (!delimiter)
-		return L"";
-	return (delimiter + 1);
-}
-
 
 // Returns true on changes
 // bDeQuote:  replace two "" with one "
@@ -201,9 +67,9 @@ bool DemangleArg(CmdArg& rsDemangle, bool bDeQuote /*= true*/, bool bDeEscape /*
 		return false; // Nothing to do
 	}
 
-	LPCWSTR pszDemangles = (bDeQuote && bDeEscape) ? L"^\"" : bDeQuote ? L"\"" : L"^";
-	LPCWSTR pchCap = wcspbrk(rsDemangle, pszDemangles);
-	if (pchCap == NULL)
+	const auto* pszDemangles = (bDeQuote && bDeEscape) ? L"^\"" : bDeQuote ? L"\"" : L"^";
+	const auto* pchCap = wcspbrk(rsDemangle, pszDemangles);
+	if (pchCap == nullptr)
 	{
 		return false; // Nothing to replace
 	}
@@ -261,10 +127,10 @@ bool DemangleArg(CmdArg& rsDemangle, bool bDeQuote /*= true*/, bool bDeEscape /*
 // Function checks, if we need drop first and last quotation marks
 // Example: ""7z.exe" /?"
 // Using cmd.exe rules
-bool IsNeedDequote(LPCWSTR asCmdLine, bool abFromCmdCK, LPCWSTR* rsEndQuote/*=NULL*/)
+bool IsNeedDequote(LPCWSTR asCmdLine, const bool abFromCmdCK, LPCWSTR* rsEndQuote/*=nullptr*/)
 {
 	if (rsEndQuote)
-		*rsEndQuote = NULL;
+		*rsEndQuote = nullptr;
 
 	if (!asCmdLine)
 		return false;
@@ -336,11 +202,11 @@ bool IsNeedDequote(LPCWSTR asCmdLine, bool abFromCmdCK, LPCWSTR* rsEndQuote/*=NU
 
 // #CmdArg Eliminate QueryNext*** and make Next** return LPCWSTR
 
-// Returns PTR to next arg or NULL on error
-const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** rsArgStart/*=NULL*/)
+// Returns PTR to next arg or nullptr on error
+const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** rsArgStart/*=nullptr*/)
 {
 	if (!asCmdLine || !*asCmdLine)
-		return NULL;
+		return nullptr;
 
 	#ifdef _DEBUG
 	if ((rsArg.m_nTokenNo==0) // first token
@@ -355,9 +221,9 @@ const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** 
 	}
 	#endif
 
-	LPCWSTR psCmdLine = SkipNonPrintable(asCmdLine), pch = NULL;
+	LPCWSTR psCmdLine = SkipNonPrintable(asCmdLine), pch = nullptr;
 	if (!*psCmdLine)
-		return NULL;
+		return nullptr;
 
 	// Remote surrounding quotes, in certain cases
 	// Example: ""7z.exe" /?"
@@ -417,7 +283,7 @@ const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** 
 		}
 
 		if (!pch)
-			return NULL;
+			return nullptr;
 
 		while (pch[1] == L'"' && (!rsArg.m_pszDequoted || ((pch+1) < rsArg.m_pszDequoted)))
 		{
@@ -425,7 +291,7 @@ const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** 
 			pch = wcschr(pch, L'"');
 
 			if (!pch)
-				return NULL;
+				return nullptr;
 		}
 
 		// Теперь в pch ссылка на последнюю "
@@ -452,7 +318,7 @@ const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** 
 	// Warning: Don't demangle quotes/escapes here, or we'll fail to
 	// concatenate environment or smth, losing quotes and others
 	if (!rsArg.Set(psCmdLine, nArgLen))
-		return NULL;
+		return nullptr;
 	rsArg.m_bQuoted = lbQMode;
 	rsArg.m_nTokenNo++;
 
@@ -508,11 +374,11 @@ const wchar_t* NextArg(const wchar_t* asCmdLine, CmdArg &rsArg, const wchar_t** 
 	return psCmdLine;
 }
 
-// Returns PTR to next line or NULL on error
+// Returns PTR to next line or nullptr on error
 const wchar_t* NextLine(const wchar_t* asLines, CEStr &rsLine, NEXTLINEFLAGS Flags /*= NLF_TRIM_SPACES|NLF_SKIP_EMPTY_LINES*/)
 {
 	if (!asLines || !*asLines)
-		return NULL;
+		return nullptr;
 
 	const wchar_t* psz = asLines;
 	//const wchar_t szSpaces[] = L" \t";
@@ -528,7 +394,7 @@ const wchar_t* NextLine(const wchar_t* asLines, CEStr &rsLine, NEXTLINEFLAGS Fla
 
 	if (!*psz)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	const wchar_t* pszEnd = wcspbrk(psz, L"\r\n");
@@ -572,7 +438,7 @@ int AddEndSlash(wchar_t* rsPath, int cchMax)
 const wchar_t* SkipNonPrintable(const wchar_t* asParams)
 {
 	if (!asParams)
-		return NULL;
+		return nullptr;
 	const wchar_t* psz = asParams;
 	while (*psz == L' ' || *psz == L'\t' || *psz == L'\r' || *psz == L'\n') psz++;
 	return psz;
@@ -622,7 +488,7 @@ bool CompareFileMask(const wchar_t* asFileName, const wchar_t* asMask)
 LPCWSTR GetDrive(LPCWSTR pszPath, wchar_t* szDrive, int/*countof(szDrive)*/ cchDriveMax)
 {
 	if (!szDrive || cchDriveMax < 16)
-		return NULL;
+		return nullptr;
 
 	if (pszPath[0] != L'\\' && pszPath[1] == L':')
 	{
@@ -632,7 +498,7 @@ LPCWSTR GetDrive(LPCWSTR pszPath, wchar_t* szDrive, int/*countof(szDrive)*/ cchD
 	{
 		// UNC format? "\\?\UNC\Server\Share"
 		LPCWSTR pszSlash = wcschr(pszPath+8, L'\\'); // point to end of server name
-		pszSlash = pszSlash ? wcschr(pszSlash+1, L'\\') : NULL; // point to end of share name
+		pszSlash = pszSlash ? wcschr(pszSlash+1, L'\\') : nullptr; // point to end of share name
 		lstrcpyn(szDrive, pszPath, pszSlash ? (int)std::min((INT_PTR)cchDriveMax,pszSlash-pszPath+1) : cchDriveMax);
 	}
 	else if (lstrcmpni(pszPath, L"\\\\?\\", 4) == 0 && pszPath[4] && pszPath[5] == L':')
@@ -643,7 +509,7 @@ LPCWSTR GetDrive(LPCWSTR pszPath, wchar_t* szDrive, int/*countof(szDrive)*/ cchD
 	{
 		// "\\Server\Share"
 		LPCWSTR pszSlash = wcschr(pszPath+2, L'\\'); // point to end of server name
-		pszSlash = pszSlash ? wcschr(pszSlash+1, L'\\') : NULL; // point to end of share name
+		pszSlash = pszSlash ? wcschr(pszSlash+1, L'\\') : nullptr; // point to end of share name
 		lstrcpyn(szDrive, pszPath, pszSlash ? (int)std::min((INT_PTR)cchDriveMax,pszSlash-pszPath+1) : cchDriveMax);
 	}
 	else
@@ -666,7 +532,7 @@ LPCWSTR GetDirectory(CEStr& szDir)
 	nMax = GetCurrentDirectoryW(MAX_PATH, szDir.GetBuffer(MAX_PATH));
 	if (!nMax)
 	{
-		szDir.Empty();
+		szDir.Clear();
 		goto wrap;
 	}
 	else if (nMax > MAX_PATH)
@@ -674,33 +540,116 @@ LPCWSTR GetDirectory(CEStr& szDir)
 		nLen = GetCurrentDirectoryW(nMax, szDir.GetBuffer(nMax));
 		if (!nLen || (nLen > nMax))
 		{
-			szDir.Empty();
+			szDir.Clear();
 			goto wrap;
 		}
 	}
 
 wrap:
-	return szDir.IsEmpty() ? NULL : szDir.c_str();
+	return szDir.IsEmpty() ? nullptr : szDir.c_str();
 }
 
-// Команды, которые не нужно пытаться развернуть в exe?
-// кроме того, если команда содержит "?" или "*" - тоже не пытаться.
-const wchar_t* gsInternalCommands = L"ACTIVATE\0ALIAS\0ASSOC\0ATTRIB\0BEEP\0BREAK\0CALL\0CDD\0CHCP\0COLOR\0COPY\0DATE\0DEFAULT\0DEL\0DELAY\0DESCRIBE\0DETACH\0DIR\0DIRHISTORY\0DIRS\0DRAWBOX\0DRAWHLINE\0DRAWVLINE\0ECHO\0ECHOERR\0ECHOS\0ECHOSERR\0ENDLOCAL\0ERASE\0ERRORLEVEL\0ESET\0EXCEPT\0EXIST\0EXIT\0FFIND\0FOR\0FREE\0FTYPE\0GLOBAL\0GOTO\0HELP\0HISTORY\0IF\0IFF\0INKEY\0INPUT\0KEYBD\0KEYS\0LABEL\0LIST\0LOG\0MD\0MEMORY\0MKDIR\0MOVE\0MSGBOX\0NOT\0ON\0OPTION\0PATH\0PAUSE\0POPD\0PROMPT\0PUSHD\0RD\0REBOOT\0REN\0RENAME\0RMDIR\0SCREEN\0SCRPUT\0SELECT\0SET\0SETDOS\0SETLOCAL\0SHIFT\0SHRALIAS\0START\0TEE\0TIME\0TIMER\0TITLE\0TOUCH\0TREE\0TRUENAME\0TYPE\0UNALIAS\0UNSET\0VER\0VERIFY\0VOL\0VSCRPUT\0WINDOW\0Y\0\0";
-
-bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
-			   LPCWSTR* rsArguments /*= NULL*/, bool* rpbNeedCutStartEndQuot /*= NULL*/,
-			   bool* rpbRootIsCmdExe /*= NULL*/, bool* rpbAlwaysConfirmExit /*= NULL*/, bool* rpbAutoDisableConfirmExit /*= NULL*/)
+bool GetFilePathFromSpaceDelimitedString(const wchar_t* commandLine, CEStr& szExe, const wchar_t*& rsArguments)
 {
+	szExe.Clear();
+	rsArguments = nullptr;
+
+	// 17.10.2010 - support executable file path without parameters, but with spaces in its path
+	// 22.11.2015 - or some weirdness, like `C:\Program Files\CodeBlocks/cb_console_runner.exe "C:\sources\app.exe"`
+
+	if (!commandLine)
+		return false;
+
+	bool result = false;
+	const auto* command = commandLine;
+	// Skip quotation marks for now, we process here commands like
+	// `"C:\Program Files\Far\far.exe /p:path /some-switch"`
+	// `"C:\arc\7z.exe a test.7z *.*"`
+	size_t wasQuoted = 0;
+	while (*command == L'"')
+	{
+		++command; ++wasQuoted;
+	}
+
+	const wchar_t breakChars[] = L" \"\t\r\n";
+	LPCWSTR nextBreak = wcspbrk(command, breakChars);
+	if (!nextBreak)
+		nextBreak = command + lstrlenW(command);
+
+	CEStr szTemp;
+	uint64_t nTempSize;
+	const auto* firstIllegalChar = wcspbrk(command, ILLEGAL_CHARACTERS);
+	while (nextBreak)
+	{
+		szTemp.Set(command, (nextBreak - command));
+		_ASSERTE(szTemp[(nextBreak - command)] == 0);
+
+		// Argument was quoted?
+		if (!szTemp.IsEmpty())
+		{
+			const auto len = szTemp.GetLen();
+			if ((len > 2) && (szTemp[0] == L'"') && (szTemp[len - 1] == L'"'))
+			{
+				memmove(szTemp.ms_Val, szTemp.ms_Val + 1, (len - 2) * sizeof(*szTemp.ms_Val));
+				szTemp.ms_Val[len - 2] = 0;
+			}
+
+			if (wcschr(szTemp.c_str(), '"') != nullptr)
+				break;
+		}
+
+		// If this is a full path without environment variables
+		if (!szTemp.IsEmpty()
+			&& ((IsFilePath(szTemp, true) && !wcschr(szTemp, L'%'))
+				// or file/dir may be found via env.var. substitution or searching in %PATH%
+				|| FileExistsSearch(szTemp.c_str(), szTemp))
+			// Than check if it is a FILE (not a directory)
+			&& FileExists(szTemp, &nTempSize) && nTempSize)
+		{
+			// OK, it an our executable
+			for (size_t i = 0; i < wasQuoted && *nextBreak == L'"'; ++i)
+			{
+				++nextBreak;
+			}
+			rsArguments = SkipNonPrintable(nextBreak);
+			szExe.Set(szTemp);
+			result = !szExe.IsEmpty();
+			break;
+		}
+
+		_ASSERTE(*nextBreak == 0 || wcschr(breakChars, *nextBreak));
+		if (!*nextBreak)
+			break;
+		// Find next non-space
+		while (*nextBreak && wcschr(breakChars, *nextBreak))
+			nextBreak++;
+		// If quoted string starts from here - it's supposed to be an argument
+		if (*nextBreak == L'"')
+		{
+			// And we must not get here, because the executable must be already processed above
+			// _ASSERTE(*pchEnd != L'"');
+			break;
+		}
+		nextBreak = wcspbrk(nextBreak, breakChars);
+		if (!nextBreak)
+			nextBreak = command + lstrlenW(command);
+		if (firstIllegalChar && nextBreak >= firstIllegalChar)
+			break;
+	}
+
+	return result;
+}
+
+bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* options /*= nullptr*/)
+{
+	bool isNeedCmd = false;
 	bool rbNeedCutStartEndQuot = false;
-	bool rbRootIsCmdExe = true;
+	bool rbRootIsCmdExe = false;
 	bool rbAlwaysConfirmExit = false;
-	bool rbAutoDisableConfirmExit = false;
+	LPCWSTR rsArguments = nullptr;
 
 	wchar_t *pwszEndSpace;
 
-	if (rsArguments) *rsArguments = NULL;
-
-	bool lbRc = false;
 	BOOL lbFirstWasGot = FALSE;
 	LPCWSTR pwszCopy;
 	int nLastChar;
@@ -712,6 +661,8 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 	if (!asCmdLine || !*asCmdLine)
 	{
 		_ASSERTE(asCmdLine && *asCmdLine);
+		szExe.Clear();
+		isNeedCmd = true;
 		goto wrap;
 	}
 
@@ -728,17 +679,10 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 	if (!szExe.GetBuffer(MAX_PATH))
 	{
 		_ASSERTE(FALSE && "Failed to allocate MAX_PATH");
-		lbRc = true;
+		isNeedCmd = true;
 		goto wrap;
 	}
-	szExe.Empty();
-
-	if (!asCmdLine || *asCmdLine == 0)
-	{
-		_ASSERTE(asCmdLine && *asCmdLine);
-		lbRc = true;
-		goto wrap;
-	}
+	szExe.Clear();
 
 
 	pwszCopy = asCmdLine;
@@ -748,79 +692,73 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 
 	if (pwszCopy[0] == L'"' && pwszCopy[nLastChar] == L'"')
 	{
-		//if (pwszCopy[1] == L'"' && pwszCopy[2])
-		//{
-		//	pwszCopy ++; // Отбросить первую кавычку в командах типа: ""c:\program files\arc\7z.exe" -?"
+		// #IsNeedCmd try to cut the quotes and process the modified string
 
-		//	if (rbNeedCutStartEndQuot) *rbNeedCutStartEndQuot = TRUE;
-		//}
-		//else
-			// глючила на ""F:\VCProject\FarPlugin\#FAR180\far.exe  -new_console""
-			//if (wcschr(pwszCopy+1, L'"') == (pwszCopy+nLastChar)) {
-			//	LPCWSTR pwszTemp = pwszCopy;
-			//	// Получим первую команду (исполняемый файл?)
-			//	if ((iRc = NextArg(&pwszTemp, szArg)) != 0) {
-			//		//Parsing command line failed
-			//		lbRc = true; goto wrap;
-			//	}
-			//	pwszCopy ++; // Отбросить первую кавычку в командах типа: "c:\arc\7z.exe -?"
-			//	lbFirstWasGot = TRUE;
-			//	if (rbNeedCutStartEndQuot) *rbNeedCutStartEndQuot = TRUE;
-			//} else
+		// Examples
+		// `""c:\program files\arc\7z.exe" -?"`
+		// `""F:\VCProject\FarPlugin\#FAR180\far.exe  -new_console""`
+		// `"c:\arc\7z.exe -?"`
+		// `"C:\GCC\msys\bin\make.EXE -f "makefile" COMMON="../../../plugins/common""`
+		// `""F:\VCProject\FarPlugin\#FAR180\far.exe  -new_console""`
+		// `""cmd""`
+		// `cmd /c ""c:\program files\arc\7z.exe" -?"` // could be also double-double-quoted inside
+		// `cmd /c "dir c:\"`
+
+		// Get the first argument (the executable?)
+		CmdArg arg;
+		const auto* nextArg = NextArg(pwszCopy, arg);
+		if (!nextArg)
 		{
-			// Will be dequoted in 'NextArg' function. Examples
-			// "C:\GCC\msys\bin\make.EXE -f "makefile" COMMON="../../../plugins/common""
-			// ""F:\VCProject\FarPlugin\#FAR180\far.exe  -new_console""
-			// ""cmd""
-			// cmd /c ""c:\program files\arc\7z.exe" -?"   // да еще и внутри могут быть двойными...
-			// cmd /c "dir c:\"
+			//Parsing command line failed
+			#ifdef WARN_NEED_CMD
+			_ASSERTE(FALSE);
+			#endif
+			isNeedCmd = true; goto wrap;
+		}
+		szExe.Set(arg);
 
-			// Получим первую команду (исполняемый файл?)
-			CmdArg arg;
-			if (!NextArg(pwszCopy, arg))
+		if (lstrcmpiW(szExe, L"start") == 0)
+		{
+			// The "start" command could be executed only by command processor
+			#ifdef WARN_NEED_CMD
+			_ASSERTE(FALSE);
+			#endif
+			isNeedCmd = true; goto wrap;
+		}
+
+		if (arg.m_pszDequoted)
+		{
+			uint64_t nTempSize = 0;
+			CEStr expanded;
+			const wchar_t* exeToCheck = nullptr;
+			// file/dir may be found via env.var. substitution or searching in %PATH%
+			if (FileExistsSearch(szExe.c_str(), expanded))
+				exeToCheck = expanded.IsEmpty() ? szExe.c_str() : expanded.c_str();
+			// or it's already a full specified file path
+			else if (IsFilePath(szExe, true))
+				exeToCheck = szExe.c_str();;
+
+			// Than check if it is a FILE (not a directory)
+			if (exeToCheck && FileExists(exeToCheck, &nTempSize) && nTempSize)
 			{
-				//Parsing command line failed
-				#ifdef WARN_NEED_CMD
-				_ASSERTE(FALSE);
-				#endif
-				lbRc = true; goto wrap;
-			}
-			szExe.Set(arg);
+				_ASSERTE(*pwszCopy == L'"' && pwszCopy == asCmdLine); // should be still
+				++pwszCopy; // skip first double quote
+				lbFirstWasGot = true;
 
-			if (lstrcmpiW(szExe, L"start") == 0)
-			{
-				// Команду start обрабатывает только процессор
-				#ifdef WARN_NEED_CMD
-				_ASSERTE(FALSE);
-				#endif
-				lbRc = true; goto wrap;
-			}
-
-			LPCWSTR pwszQ = pwszCopy + 1 + lstrlen(szExe);
-			wchar_t* pszExpand = NULL;
-
-			if (*pwszQ != L'"' && IsExecutable(szExe, &pszExpand))
-			{
-				pwszCopy ++; // отбрасываем
-				lbFirstWasGot = TRUE;
-
-				if (pszExpand)
-				{
-					szExe.Set(pszExpand);
-					SafeFree(pszExpand);
-					if (rsArguments)
-						*rsArguments = pwszQ;
-				}
+				if (!expanded.IsEmpty())
+					szExe = std::move(expanded);
+				// #TODO remove ending quote
+				rsArguments = SkipNonPrintable(nextArg);
 
 				rbNeedCutStartEndQuot = true;
 			}
 		}
 	}
 
-	// Получим первую команду (исполняемый файл?)
+	// Get the first argument (the executable?)
 	if (!lbFirstWasGot)
 	{
-		szExe.Empty();
+		szExe.Clear();
 
 		// `start` command must be processed by processor itself
 		if ((lstrcmpni(pwszCopy, L"start", 5) == 0)
@@ -829,85 +767,29 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 			#ifdef WARN_NEED_CMD
 			_ASSERTE(FALSE);
 			#endif
-			lbRc = true; goto wrap;
+			isNeedCmd = true; goto wrap;
 		}
 
-		// 17.10.2010 - support executable file path without parameters, but with spaces in its path
-		// 22.11.2015 - or some weirdness, like `C:\Program Files\CB/cb_console_runner.exe "C:\sources\app.exe"`
-		LPCWSTR pchEnd = wcschr(pwszCopy, L' ');
-		if (!pchEnd)
-			pchEnd = pwszCopy + lstrlenW(pwszCopy);
-
-		CEStr szTemp;
-		DWORD nTempSize;
-		while (pchEnd)
-		{
-			szTemp.Set(pwszCopy, (pchEnd - pwszCopy));
-			_ASSERTE(szTemp[(pchEnd - pwszCopy)] == 0);
-
-			// Argument was quoted?
-			if (!szTemp.IsEmpty())
-			{
-				INT_PTR len = szTemp.GetLen();
-				if ((len > 2) && (szTemp[0] == L'"') && (szTemp[len-1] == L'"'))
-				{
-					memmove(szTemp.ms_Val, szTemp.ms_Val+1, (len-2)*sizeof(*szTemp.ms_Val));
-					szTemp.ms_Val[len-2] = 0;
-				}
-			}
-
-			// If this is a full path without environment variables
-			if (!szTemp.IsEmpty()
-				&& ((IsFilePath(szTemp, true) && !wcschr(szTemp, L'%'))
-					// or file/dir may be found via env.var. substitution or searching in %PATH%
-					|| FileExistsSearch((LPCWSTR)szTemp, szTemp))
-				// Than check if it is a FILE (not a directory)
-				&& FileExists(szTemp, &nTempSize) && nTempSize)
-			{
-				// OK, it an our executable?
-				if (rsArguments)
-					*rsArguments = pchEnd;
-				szExe.Set(szTemp);
-				break;
-			}
-
-			_ASSERTE(*pchEnd == 0 || *pchEnd == L' ');
-			if (!*pchEnd)
-				break;
-			// Find next space after nonspace
-			while (*(pchEnd) == L' ') pchEnd++;
-			// If quoted string starts from here - it's supposed to be an argument
-			if (*pchEnd == L'"')
-			{
-				// And we must not get here, because the executable must be already processed above
-				// _ASSERTE(*pchEnd != L'"');
-				break;
-			}
-			pchEnd = wcschr(pchEnd, L' ');
-			if (!pchEnd)
-				pchEnd = pwszCopy + lstrlenW(pwszCopy);
-		}
-
-		if (szExe.IsEmpty())
+		// will return true if we found a real existing file path
+		if (!GetFilePathFromSpaceDelimitedString(pwszCopy, szExe, rsArguments))
 		{
 			CmdArg arg;
-			if (!(pwszCopy = NextArg(pwszCopy, arg)))
+			if (!((pwszCopy = NextArg(pwszCopy, arg))))
 			{
 				//Parsing command line failed
 				#ifdef WARN_NEED_CMD
 				_ASSERTE(FALSE);
 				#endif
-				lbRc = true; goto wrap;
+				isNeedCmd = true; goto wrap;
 			}
 			szExe.Set(arg);
 
 			_ASSERTE(lstrcmpiW(szExe, L"start") != 0);
 
-			// Обработка переменных окружения и поиск в PATH
-			if (FileExistsSearch((LPCWSTR)szExe, szExe))
+			// Expand environment variables and search in the %PATH%
+			if (FileExistsSearch(szExe.c_str(), szExe))
 			{
-				if (rsArguments)
-					*rsArguments = pwszCopy;
+				rsArguments = SkipNonPrintable(pwszCopy);
 			}
 		}
 	}
@@ -918,55 +800,39 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 	}
 	else
 	{
-		// Если юзеру нужен редирект - то он должен явно указать ком.процессор
-		// Иначе нереально (или достаточно сложно) определить, является ли символ
-		// редиректом, или это просто один из аргументов команды...
-
-		// "Левые" символы в имени файла (а вот в "первом аргументе" все однозначно)
-		if (wcspbrk(szExe, L"?*<>|"))
+		// Illegal characters in the executable we parse from the command line.
+		// We can't run the program as it's path is invalid, so let's try it to "cmd.exe /c ..."
+		if (wcspbrk(szExe, ILLEGAL_CHARACTERS))
 		{
-			rbRootIsCmdExe = TRUE; // запуск через "процессор"
-			lbRc = true; goto wrap; // добавить "cmd.exe"
+			rbRootIsCmdExe = TRUE; // it's running via "cmd.exe"
+			isNeedCmd = true; goto wrap; // force add "cmd.exe"
 		}
 
-		// если "путь" не указан
-		if (wcschr(szExe, L'\\') == NULL)
+		// If there is no "path"
+		if (wcschr(szExe, L'\\') == nullptr)
 		{
-			bool bHasExt = (wcschr(szExe, L'.') != NULL);
-			// Проверим, может это команда процессора (типа "DIR")?
+			const bool bHasExt = (wcschr(szExe, L'.') != nullptr);
+			// Let's check if it's a processor command, e.g. "DIR"
 			if (!bHasExt)
 			{
-				bool bIsCommand = false;
-				wchar_t* pszUppr = lstrdup(szExe);
-				if (pszUppr)
+				bool isCommand = false;
+				const wchar_t* internalCommand = CMD_INTERNAL_COMMANDS;
+				while (*internalCommand)
 				{
-					// избежать линковки на user32.dll
-					//CharUpperBuff(pszUppr, lstrlen(pszUppr));
-					for (wchar_t* p = pszUppr; *p; p++)
+					if (szExe.Compare(internalCommand, false) == 0)
 					{
-						if (*p >= L'a' && *p <= 'z')
-							*p -= 0x20;
+						isCommand = true;
+						break;
 					}
-
-					const wchar_t* pszFind = gsInternalCommands;
-					while (*pszFind)
-					{
-						if (lstrcmp(pszUppr, pszFind) == 0)
-						{
-							bIsCommand = true;
-							break;
-						}
-						pszFind += lstrlen(pszFind)+1;
-					}
-					free(pszUppr);
+					internalCommand += lstrlen(internalCommand) + 1;
 				}
-				if (bIsCommand)
+				if (isCommand)
 				{
 					#ifdef WARN_NEED_CMD
 					_ASSERTE(FALSE);
 					#endif
-					rbRootIsCmdExe = TRUE; // запуск через "процессор"
-					lbRc = true; goto wrap; // добавить "cmd.exe"
+					rbRootIsCmdExe = TRUE; // it's running via "cmd.exe"
+					isNeedCmd = true; goto wrap; // force add "cmd.exe"
 				}
 			}
 
@@ -975,25 +841,26 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 				#ifndef CONEMU_MINIMAL
 				MWow64Disable wow; wow.Disable(); // Disable Wow64 file redirector
 				#endif
-				apiSearchPath(NULL, szExe, bHasExt ? NULL : L".exe", szExe);
+				// #TODO isn't apiSearchPath already called?
+				apiSearchPath(nullptr, szExe, bHasExt ? nullptr : L".exe", szExe);
 			}
-		} // end: if (wcschr(szExe, L'\\') == NULL)
+		} // end: if (wcschr(szExe, L'\\') == nullptr)
 	}
 
-	// Если szExe не содержит путь к файлу - запускаем через cmd
+	// If szExe does not contain the path to the file - try to run via cmd
 	// "start "" C:\Utils\Files\Hiew32\hiew32.exe C:\00\Far.exe"
 	if (!IsFilePath(szExe))
 	{
 		#ifdef WARN_NEED_CMD
 		_ASSERTE(FALSE);
 		#endif
-		rbRootIsCmdExe = TRUE; // запуск через "процессор"
-		lbRc = true; goto wrap; // добавить "cmd.exe"
+		rbRootIsCmdExe = true; // run the command via processor (e.g. "cmd.exe /c ...")
+		isNeedCmd = true; goto wrap; // add leading "cmd.exe"
 	}
 
 	//pwszCopy = wcsrchr(szArg, L'\\'); if (!pwszCopy) pwszCopy = szArg; else pwszCopy ++;
 	pwszCopy = PointToName(szExe);
-	//2009-08-27
+
 	pwszEndSpace = szExe.ms_Val + lstrlenW(szExe) - 1;
 
 	while ((*pwszEndSpace == L' ') && (pwszEndSpace > szExe))
@@ -1009,44 +876,39 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 	if (lstrcmpiW(pwszCopy, L"cmd")==0 || lstrcmpiW(pwszCopy, L"cmd.exe")==0
 		|| lstrcmpiW(pwszCopy, L"tcc")==0 || lstrcmpiW(pwszCopy, L"tcc.exe")==0)
 	{
-		rbRootIsCmdExe = TRUE; // уже должен быть выставлен, но проверим
-		rbAlwaysConfirmExit = TRUE; rbAutoDisableConfirmExit = FALSE;
+		rbRootIsCmdExe = true; // it IS cmd.exe
+		rbAlwaysConfirmExit = true;
 		#ifdef _DEBUG // due to unittests
 		_ASSERTE(!bIsBatch);
 		#endif
-		lbRc = false; goto wrap; // уже указан командный процессор, cmd.exe в начало добавлять не нужно
+		isNeedCmd = false; goto wrap; // cmd.exe already exists in the command line, no need to add
 	}
 
 
-	// Issue 1211: Decide not to do weird heuristic.
-	//   If user REALLY needs redirection (root command, huh?)
-	//   - he must call "cmd /c ..." directly
-	// Если есть одна из команд перенаправления, или слияния - нужен CMD.EXE
+	// GoogleIssue 1211: Decide not to do weird heuristic.
+	//   If user REALLY needs redirection for root command (huh?)
+	//   - they must call "cmd /c ..." directly
 	if (!bRootCmd)
 	{
-		if (wcschr(asCmdLine, L'&') ||
-			wcschr(asCmdLine, L'>') ||
-			wcschr(asCmdLine, L'<') ||
-			wcschr(asCmdLine, L'|') ||
-			wcschr(asCmdLine, L'^') // или экранирования
-			)
+		// If we are in comspec mode (run child process from existing shell) and command line contains
+		// any of pipelining/redirection characters, than run via "cmd /c ..."
+		if (wcspbrk(asCmdLine, SPECIAL_CMD_CHARACTERS) != nullptr)
 		{
 			#ifdef WARN_NEED_CMD
 			_ASSERTE(FALSE);
 			#endif
-			lbRc = true; goto wrap;
+			isNeedCmd = true; goto wrap;  // add cmd.exe
 		}
 	}
 
-	//if (lstrcmpiW(pwszCopy, L"far")==0 || lstrcmpiW(pwszCopy, L"far.exe")==0)
 	if (IsFarExe(pwszCopy))
 	{
-		bool bFound = (wcschr(pwszCopy, L'.') != NULL);
-		// Если указали при запуске просто "far" - это может быть батник, расположенный в %PATH%
+		bool bFound = (wcschr(pwszCopy, L'.') != nullptr);
+		// If just "far" was started, it could be a batch, located in the %PATH%
 		if (!bFound)
 		{
 			CEStr szSearch;
-			if (apiSearchPath(NULL, pwszCopy, L".exe", szSearch))
+			if (apiSearchPath(nullptr, pwszCopy, L".exe", szSearch))
 			{
 				if (lstrcmpi(PointToExt(szSearch), L".exe") == 0)
 					bFound = true;
@@ -1055,22 +917,21 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 
 		if (bFound)
 		{
-			rbAutoDisableConfirmExit = TRUE;
-			rbRootIsCmdExe = FALSE; // FAR!
+			rbRootIsCmdExe = false; // FAR!
 			#ifdef _DEBUG // due to unittests
 			_ASSERTE(!bIsBatch);
 			#endif
-			lbRc = false; goto wrap; // уже указан исполняемый файл, cmd.exe в начало добавлять не нужно
+			isNeedCmd = false; goto wrap; // already executable, no need to add leading cmd.exe
 		}
 	}
 
 	if (IsExecutable(szExe))
 	{
-		rbRootIsCmdExe = FALSE; // Для других программ - буфер не включаем
+		rbRootIsCmdExe = false;
 		#ifdef _DEBUG // due to unittests
 		_ASSERTE(!bIsBatch);
 		#endif
-		lbRc = false; goto wrap; // Запускается конкретная консольная программа. cmd.exe не требуется
+		isNeedCmd = false; goto wrap; // already executable, no need to add leading cmd.exe
 	}
 
 	//Можно еще Доделать поиски с: SearchPath, GetFullPathName, добавив расширения .exe & .com
@@ -1078,69 +939,73 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe,
 	#ifdef WARN_NEED_CMD
 	_ASSERTE(FALSE);
 	#endif
-	rbRootIsCmdExe = TRUE;
+	rbRootIsCmdExe = true;
 #ifndef __GNUC__
 #pragma warning( pop )
 #endif
 
-	lbRc = true;
+	isNeedCmd = true;
 wrap:
-	if (rpbNeedCutStartEndQuot)
-		*rpbNeedCutStartEndQuot = rbNeedCutStartEndQuot;
-	if (rpbRootIsCmdExe)
-		*rpbRootIsCmdExe = rbRootIsCmdExe;
-	if (rpbAlwaysConfirmExit)
-		*rpbAlwaysConfirmExit = rbAlwaysConfirmExit;
-	if (rpbAutoDisableConfirmExit)
-		*rpbAutoDisableConfirmExit = rbAutoDisableConfirmExit;
-	return lbRc;
+	if (options)
+	{
+		options->isNeedCmd = isNeedCmd;
+		options->needCutStartEndQuot = rbNeedCutStartEndQuot;
+		options->rootIsCmdExe = rbRootIsCmdExe || isNeedCmd;
+		options->alwaysConfirmExit = rbAlwaysConfirmExit;
+		// #IsNeedCmd return arguments as CEStr, so we don't need needCutStartEndQuot processing
+		options->arguments = rsArguments;
+	}
+	return isNeedCmd;
 }
 
 #ifndef __GNUC__
 #pragma warning( push )
 #pragma warning(disable : 6400)
 #endif
-bool IsExecutable(LPCWSTR aszFilePathName, wchar_t** rsExpandedVars /*= NULL*/)
+bool IsExecutable(LPCWSTR aszFilePathName, wchar_t** rsExpandedVars /*= nullptr*/)
 {
 #ifndef __GNUC__
 #pragma warning( push )
 #pragma warning(disable : 6400)
 #endif
-
-	wchar_t* pszExpand = NULL;
+	bool result = false;
+	CEStr expanded;
 
 	for (int i = 0; i <= 1; i++)
 	{
-		LPCWSTR pwszDot = PointToExt(aszFilePathName);
+		// ReSharper disable once CppLocalVariableMayBeConst
+		LPCWSTR extension = PointToExt(aszFilePathName);
 
-		if (pwszDot)  // Если указан .exe или .com файл
+		if (extension)  // if .exe or .com was specified
 		{
-			if (lstrcmpiW(pwszDot, L".exe")==0 || lstrcmpiW(pwszDot, L".com")==0)
+			if (lstrcmpiW(extension, L".exe")==0 || lstrcmpiW(extension, L".com")==0)
 			{
 				if (FileExists(aszFilePathName))
-					return true;
+				{
+					result = true;
+					break;
+				}
 			}
 		}
 
 		if (!i && wcschr(aszFilePathName, L'%'))
 		{
-			pszExpand = ExpandEnvStr(aszFilePathName);
-			if (!pszExpand)
+			expanded = ExpandEnvStr(aszFilePathName);
+			if (!expanded)
 				break;
-			aszFilePathName = pszExpand;
+			aszFilePathName = expanded.c_str();
+			continue;
 		}
+		break;
 	}
 
 	if (rsExpandedVars)
 	{
-		*rsExpandedVars = pszExpand; pszExpand = NULL;
-	}
-	else
-	{
-		SafeFree(pszExpand);
+		SafeFree(*rsExpandedVars)
+		*rsExpandedVars = expanded.Detach();
 	}
 
-	return false;
+	return result;
 }
 #ifndef __GNUC__
 #pragma warning( pop )
@@ -1197,7 +1062,7 @@ bool CheckProcessName(LPCWSTR pszProcessName, LPCWSTR* lsNames)
 	{
 		LPCWSTR pszName2 = lsNames[i];
 
-		_ASSERTE(wcsrchr(pszName2, L'.') != NULL);
+		_ASSERTE(wcsrchr(pszName2, L'.') != nullptr);
 		#if 0
 		CEStr lsName2;
 		LPCWSTR pszExt2 = wcsrchr(pszName2, L'.');
@@ -1219,19 +1084,19 @@ bool CheckProcessName(LPCWSTR pszProcessName, LPCWSTR* lsNames)
 
 bool IsConsoleService(LPCWSTR pszProcessName)
 {
-	LPCWSTR lsNameExt[] = {L"csrss.exe", L"conhost.exe", NULL};
+	LPCWSTR lsNameExt[] = {L"csrss.exe", L"conhost.exe", nullptr};
 	return CheckProcessName(pszProcessName, lsNameExt);
 }
 
 bool IsConEmuGui(LPCWSTR pszProcessName)
 {
-	LPCWSTR lsNameExt[] = {L"ConEmu.exe", L"ConEmu64.exe", NULL};
+	LPCWSTR lsNameExt[] = {L"ConEmu.exe", L"ConEmu64.exe", nullptr};
 	return CheckProcessName(pszProcessName, lsNameExt);
 }
 
 bool IsConsoleServer(LPCWSTR pszProcessName)
 {
-	LPCWSTR lsNameExt[] = {L"ConEmuC.exe", L"ConEmuC64.exe", NULL};
+	LPCWSTR lsNameExt[] = {L"ConEmuC.exe", L"ConEmuC64.exe", nullptr};
 	return CheckProcessName(pszProcessName, lsNameExt);
 }
 
@@ -1241,19 +1106,19 @@ bool IsTerminalServer(LPCWSTR pszProcessName)
 		L"conemu-cyg-32.exe", L"conemu-cyg-64.exe",
 		L"conemu-msys-32.exe",
 		L"conemu-msys2-32.exe", L"conemu-msys2-64.exe",
-		NULL};
+		nullptr};
 	return CheckProcessName(pszProcessName, lsNames);
 }
 
 bool IsGitBashHelper(LPCWSTR pszProcessName)
 {
-	LPCWSTR lsNameExt[] = { L"git-bash.exe", L"git-cmd.exe", NULL };
+	LPCWSTR lsNameExt[] = { L"git-bash.exe", L"git-cmd.exe", nullptr };
 	return CheckProcessName(pszProcessName, lsNameExt);
 }
 
 bool IsSshAgentHelper(LPCWSTR pszProcessName)
 {
-	LPCWSTR lsNameExt[] = { L"ssh-agent.exe", NULL };
+	LPCWSTR lsNameExt[] = { L"ssh-agent.exe", nullptr };
 	return CheckProcessName(pszProcessName, lsNameExt);
 }
 
@@ -1267,13 +1132,13 @@ bool IsConsoleHelper(LPCWSTR pszProcessName)
 
 bool IsFarExe(LPCWSTR asModuleName)
 {
-	LPCWSTR lsNameExt[] = {L"far.exe", L"far64.exe", NULL};
+	LPCWSTR lsNameExt[] = {L"far.exe", L"far64.exe", nullptr};
 	return CheckProcessName(asModuleName, lsNameExt);
 }
 
 bool IsCmdProcessor(LPCWSTR asModuleName)
 {
-	LPCWSTR lsNameExt[] = {L"cmd.exe", L"tcc.exe", NULL};
+	LPCWSTR lsNameExt[] = {L"cmd.exe", L"tcc.exe", nullptr};
 	return CheckProcessName(asModuleName, lsNameExt);
 }
 
@@ -1291,20 +1156,20 @@ wchar_t* MergeCmdLine(LPCWSTR asExe, LPCWSTR asParams)
 {
 	bool bNeedQuot = IsQuotationNeeded(asExe);
 	if (asParams && !*asParams)
-		asParams = NULL;
+		asParams = nullptr;
 
 	wchar_t* pszRet;
 	if (bNeedQuot)
 		pszRet = lstrmerge(L"\"", asExe, asParams ? L"\" " : L"\"", asParams);
 	else
-		pszRet = lstrmerge(asExe, asParams ? L" " : NULL, asParams);
+		pszRet = lstrmerge(asExe, asParams ? L" " : nullptr, asParams);
 
 	return pszRet;
 }
 
-wchar_t* JoinPath(LPCWSTR asPath, LPCWSTR asPart1, LPCWSTR asPart2 /*= NULL*/)
+wchar_t* JoinPath(LPCWSTR asPath, LPCWSTR asPart1, LPCWSTR asPart2 /*= nullptr*/)
 {
-	LPCWSTR psz1 = asPath, psz2 = NULL, psz3 = asPart1, psz4 = NULL, psz5 = asPart2;
+	LPCWSTR psz1 = asPath, psz2 = nullptr, psz3 = asPart1, psz4 = nullptr, psz5 = asPart2;
 
 	// Добавить слеши если их нет на гранях
 	// удалить лишние, если они указаны в обеих частях
@@ -1337,63 +1202,83 @@ wchar_t* JoinPath(LPCWSTR asPath, LPCWSTR asPart1, LPCWSTR asPart2 /*= NULL*/)
 wchar_t* GetParentPath(LPCWSTR asPath)
 {
 	if (!asPath || !*asPath)
-		return NULL;
+		return nullptr;
 	LPCWSTR pszName = PointToName(asPath);
 	if (!pszName)
-		return NULL;
+		return nullptr;
 	while ((pszName > asPath) && (*(pszName-1) == L'\\' || *(pszName-1) == L'/'))
 		--pszName;
 	if (pszName <= asPath)
-		return NULL;
+		return nullptr;
 
 	size_t cch = pszName - asPath;
 	wchar_t* parent = (wchar_t*)malloc((cch + 1) * sizeof(*parent));
 	if (!parent)
-		return NULL;
+		return nullptr;
 	wcsncpy_s(parent, cch+1, asPath, cch);
 	parent[cch] = 0;
 	return parent;
 }
 
-// Первичная проверка, может ли asFilePath быть путем
-bool IsFilePath(LPCWSTR asFilePath, bool abFullRequired /*= false*/)
+bool IsFilePath(LPCWSTR asFilePath, const bool abFullRequired /*= false*/)
 {
 	if (!asFilePath || !*asFilePath)
 		return false;
 
 	// Если в пути встречаются недопустимые символы
+	// If contains some illegal characters
 	if (wcschr(asFilePath, L'"') ||
-	        wcschr(asFilePath, L'>') ||
-	        wcschr(asFilePath, L'<') ||
-	        wcschr(asFilePath, L'|')
-			// '/' не проверяем для совместимости с cygwin?
-	  )
+		wcschr(asFilePath, L'>') ||
+		wcschr(asFilePath, L'<') ||
+		wcschr(asFilePath, L'|')
+		// '/' don't restrict - it's allowed both in Windows and in cygwin
+		)
+	{
 		return false;
+	}
 
-	// Пропуск UNC "\\?\"
+	// skip UNC prefix "\\?\" in paths like "\\?\C:\Tools" or "\\?\UNC\Server\Share"
+	bool isUncPath = false;
 	if (asFilePath[0] == L'\\' && asFilePath[1] == L'\\' && asFilePath[2] == L'?' && asFilePath[3] == L'\\')
+	{
 		asFilePath += 4; //-V112
+		isUncPath = true;
+	}
 
-	// Если asFilePath содержит два (и более) ":\"
-	LPCWSTR pszColon = wcschr(asFilePath, L':');
-
+	// Don't allow two (and more) ":\"
+	const auto* pszColon = wcschr(asFilePath, L':');
 	if (pszColon)
 	{
-		// Если есть ":", то это должен быть путь вида "X:\xxx", т.е. ":" - второй символ
-		if (pszColon != (asFilePath+1))
+		// If the ":" exists, that it should be the path like "X:\xxx", i.e. ":" should be second character
+		if (pszColon != (asFilePath + 1))
 			return false;
 
 		if (!isDriveLetter(asFilePath[0]))
 			return false;
 
-		if (wcschr(pszColon+1, L':'))
+		if (wcschr(pszColon + 1, L':'))
 			return false;
 	}
 
 	if (abFullRequired)
 	{
-		if ((asFilePath[0] == L'\\' && asFilePath[1] == L'\\' && asFilePath[2] && wcschr(asFilePath+3,L'\\'))
-				|| (isDriveLetter(asFilePath[0]) && asFilePath[1] == L':' && asFilePath[2]))
+		if (isUncPath)
+		{
+			// For UNC network paths here should be "UNC\server\..."
+			const auto* unc = asFilePath;
+			if (unc[0] == L'U' && unc[1] == L'N' && unc[2] == L'C'
+				&& unc[3] == L'\\' && unc[4] && unc[4] != L'\\' && wcschr(unc + 5, L'\\'))
+				return true;
+		}
+		else
+		{
+			const auto* srv = asFilePath;
+			if (srv[0] == L'\\' && srv[1] == L'\\' && srv[2] && srv[2] != L'\\' && wcschr(srv + 3, L'\\'))
+				return true;
+		}
+
+		// And old good driver letter paths
+		if (isDriveLetter(asFilePath[0]) && asFilePath[1] == L':' && asFilePath[2])
 			return true;
 		return false;
 	}
@@ -1406,8 +1291,8 @@ const wchar_t* PointToName(const wchar_t* asFileOrPath)
 {
 	if (!asFileOrPath)
 	{
-		_ASSERTE(asFileOrPath!=NULL);
-		return NULL;
+		_ASSERTE(asFileOrPath!=nullptr);
+		return nullptr;
 	}
 
 	// Utilize both type of slashes
@@ -1424,8 +1309,8 @@ const char* PointToName(const char* asFileOrPath)
 {
 	if (!asFileOrPath)
 	{
-		_ASSERTE(asFileOrPath!=NULL);
-		return NULL;
+		_ASSERTE(asFileOrPath!=nullptr);
+		return nullptr;
 	}
 
 	// Utilize both type of slashes
@@ -1440,12 +1325,12 @@ const char* PointToName(const char* asFileOrPath)
 	return asFileOrPath;
 }
 
-// Возвращает ".ext" или NULL в случае ошибки
+// Возвращает ".ext" или nullptr в случае ошибки
 const wchar_t* PointToExt(const wchar_t* asFullPath)
 {
 	const wchar_t* pszName = PointToName(asFullPath);
 	if (!pszName)
-		return NULL; // _ASSERTE уже был
+		return nullptr; // _ASSERTE уже был
 	const wchar_t* pszExt = wcsrchr(pszName, L'.');
 	return pszExt;
 }
@@ -1455,7 +1340,7 @@ const wchar_t* PointToExt(const wchar_t* asFullPath)
 const wchar_t* Unquote(wchar_t* asParm, bool abFirstQuote /*= false*/)
 {
 	if (!asParm)
-		return NULL;
+		return nullptr;
 	if (*asParm != L'"')
 		return asParm;
 	wchar_t* pszEndQ = abFirstQuote ? wcschr(asParm+1, L'"') : wcsrchr(asParm+1, L'"');

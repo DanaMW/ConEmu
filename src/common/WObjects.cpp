@@ -31,9 +31,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "defines.h"
 #include "CmdLine.h"
 #include "EnvVar.h"
+#include "MHandle.h"
 #include "MModule.h"
 #include "MStrDup.h"
 #include "WObjects.h"
+
+#include "MWow64Disable.h"
 
 #if !defined(CONEMU_MINIMAL)
 #include "WFiles.h"
@@ -69,57 +72,63 @@ bool FileExists(const wchar_t* asFilePath, uint64_t* pnSize /*= nullptr*/)
 
 	_ASSERTE(wcschr(asFilePath, L'\t')==nullptr);
 
-	WIN32_FIND_DATAW fnd{};
-	// ReSharper disable once CppLocalVariableMayBeConst
-	HANDLE hFind = FindFirstFile(asFilePath, &fnd);
 
-	if (hFind == INVALID_HANDLE_VALUE)
+	MHandle hFile;
+	MWow64Disable wow;
+	if (!hFile.SetHandle(CreateFileW(asFilePath, GENERIC_READ, FILE_SHARE_READ,
+		nullptr, OPEN_EXISTING, 0, nullptr), CloseHandle))
+	{
+		const DWORD nErrCode = GetLastError();
+		#ifndef _WIN64
+		// e.g. checking "C:\Windows\System32\wsl.exe" from 32-bit ConEmuC
+		if (nErrCode == ERROR_FILE_NOT_FOUND)
+		{
+			wow.Disable();
+			
+			hFile.SetHandle(CreateFileW(asFilePath, GENERIC_READ, FILE_SHARE_READ,
+				nullptr, OPEN_EXISTING, 0, nullptr), CloseHandle);
+		}
+		#endif
+		std::ignore = nErrCode;
+	}
+	if (hFile.HasHandle())
 	{
 		bool lbFileFound = false;
-
-		// FindFirstFile could fail on symlinks
-		const DWORD nErrCode = GetLastError();
-		if (nErrCode == ERROR_ACCESS_DENIED)
+		BY_HANDLE_FILE_INFORMATION fi{};
+		if (GetFileInformationByHandle(hFile, &fi) && !(fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 		{
-			// ReSharper disable once CppLocalVariableMayBeConst
-			HANDLE hFile = CreateFile(asFilePath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
-
-			if (hFile && hFile != INVALID_HANDLE_VALUE)
-			{
-				BY_HANDLE_FILE_INFORMATION fi{};
-
-				if (GetFileInformationByHandle(hFile, &fi) && !(fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-				{
-					lbFileFound = true;
-
-					if (pnSize)
-						*pnSize = (static_cast<uint64_t>(fi.nFileSizeHigh) << 32) | static_cast<uint64_t>(fi.nFileSizeLow);
-				}
-
-				CloseHandle(hFile);
-			}
+			if (pnSize)
+				*pnSize = (static_cast<uint64_t>(fi.nFileSizeHigh) << 32) | static_cast<uint64_t>(fi.nFileSizeLow);
+			lbFileFound = true;
 		}
-
 		return lbFileFound;
 	}
+	wow.Restore();
+
 
 	bool lbFound = false;
+	// #TODO May we safely remove FindFirstFileW check and rely on CreateFileW only?
+	WIN32_FIND_DATAW fnd{};
+	const MHandle hFind(FindFirstFileW(asFilePath, &fnd), FindClose);
 
-	do
+	if (hFind.HasHandle())
 	{
-		if ((fnd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+		do
 		{
-			lbFound = true;
+			if ((fnd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+			{
+				lbFound = true;
 
-			if (pnSize)
-				*pnSize = (static_cast<uint64_t>(fnd.nFileSizeHigh) << 32) | static_cast<uint64_t>(fnd.nFileSizeLow);
+				if (pnSize)
+					*pnSize = (static_cast<uint64_t>(fnd.nFileSizeHigh) << 32) | static_cast<uint64_t>(fnd.nFileSizeLow);
 
-			break;
-		}
+				_ASSERTE(FALSE && "CreateFile should be succeesful above");
+
+				break;
+			}
+		} while (FindNextFileW(hFind, &fnd));
 	}
-	while (FindNextFile(hFind, &fnd));
 
-	FindClose(hFind);
 	return lbFound;
 }
 
@@ -222,7 +231,7 @@ bool FileSearchInDir(LPCWSTR asFilePath, CEStr& rsFound)
 	// b) asFilePath contains path, but without extension: "C:\\Program Files\\Far\\Far"
 
 	LPCWSTR pszSearchFile = asFilePath;
-	LPCWSTR pszSlash = wcsrchr(asFilePath, L'\\');
+	const auto* pszSlash = wcsrchr(asFilePath, L'\\');
 	if (pszSlash)
 	{
 		if ((pszSlash - asFilePath) >= MAX_PATH)
@@ -238,20 +247,21 @@ bool FileSearchInDir(LPCWSTR asFilePath, CEStr& rsFound)
 		}
 
 		// Do not allow '/' here
-		LPCWSTR pszFwd = wcschr(asFilePath, L'/');
+		const auto* pszFwd = wcschr(asFilePath, L'/');
 		if (pszFwd != nullptr)
 		{
 			return false;
 		}
 	}
 
-	wchar_t* pszSearchPath = nullptr;
+	CEStr searchPathBuff;
 	if (pszSlash)
 	{
-		if ((pszSearchPath = lstrdup(asFilePath)) != nullptr)
+		searchPathBuff.Set(asFilePath);
+		if (searchPathBuff)
 		{
 			pszSearchFile = pszSlash + 1;
-			pszSearchPath[pszSearchFile - asFilePath] = 0;
+			searchPathBuff.SetAt(pszSearchFile - asFilePath, L'\0');
 		}
 	}
 
@@ -259,7 +269,7 @@ bool FileSearchInDir(LPCWSTR asFilePath, CEStr& rsFound)
 	LPCWSTR pszExt = PointToExt(asFilePath);
 
 	// Try to find the executable file in %PATH%
-	const auto foundLen = apiSearchPath(pszSearchPath, pszSearchFile, pszExt ? nullptr : L".exe", rsFound);
+	const auto foundLen = apiSearchPath(searchPathBuff, pszSearchFile, pszExt ? nullptr : L".exe", rsFound);
 	return (foundLen > 0);
 }
 
@@ -275,6 +285,7 @@ bool FileExistsSearch(LPCWSTR asFilePath, CEStr& rsFound, bool abSetPath/*= true
 
 	if (FileExists(asFilePath))
 	{
+		rsFound.Set(asFilePath);
 		return true;
 	}
 

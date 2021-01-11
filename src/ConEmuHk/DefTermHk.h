@@ -30,23 +30,48 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "../common/DefTermBase.h"
-#include "../common/CmdLine.h"
+#include <memory>
+#include <chrono>
+#include <unordered_map>
+#include <atomic>
+
+
+#include "../common/MEvent.h"
+#include "../common/MHandle.h"
 
 class MFileLog;
 class CDefTermHk;
 
 extern CDefTermHk* gpDefTerm;
 
-bool InitDefTerm();
-bool isDefTermEnabled();
-void DefTermLogString(LPCSTR asMessage, LPCWSTR asLabel = NULL);
-void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel = NULL);
+class CDefTermChildMap;
 
-class CDefTermHk : public CDefTermBase
+class CDefTermHk final : public CDefTermBase
 {
 public:
 	CDefTermHk();
-	virtual ~CDefTermHk();
+	~CDefTermHk() override;
+
+	CDefTermHk(const CDefTermHk&) = delete;
+	CDefTermHk(CDefTermHk&&) = delete;
+	CDefTermHk& operator=(const CDefTermHk&) = delete;
+	CDefTermHk& operator=(CDefTermHk&&) = delete;
+
+	static bool InitDefTerm();
+	static bool IsDefTermEnabled();
+	static void DefTermLogString(LPCSTR asMessage, LPCWSTR asLabel = nullptr);
+	static void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel = nullptr);
+	static bool LoadDefTermSrvMapping(CESERVER_CONSOLE_MAPPING_HDR& srvMapping);
+	static size_t GetSrvAddArgs(bool bGuiArgs, bool forceInjects, CEStr& rsArgs, CEStr& rsNewCon);
+	static DWORD GetConEmuInsidePid();
+	/// @brief Prepare event and mapping to resume created child process (e.g. msvsmon, VsDebugConsole, etc.)
+	/// @param childPid PID of the started child process, it's suspended at the moment of CreateChildMapping call
+	/// @param childHandle handle of childPid with SYNCHRONIZE access
+	/// @param conemuInsidePid if this PID is not 0, we are running in the DefTerm mode initiated from ConEmu inside
+	static void CreateChildMapping(DWORD childPid, const MHandle& childHandle, DWORD conemuInsidePid);
+
+	// Start the server and attach to its console
+	static HWND AllocHiddenConsole(bool bTempForVS);
 
 	void StartDefTerm();
 
@@ -54,36 +79,50 @@ public:
 	DWORD mn_InitDefTermContinueTID;
 	HANDLE mh_InitDefTermContinueFrom;
 
-	// Запустить сервер, и подцепиться к его консоли
-	HWND AllocHiddenConsole(bool bTempForVS);
-	// Вызывается из хуков после успешного AllocConsole (Win2k only? а смысл?)
+	// Called from hooks after successful AllocConsole
 	void OnAllocConsoleFinished(HWND hNewConWnd);
 
-	virtual bool isDefaultTerminalAllowed(bool bDontCheckName = false) override; // !(gpConEmu->DisableSetDefTerm || !gpSet->isSetDefaultTerminal)
-	virtual void StopHookers() override;
-	virtual void ReloadSettings() override; // Copy from gpSet or load from [HKCU]
-
-	size_t GetSrvAddArgs(bool bGuiArgs, CEStr& rsArgs, CEStr& rsNewCon);
+	bool isDefaultTerminalAllowed(bool bDontCheckName = false) override; // !(gpConEmu->DisableSetDefTerm || !gpSet->isSetDefaultTerminal)
+	void StopHookers() override;
+	void ReloadSettings() override; // Copy from gpSet or load from [HKCU]
 
 protected:
-	HANDLE  mh_StopEvent;
-	wchar_t ms_ExeName[MAX_PATH];
-	DWORD   mn_LastCheck;
+	bool FindConEmuInside(DWORD& guiPid, HWND& guiHwnd);
+	std::shared_ptr<CONEMU_INSIDE_DEFTERM_MAPPING> LoadInsideSettings();
+	static DWORD FindInsideParentConEmuPid();
+	static DWORD LoadInsideConEmuPid(const wchar_t* mapNameFormat, DWORD param);
 
-	DWORD   StartConsoleServer(DWORD nAttachPID, bool bNewConWnd, PHANDLE phSrvProcess);
+	DWORD   StartConsoleServer(DWORD nAttachPid, bool bNewConWnd, PHANDLE phSrvProcess);
 
-protected:
-	virtual CDefTermBase* GetInterface() override;
-	virtual int  DisplayLastError(LPCWSTR asLabel, DWORD dwError=0, DWORD dwMsgFlags=0, LPCWSTR asTitle=NULL, HWND hParent=NULL) override;
-	virtual void ShowTrayIconError(LPCWSTR asErrText) override; // Icon.ShowTrayIcon(asErrText, tsa_Default_Term);
-	virtual void PostCreateThreadFinished() override;
+	CDefTermBase* GetInterface() override;
+	int  DisplayLastError(LPCWSTR asLabel, DWORD dwError=0, DWORD dwMsgFlags=0, LPCWSTR asTitle=nullptr, HWND hParent=nullptr) override;
+	void ShowTrayIconError(LPCWSTR asErrText) override; // Icon.ShowTrayIcon(asErrText, tsa_Default_Term);
+	void PostCreateThreadFinished() override;
 
-protected:
-	MFileLog* mp_FileLog;
 	void LogInit();
-	virtual void LogHookingStatus(DWORD nForePID, LPCWSTR sMessage) override;
-protected:
-	friend bool InitDefTerm();
-	friend void DefTermLogString(LPCSTR asMessage, LPCWSTR asLabel /*= NULL*/);
-	friend void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel /*= NULL*/);
+	void LogHookingStatus(DWORD nForePID, LPCWSTR sMessage) override;
+
+private:
+	HANDLE  mh_StopEvent = nullptr;
+	wchar_t ms_ExeName[MAX_PATH] = L"";
+	DWORD   mn_LastCheck = 0;
+	MFileLog* mp_FileLog = nullptr;
+
+	template<typename T>
+	struct StructDeleter { // insideMapInfo_ deleter
+		void operator()(T* p) const
+		{
+			SafeFree(p);
+		}
+	};
+	
+	std::chrono::steady_clock::time_point insideMapLastCheck_{};
+	std::chrono::milliseconds insideMapCheckDelay_{ 1000 };
+	MSectionSimple* insideLock_ = nullptr;
+	std::shared_ptr<CONEMU_INSIDE_DEFTERM_MAPPING> insideMapInfo_{};
+	std::atomic<DWORD> insideConEmuPid_{ 0 };
+	std::atomic<HWND> insideConEmuWnd_{ nullptr };
+
+	MSectionSimple childDataLock_{ true };
+	std::shared_ptr<CDefTermChildMap> childData_;
 };

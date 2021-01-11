@@ -54,6 +54,9 @@ enum CEFontStyles
 	fnt_NULL        = (MAX_FONT_STYLES+2), // 10 (used in VirtualConsole SelectFont)
 };
 
+// #include "../common/DefTermBase.h"
+enum class TerminalConfirmClose : uint32_t;
+
 #define CURSORSIZE_MIN 5
 #define CURSORSIZE_MAX 100
 #define CURSORSIZEPIX_MIN 1
@@ -229,11 +232,11 @@ struct Settings
 		bool isSetDefaultTerminal;
 		bool isRegisterOnOsStartup;
 		bool isRegisterOnOsStartupTSA;
-		bool isRegisterAgressive;
+		bool isRegisterAggressive;
 		bool isDefaultTerminalNoInjects;
 		bool isDefaultTerminalNewWindow;
 		bool isDefaultTerminalDebugLog;
-		BYTE nDefaultTerminalConfirmClose; // "Press Enter to close console". 0 - Auto, 1 - Always, 2 - Never
+		TerminalConfirmClose nDefaultTerminalConfirmClose; // "Press Enter to close console". 0 - Auto, 1 - Always, 2 - Never
 		wchar_t* GetDefaultTerminalApps(); // "|" delimited
 		const wchar_t* GetDefaultTerminalAppsMSZ(); // "\0" delimited
 		void SetDefaultTerminalApps(const wchar_t* apszApps); // "|" delimited
@@ -1085,7 +1088,7 @@ struct Settings
 		wchar_t* psAnsiAllowed; // commands: multiline, "\r\n" separated
 
 		//reg->Load(L"AnsiLog", isAnsiLog);
-		bool isAnsiLog; // Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+		bool isAnsiLog; // Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 		//reg->Load(L"AnsiLogCodes", isAnsiLogCodes);
 		bool isAnsiLogCodes; // Write to logfile ANSI sequences (from app and our internals)
 		//reg->Load(L"AnsiLogPath", &pszAnsiLog);

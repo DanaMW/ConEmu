@@ -35,6 +35,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#define SHOW_LOADCFGFILE_MSGBOX
 //#define SHOW_SERVER_STARTED_MSGBOX
 //#define SHOW_COMSPEC_STARTED_MSGBOX
+//#define SHOW_INJECTS_MSGBOX
 #endif
 
 #include "ConsoleArgs.h"
@@ -47,6 +48,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/CmdLine.h"
 #include "../common/MStrDup.h"
 #include "../common/RConStartArgs.h"
+#ifdef SHOW_INJECTS_MSGBOX
+#include "../common/MToolHelp.h"
+#endif
 
 #include <tuple>
 
@@ -304,6 +308,23 @@ void ConsoleArgs::ShowComspecStartedMsgBox(LPCWSTR asCmdLine)
 #endif
 }
 
+void ConsoleArgs::ShowInjectsMsgBox(const ConEmuExecAction mode, const wchar_t* asCmdLine, const wchar_t* param)
+{
+#ifdef SHOW_INJECTS_MSGBOX
+	wchar_t szTitle[100] = L"";
+	const DWORD hookPid = wcstoul(param, nullptr, 10);
+	MToolHelpModule modules(hookPid);
+	MODULEENTRY32W exeInfo{};
+	modules.Next(exeInfo);
+	swprintf_c(szTitle, ConEmuC_EXE_3264 L" [%s] started (PID=%i)",
+		mode == ConEmuExecAction::InjectDefTrm ? L"InjectDefTerm"
+		: mode == ConEmuExecAction::InjectHooks ? L"InjectHooks"
+		: L"InjectRemote", gnSelfPID);
+	const CEStr msg(L"Command:\n", asCmdLine, L"\n\n", L"Target process:\n", exeInfo.szExePath);
+	MessageBoxW(nullptr, msg, szTitle, 0);
+#endif
+}
+
 void ConsoleArgs::AddConEmuArg(LPCWSTR asSwitch, LPCWSTR asValue)
 {
 	lstrmerge(&conemuAddArgs_.ms_Val, asSwitch);
@@ -501,26 +522,26 @@ int ConsoleArgs::ParseCommandLine(LPCWSTR pszCmdLine, const ConsoleMainMode anWo
 		}
 		else if (szArg.IsSwitch(L"/SetHooks="))
 		{
-			// _ASSERTE(FALSE && "Continue to InjectHooks");
 			gState.runMode_ = RunMode::SetHook64;
 			eExecAction_ = ConEmuExecAction::InjectHooks;
 			command_.Set(szArg.GetExtra());
+			ShowInjectsMsgBox(eExecAction_, fullCmdLine_.c_str(L""), command_.c_str(L"0"));
 			break;
 		}
 		else if (szArg.IsSwitch(L"/INJECT="))
 		{
-			// _ASSERTE(FALSE && "Continue to InjectRemote");
 			gState.runMode_ = RunMode::SetHook64;
 			eExecAction_ = ConEmuExecAction::InjectRemote;
 			command_.Set(szArg.GetExtra());
+			ShowInjectsMsgBox(eExecAction_, fullCmdLine_.c_str(L""), command_.c_str(L"0"));
 			break;
 		}
 		else if (szArg.IsSwitch(L"/DEFTRM="))
 		{
-			// _ASSERTE(FALSE && "Continue to InjectDefTrm");
 			gState.runMode_ = RunMode::SetHook64;
 			eExecAction_ = ConEmuExecAction::InjectDefTrm;
 			command_.Set(szArg.GetExtra());
+			ShowInjectsMsgBox(eExecAction_, fullCmdLine_.c_str(L""), command_.c_str(L"0"));
 			break;
 		}
 		else if (szArg.OneOfSwitches(L"/STRUCT", L"/DumpStruct"))
@@ -640,6 +661,10 @@ int ConsoleArgs::ParseCommandLine(LPCWSTR pszCmdLine, const ConsoleMainMode anWo
 				gState.attachMode_ |= am_Simple;
 			gState.runMode_ = RunMode::Server;
 		}
+		else if (szArg.IsSwitch(L"/InheritDefTerm"))
+		{
+			inheritDefTerm_.SetBool(true);
+		}
 		else if (szArg.OneOfSwitches(L"/AutoAttach", L"/AttachDefTerm"))
 		{
 			ShowAttachMsgBox(szArg);
@@ -655,6 +680,7 @@ int ConsoleArgs::ParseCommandLine(LPCWSTR pszCmdLine, const ConsoleMainMode anWo
 			{
 				gState.runMode_ = RunMode::Server;
 				gState.attachMode_ |= am_DefTerm;
+				defTermCall_.SetBool(true);
 			}
 
 			// Below is also "/GHWND=NEW". There would be "requestNewGuiWnd_" set to "true"

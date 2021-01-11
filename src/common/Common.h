@@ -231,6 +231,9 @@ typedef struct _CONSOLE_SELECTION_INFO
 // Override default console CP: ConEmuDefCp=65001
 #define ENV_CONEMU_DEFAULTCP_A         "ConEmuDefaultCp"
 #define ENV_CONEMU_DEFAULTCP_W           _CRT_WIDE(ENV_CONEMU_DEFAULTCP_A)
+// Return set of ConEmu::ConsoleFlags flags from ConEmu settings, e.g. "0x000082A6"
+#define ENV_CONEMU_FEATURES_A          "ConEmuFeatures"
+#define ENV_CONEMU_FEATURES_W            _CRT_WIDE(ENV_CONEMU_FEATURES_A)
 
 #define CONEMU_CONHOST_CREATED_MSG L"ConEmu: ConHost was created PID=" // L"%u\n"
 
@@ -239,9 +242,9 @@ typedef struct _CONSOLE_SELECTION_INFO
 #define ENV_ANSICON_VAR_W             _CRT_WIDE(ENV_ANSICON_VAR_A)
 #define ENV_ANSICON_DEF_VAR_A       "ANSICON_DEF"  // ex. -> "7"
 #define ENV_ANSICON_DEF_VAR_W         _CRT_WIDE(ENV_ANSICON_DEF_VAR_A)
-#define ENV_ANSICON_VER_VAR_A       "ANSICON_VER"  // "170"
+#define ENV_ANSICON_VER_VAR_A       "ANSICON_VER"  // "189"
 #define ENV_ANSICON_VER_VAR_W         _CRT_WIDE(ENV_ANSICON_VER_VAR_A)
-#define ENV_ANSICON_VER_VALUE       "170"
+#define ENV_ANSICON_VER_VALUE       "189"
 
 
 //#define CE_CURSORUPDATE     L"ConEmuCursorUpdate%u" // ConEmuC_PID - изменился курсор (размер или выделение). положение курсора отслеживает GUI
@@ -264,6 +267,9 @@ typedef struct _CONSOLE_SELECTION_INFO
 #define CECONMAPNAME        L"ConEmuFileMapping.%08X"  // --> CESERVER_CONSOLE_MAPPING_HDR ( % == (DWORD)ghConWnd )
 #define CECONMAPNAME_A       "ConEmuFileMapping.%08X"  // --> CESERVER_CONSOLE_MAPPING_HDR ( % == (DWORD)ghConWnd ) simplifying ansi
 #define CECONAPPMAPNAME     L"ConEmuAppMapping.%08X"   // --> CESERVER_CONSOLE_APP_MAPPING ( % == (DWORD)ghConWnd )
+#define CEDEFTERMMAPNAME    L"ConEmuDefTermInside.%u"  // --> CONEMU_INSIDE_DEFTERM_MAPPING ( % == PID of ConEmu process which is integrated into some app )
+#define CEINSIDEMAPNAMEP    L"ConEmuDefTermInside.%u"  // --> CONEMU_INSIDE_MAPPING ( % == PID of the root window, where ConEmu is integrated into )
+#define CEINSIDEMAPNAMEW    L"ConEmuDefTermInside.%08X"// --> CONEMU_INSIDE_MAPPING ( % == the root window, where ConEmu is integrated into )
 #define CEFARMAPNAME        L"ConEmuFarMapping.%u"     // --> CEFAR_INFO_MAPPING               ( % == nFarPID )
 #define CECONVIEWSETNAME    L"ConEmuViewSetMapping.%u" // --> PanelViewSetMapping
 //#ifdef _DEBUG
@@ -698,24 +704,33 @@ const ConEmuModifiers
 
 
 //#pragma pack(push, 1)
-#include <pshpack1.h>
+#include <pshpack1.h>  // NOLINT(clang-diagnostic-pragma-pack)
 
 struct HWND2
 {
 	DWORD u;
 	operator HWND() const
 	{
-		return (HWND)(DWORD_PTR)u; //-V204
-	};
+		return reinterpret_cast<HWND>(static_cast<DWORD_PTR>(u)); //-V204
+	}
 	operator DWORD() const
 	{
-		return (DWORD)u;
-	};
+		return u;
+	}
+	DWORD GetPortableHandle() const
+	{
+		return u;
+	}
+	HWND GetHandle() const
+	{
+		return reinterpret_cast<HWND>(static_cast<DWORD_PTR>(u));
+	}
 	struct HWND2& operator=(HWND h)
 	{
-		u = (DWORD)(DWORD_PTR)h; //-V205
+		u = static_cast<DWORD>(reinterpret_cast<DWORD_PTR>(h)); //-V205
+		_ASSERTE(GetHandle() == h);
 		return *this;
-	};
+	}
 };
 
 // Для унификации x86/x64. Хранить здесь реальный HKEY нельзя.
@@ -1252,43 +1267,78 @@ enum class ConEmuUseInjects : DWORD
 	Use = 1,
 };
 
+namespace ConEmu {
 
-typedef DWORD ConEmuConsoleFlags;
-const ConEmuConsoleFlags
-	CECF_DosBox          = 0x00000001, // DosBox установлен, можно пользоваться
-	CECF_UseTrueColor    = 0x00000002, // включен флажок "TrueMod support"
-	CECF_ProcessAnsi     = 0x00000004, // ANSI X3.64 & XTerm-256-colors Support
+enum class ConsoleFlags : uint32_t
+{
+	Empty = 0,
 
-	CECF_UseClink_1      = 0x00000008, // использовать расширение командной строки (ReadConsole). 1 - старая версия (0.1.1)
-	CECF_UseClink_2      = 0x00000010, // использовать расширение командной строки (ReadConsole) - 2 - новая версия
-	CECF_UseClink_Any    = CECF_UseClink_1|CECF_UseClink_2,
+	// DosBox is installed, ready to use
+	DosBox = 0x00000001,
 
-	CECF_SleepInBackg    = 0x00000020,
+	// enabled "TrueMod support"
+	UseTrueColor = 0x00000002,
+	// enabled ANSI sequences processing
+	ProcessAnsi = 0x00000004,
 
-	CECF_BlockChildDbg   = 0x00000040, // When ConEmuC tries to debug process tree - force disable DEBUG_PROCESS/DEBUG_ONLY_THIS_PROCESS flags when creating subchildren
+	// use clink command line extension (ReadConsole). 1 - old version (0.1.1)
+	UseClink_1 = 0x00000008,
+	// use clink command line extension (ReadConsole) - 2 - new version
+	UseClink_2 = 0x00000010,
+	UseClink_Any = UseClink_1 | UseClink_2,
 
-	CECF_SuppressBells   = 0x00000080, // Suppress output of char(7) to console (which produces annoying bell sound)
+	// Consume lesser resources when ConEmu or the console is not focused/active (see also RetardInactivePanes)
+	SleepInBackground = 0x00000020,
 
-	CECF_ConExcHandler   = 0x00000100, // Set up "SetUnhandledExceptionFilter(CreateDumpOnException)" in alternative servers too
+	// When ConEmuC tries to debug process tree - force disable DEBUG_PROCESS/DEBUG_ONLY_THIS_PROCESS flags when creating sub children
+	BlockChildDbg = 0x00000040,
 
-	CECF_ProcessNewCon   = 0x00000200, // Enable processing of '-new_console' and '-cur_console' switches in your shell prompt, scripts etc. started in ConEmu tabs
-	CECF_ProcessCmdStart = 0x00000400, // Use "start xxx.exe" to start new tab
+	// Suppress output of char(7) to console (which produces annoying bell sound)
+	SuppressBells = 0x00000080,
 
-	CECF_RealConVisible  = 0x00000800, // Show real console
+	// Set up "SetUnhandledExceptionFilter(CreateDumpOnException)" in alternative servers too
+	ConExcHandler = 0x00000100,
 
-	CECF_ProcessCtrlZ    = 0x00001000, // Return 0 bytes from ReadConsole if Ctrl-Z was only entered on the line
+	// Enable processing of '-new_console' and '-cur_console' switches in your shell prompt, scripts etc. started in ConEmu tabs
+	ProcessNewCon = 0x00000200,
+	// Use "start xxx.exe" to start new tab
+	ProcessCmdStart = 0x00000400,
 
-	CECF_RetardNAPanes   = 0x00002000, // Retard inactive panes
+	// Show real console
+	RealConVisible = 0x00000800,
 
-	CECF_AnsiExecAny     = 0x00004000, // AnsiExecutionPerm::ansi_Allowed
-	CECF_AnsiExecCmd     = 0x00008000, // AnsiExecutionPerm::ansi_CmdOnly
+	// Return 0 bytes from ReadConsole if Ctrl-Z was only entered on the line
+	ProcessCtrlZ = 0x00001000,
 
-	CECF_Empty = 0
-	;
-#define SetConEmuFlags(v,m,f) (v) = ((v) & ~(m)) | (f)
+	// Retard inactive panes (see also SleepInBackground)
+	RetardInactivePanes = 0x00002000,
 
-typedef DWORD ConEmuConsoleFlags;
-const ConEmuConsoleFlags
+	// AnsiExecutionPerm::ansi_Allowed
+	AnsiExecAny = 0x00004000,
+	// AnsiExecutionPerm::ansi_CmdOnly
+	AnsiExecCmd = 0x00008000,
+};
+
+inline ConsoleFlags operator|(const ConsoleFlags e1, const ConsoleFlags e2)
+{
+	return static_cast<ConsoleFlags>(static_cast<uint32_t>(e1) | static_cast<uint32_t>(e2));
+}
+
+inline bool operator&(const ConsoleFlags e1, const ConsoleFlags e2)
+{
+	return (static_cast<uint32_t>(e1) & static_cast<uint32_t>(e2)) != static_cast<uint32_t>(ConsoleFlags::Empty);
+}
+
+}
+
+template <typename T>
+void SetConEmuFlags(T& v, const T mask, const T flag)
+{
+	v = static_cast<T>((static_cast<uint64_t>(v) & ~static_cast<uint64_t>(mask)) | static_cast<uint64_t>(flag));
+}
+
+typedef DWORD ConEmuConsoleStateFlags;
+const ConEmuConsoleStateFlags
 	ccf_Active   = 1,
 	ccf_Visible  = 2,
 	ccf_ChildGui = 4,
@@ -1296,7 +1346,7 @@ const ConEmuConsoleFlags
 
 struct ConEmuConsoleInfo
 {
-	ConEmuConsoleFlags Flags;
+	ConEmuConsoleStateFlags Flags;
 	HWND2 Console;
 	HWND2 DCWindow;
 	HWND2 ChildGui;
@@ -1322,7 +1372,7 @@ struct ConEmuGuiMapping
 
 	ConEmuUseInjects   useInjects;
 
-	ConEmuConsoleFlags Flags;
+	ConEmu::ConsoleFlags Flags;
 	//BOOL     bUseTrueColor; // включен флажок "TrueMod support"
 	//BOOL     bProcessAnsi;  // ANSI X3.64 & XTerm-256-colors Support
 	//DWORD    bUseClink;     // использовать расширение командной строки (ReadConsole). 0 - нет, 1 - старая версия (0.1.1), 2 - новая версия
@@ -1581,7 +1631,7 @@ struct CEFAR_INFO_MAPPING
 };
 
 
-// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+// Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 // Initialized during CECMD_SRVSTARTSTOP
 struct ConEmuAnsiLog
 {
@@ -1630,13 +1680,13 @@ struct CESERVER_CONSOLE_MAPPING_HDR
 	DWORD nLoggingType;  // enum GuiLoggingType
 	ConEmuUseInjects useInjects;
 
-	ConEmuConsoleFlags Flags;
+	ConEmu::ConsoleFlags Flags;
 	//BOOL  bDosBox;       // DosBox установлен, можно пользоваться
 	//BOOL  bUseTrueColor; // включен флажок "TrueMod support"
 	//BOOL  bProcessAnsi;  // ANSI X3.64 & XTerm-256-colors Support
 	//DWORD bUseClink;     // использовать расширение командной строки (ReadConsole). 0 - нет, 1 - старая версия (0.1.1), 2 - новая версия
 
-	// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+	// Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 	ConEmuAnsiLog AnsiLog;
 
 	// Разрешенный размер видимой области
@@ -1650,6 +1700,52 @@ struct CESERVER_CONSOLE_MAPPING_HDR
 
 	ConEmuComspec ComSpec;
 };
+
+enum class TerminalConfirmClose : uint32_t;
+
+// CEINSIDEMAPNAMEP L"ConEmuDefTermInside.%u"   ( % == PID of the root window, where ConEmu is integrated into )
+// CEINSIDEMAPNAMEW L"ConEmuDefTermInside.%08X" ( % == the root window, where ConEmu is integrated into )
+struct CONEMU_INSIDE_MAPPING
+{
+	/// CONEMU_INSIDE_MAPPING size
+	DWORD cbSize;
+	/// CESERVER_REQ_VER, changed on each struct modification
+	DWORD nProtocolVersion;
+	/// PID of ConEmu.exe
+	DWORD nGuiPID;
+};
+
+// CEDEFTERMMAPNAME L"ConEmuDefTermInside.%u" ( % == PID of ConEmu process which is integrated into some app )
+struct CONEMU_INSIDE_DEFTERM_MAPPING
+{
+	/// CONEMU_INSIDE_DEFTERM_MAPPING size
+	DWORD cbSize;
+	/// CESERVER_REQ_VER, changed on each struct modification
+	DWORD nProtocolVersion;
+	/// Full path to ConEmu.exe (GUI)
+	wchar_t  sConEmuExe[MAX_PATH+1];
+	/// NO trailing slash. Contains ConEmuC.exe, ConEmuHk.dll, ConEmu.xml
+	wchar_t  sConEmuBaseDir[MAX_PATH];
+	/// PID of ConEmu.exe (same as used in CEDEFTERMMAPNAME)
+	DWORD nGuiPID;
+	/// Root(!) ConEmu window
+	HWND2 hConEmuRoot;
+
+	/// Set of in-console flags
+	ConEmu::ConsoleFlags flags;
+
+	/// Default terminal is enabled
+	BOOL bUseDefaultTerminal;
+	/// Soft mode, no injects
+	BOOL isDefaultTerminalNoInjects;
+	/// Debug purposes, enable logging in DefTerm
+	BOOL isDefaultTerminalDebugLog;
+	/// "Press Enter to close console". 0 - Auto, 1 - Always, 2 - Never
+	TerminalConfirmClose nDefaultTerminalConfirmClose;
+	// "|" delimited
+	wchar_t defaultTerminalApps[MAX_PATH];
+};
+
 
 typedef DWORD CEActiveAppFlags;
 const CEActiveAppFlags
@@ -2023,7 +2119,7 @@ struct CESERVER_REQ_SRVSTARTSTOPRET
 	CESERVER_REQ_STARTSTOPRET Info;
 	// Используется при CECMD_ATTACH2GUI
 	CESERVER_REQ_SETFONT Font;
-	// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+	// Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 	ConEmuAnsiLog AnsiLog;
 	// Avoid spare calls, let do all in one place
 	ConEmuGuiMapping GuiMapping;
@@ -2438,7 +2534,7 @@ struct CESERVER_REQ
 
 
 //#pragma pack(pop)
-#include <poppack.h>
+#include <poppack.h>  // NOLINT(clang-diagnostic-pragma-pack)
 
 
 

@@ -30,20 +30,18 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/defines.h"
 #include "../common/Common.h"
-#include "../common/ConEmuCheck.h"
 #include "../common/MRect.h"
-#include "../common/MStrDup.h"
-#include "../common/UnicodeChars.h"
-#include "../ConEmu/version.h"
 #include "ExtConsole.h"
 #include "../common/ConEmuColors3.h"
-#include "../common/WObjects.h"
 
 #include "Ansi.h"
 #include "SetHook.h"
 #include "hkConsoleOutput.h"
 #include "hkWindow.h"
 #include "hlpConsole.h"
+#include "DllOptions.h"
+
+#include <tuple>
 
 #define MSG_TITLE "ConEmu writer"
 #define MSG_INVALID_CONEMU_VER "Unsupported ConEmu version detected!\nRequired version: " CONEMUVERS "\nConsole writer'll works in 4bit mode"
@@ -83,7 +81,7 @@ struct ExtCurrentAttr
 	WORD  CONForeIdx;
 	WORD  CONBackIdx;
 
-	ConEmuColor CEColor;
+	ConEmu::Color CEColor;
 	AnnotationInfo AIColor;
 } gExtCurrentAttr;
 
@@ -244,7 +242,7 @@ BOOL ExtGetAttributes(ExtAttributesParm* Info)
 	{
 		_ASSERTE(FALSE && "ExtGetBufferInfo failed in ExtGetAttributes");
 		gExtCurrentAttr.WasSet = false;
-		gExtCurrentAttr.CEColor.Flags = CECF_NONE;
+		gExtCurrentAttr.CEColor.Flags = ConEmu::ColorFlags::None;
 		gExtCurrentAttr.CEColor.ForegroundColor = defConForeIdx;
 		gExtCurrentAttr.CEColor.BackgroundColor = defConBackIdx;
 		memset(&gExtCurrentAttr.AIColor, 0, sizeof(gExtCurrentAttr.AIColor));
@@ -265,7 +263,7 @@ BOOL ExtGetAttributes(ExtAttributesParm* Info)
 		memset(&gExtCurrentAttr.CEColor, 0, sizeof(gExtCurrentAttr.CEColor));
 		memset(&gExtCurrentAttr.AIColor, 0, sizeof(gExtCurrentAttr.AIColor));
 
-		Info->Attributes.Flags = CECF_NONE;
+		Info->Attributes.Flags = ConEmu::ColorFlags::None;
 		Info->Attributes.ForegroundColor = CONFORECOLOR(csbi.wAttributes);
 		Info->Attributes.BackgroundColor = CONBACKCOLOR(csbi.wAttributes);
 	}
@@ -273,24 +271,24 @@ BOOL ExtGetAttributes(ExtAttributesParm* Info)
 	return TRUE;
 }
 
-static void ExtPrepareColor(const ConEmuColor& Attributes, AnnotationInfo& t, WORD& n)
+static void ExtPrepareColor(const ConEmu::Color& Attributes, AnnotationInfo& t, WORD& n)
 {
 	//-- zeroing must be done by calling function
 	//memset(&t, 0, sizeof(t)); n = 0;
 
-	const CECOLORFLAGS& Flags = Attributes.Flags;
+	const auto& Flags = Attributes.Flags;
 	t.style = 0;
-	if (Flags & CECF_FG_BOLD)
+	if (Flags & ConEmu::ColorFlags::Bold)
 		t.style |= AI_STYLE_BOLD;
-	if (Flags & CECF_FG_ITALIC)
+	if (Flags & ConEmu::ColorFlags::Italic)
 		t.style |= AI_STYLE_ITALIC;
-	if (Flags & CECF_FG_UNDERLINE)
+	if (Flags & ConEmu::ColorFlags::Underline)
 		t.style |= AI_STYLE_UNDERLINE;
-	if (Flags & CECF_REVERSE)
+	if (Flags & ConEmu::ColorFlags::Reverse)
 		t.style |= AI_STYLE_REVERSE;
 
 	DWORD nForeColor, nBackColor;
-	if (Flags & CECF_FG_24BIT)
+	if (Flags & ConEmu::ColorFlags::Fg24Bit)
 	{
 		//n |= 0x07;
 		nForeColor = Attributes.ForegroundColor & 0x00FFFFFF;
@@ -305,7 +303,7 @@ static void ExtPrepareColor(const ConEmuColor& Attributes, AnnotationInfo& t, WO
 		t.fg_valid = FALSE;
 	}
 
-	if (Flags & CECF_BG_24BIT)
+	if (Flags & ConEmu::ColorFlags::Bg24Bit)
 	{
 		nBackColor = Attributes.BackgroundColor & 0x00FFFFFF;
 		Far3Color::Color2BgIndex(nBackColor, nBackColor==nForeColor, n);
@@ -318,9 +316,9 @@ static void ExtPrepareColor(const ConEmuColor& Attributes, AnnotationInfo& t, WO
 		t.bk_valid = FALSE;
 	}
 
-	if (Flags & CECF_FG_UNDERLINE)
+	if (Flags & ConEmu::ColorFlags::Underline)
 		n |= COMMON_LVB_UNDERSCORE;
-	if (Flags & CECF_REVERSE)
+	if (Flags & ConEmu::ColorFlags::Reverse)
 		n |= COMMON_LVB_REVERSE_VIDEO;
 }
 
@@ -349,7 +347,7 @@ BOOL ExtSetAttributes(const ExtAttributesParm* Info)
 
 	BOOL lbRc = TRUE;
 
-	// <G|S>etTextAttributes должны ожидать указатель на ОДИН ConEmuColor.
+	// <G|S>etTextAttributes должны ожидать указатель на ОДИН ConEmu::Color.
 	AnnotationInfo t = {};
 	WORD n = 0;
 	ExtPrepareColor(Info->Attributes, t, n);
@@ -549,22 +547,22 @@ BOOL WINAPI ExtReadOutput(ExtReadWriteOutputParm* Info)
 				{
 					*BufPtr.CEBuffer = *pc;
 
-					ConEmuColor clr = {};
+					ConEmu::Color clr = {};
 
 					if (pTrueColor)
 					{
 						DWORD Style = pTrueColor->style;
 						if (Style & AI_STYLE_BOLD)
-							clr.Flags |= CECF_FG_BOLD;
+							clr.Flags |= ConEmu::ColorFlags::FG_BOLD;
 						if (Style & AI_STYLE_ITALIC)
-							clr.Flags |= CECF_FG_ITALIC;
+							clr.Flags |= ConEmu::ColorFlags::FG_ITALIC;
 						if (Style & AI_STYLE_UNDERLINE)
-							clr.Flags |= CECF_FG_UNDERLINE;
+							clr.Flags |= ConEmu::ColorFlags::FG_UNDERLINE;
 					}
 
 					if (pTrueColor && pTrueColor->fg_valid)
 					{
-						clr.Flags |= CECF_FG_24BIT;
+						clr.Flags |= ConEmu::ColorFlags::FG_24BIT;
 						clr.ForegroundColor = pTrueColor->fg_color;
 					}
 					else
@@ -574,7 +572,7 @@ BOOL WINAPI ExtReadOutput(ExtReadWriteOutputParm* Info)
 
 					if (pTrueColor && pTrueColor->bk_valid)
 					{
-						clr.Flags |= CECF_BG_24BIT;
+						clr.Flags |= ConEmu::ColorFlags::BG_24BIT;
 						clr.BackgroundColor = pTrueColor->bk_color;
 					}
 					else
@@ -738,12 +736,12 @@ BOOL WINAPI ExtWriteOutput(const ExtReadWriteOutputParm* Info)
 
 					unsigned __int64 Flags = BufPtr.CEColor->Flags;
 
-					Bold = (Flags & CECF_FG_BOLD) != 0;
-					Italic = (Flags & CECF_FG_ITALIC) != 0;
-					Underline = (Flags & CECF_FG_UNDERLINE) != 0;
+					Bold = (Flags & ConEmu::ColorFlags::FG_BOLD) != 0;
+					Italic = (Flags & ConEmu::ColorFlags::FG_ITALIC) != 0;
+					Underline = (Flags & ConEmu::ColorFlags::FG_UNDERLINE) != 0;
 
-					Fore24bit = (Flags & CECF_FG_24BIT) != 0;
-					Back24bit = (Flags & CECF_BG_24BIT) != 0;
+					Fore24bit = (Flags & ConEmu::ColorFlags::FG_24BIT) != 0;
+					Back24bit = (Flags & ConEmu::ColorFlags::BG_24BIT) != 0;
 
 					ForegroundColor = BufPtr.CEColor->ForegroundColor & (Fore24bit ? COLORMASK : INDEXMASK);
 					BackgroundColor = BufPtr.CEColor->BackgroundColor & (Back24bit ? COLORMASK : INDEXMASK);
@@ -988,12 +986,13 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 	}
 
 	#ifdef _DEBUG
-	extern FARPROC CallWriteConsoleW;
+	// extern FARPROC CallWriteConsoleW;
 	_ASSERTE((CallWriteConsoleW!=NULL) || !HooksWereSet);
-	_ASSERTE((Info->Private==NULL) || (Info->Private==(void*)CallWriteConsoleW) || (!HooksWereSet && (Info->Private==(void*)WriteConsoleW)));
+	// ReSharper disable twice CppCStyleCast
+	_ASSERTE((Info->Private == NULL) || (Info->Private == (void*)CallWriteConsoleW) || (!HooksWereSet && (Info->Private == (void*)WriteConsoleW)));
 	#endif
 
-	// Проверка аргументов
+	// Arguments validation
 	if (!Info->ConsoleOutput || !Info->Buffer || !Info->NumberOfCharsToWrite)
 	{
 		_ASSERTE(Info->ConsoleOutput && Info->Buffer && Info->NumberOfCharsToWrite);
@@ -1019,22 +1018,22 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 	DWORD Mode = 0;
 
 	// "Working lines" may be defined (Vim and others)
-	LONG  ScrollTop, ScrollBottom;
+	LONG  scrollTop = 0, scrollBottom = 0;
 	bool  bScrollRegion = !!(Info->Flags & ewtf_Region);
 	RECT  rcScrollRegion = Info->Region;
-	COORD crScrollCursor;
+	COORD crScrollCursor = {};
 	if (bScrollRegion)
 	{
 		_ASSERTEX(Info->Region.left==-1 && Info->Region.right==-1); // Not used yet
 		rcScrollRegion.left = 0; rcScrollRegion.right = (csbi.dwSize.X - 1);
 		_ASSERTEX(Info->Region.top>=0 && Info->Region.bottom>=Info->Region.top);
-		ScrollTop = Info->Region.top;
-		ScrollBottom = Info->Region.bottom+1;
+		scrollTop = Info->Region.top;
+		scrollBottom = Info->Region.bottom+1;
 	}
 	else
 	{
-		ScrollTop = 0;
-		ScrollBottom = csbi.dwSize.Y;
+		scrollTop = 0;
+		scrollBottom = csbi.dwSize.Y;
 	}
 
 	GetConsoleModeCached(h, &Mode);
@@ -1139,8 +1138,21 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 		}
 		*/
 
+		enum class ControlChars
+		{
+			None = 0,
+			Backspace = 1,
+			Return = 2,
+			NewLine = 4,
+			Tab = 8,
+		};
+		ControlChars controlChars = ControlChars::None;
+		auto setCtrlChar = [&controlChars](const ControlChars c)
+		{
+			controlChars = static_cast<ControlChars>(static_cast<int>(controlChars) | static_cast<int>(c));
+		};
+
 		SHORT ForceDumpX = 0;
-		bool BSRN = false;
 		bool bForceDumpScroll = false;
 		bool bSkipBELL = false;
 		bool bAdvanceCur = false;
@@ -1153,15 +1165,16 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 		case L'\t':
 			if (x2>x)
 				ForceDumpX = x2;
-			x2 = ((x2 + 8) >> 3) << 3;
-			BSRN = true; bIntCursorOp = true;
+			x2 = static_cast<SHORT>(((x2 + 8) >> 3) << 3);
+			setCtrlChar(ControlChars::Tab);
+			bIntCursorOp = true;
 			break;
 		case L'\r':
 			if (x2 > 0)
 				ForceDumpX = x2-1;
 			x2 = 0;
 			bIntCursorOp = false;
-			BSRN = true;
+			setCtrlChar(ControlChars::Return);
 			// "\r\n"? Do not break in two physical writes
 			if (((pCur+1) < pEnd) && (*(pCur+1) == L'\n'))
 				pCur++; // continue to L'\n' section
@@ -1175,10 +1188,10 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 			else if (x2)
 				bIntCursorOp = true;
 			y2++;
-			if (y2 >= ScrollBottom)
+			if (y2 >= scrollBottom)
 				bForceDumpScroll = true;
 			_ASSERTE(bWrap);
-			BSRN = true;
+			setCtrlChar(ControlChars::NewLine);
 			CEAnsi::StorePromptReset();
 			break;
 		case 7:
@@ -1200,7 +1213,7 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 				ForceDumpX = x2;
 			if (x2>0)
 				x2--;
-			BSRN = true;
+			setCtrlChar(ControlChars::Backspace);
 			bIntCursorOp = true;
 			// Don't pass '\b' to WriteText (problem in Win10 build)
 			bAdvanceCur = true; --pCur;
@@ -1252,15 +1265,14 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 			}
 		}
 
-		// После BS - сменить "начальную" координату
-		if (BSRN)
+		if (controlChars != ControlChars::None)
 			x = x2;
 
 		// При смене строки
 		if (y2 > y)
 		{
 			//_ASSERTE(bWrap && L"для !Wrap - доделать");
-			if (y2 >= ScrollBottom/*csbi.dwSize.Y*/)
+			if (y2 >= scrollBottom/*csbi.dwSize.Y*/)
 			{
 				// Экран прокрутился на одну строку вверх
 
@@ -1272,7 +1284,7 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 					Shift.Flags |= essf_Region;
 					Shift.Region = rcScrollRegion;
 					//Shift.Region.top += (y2-y);
-					if (ScrollBottom >= csbi.dwSize.Y)
+					if (scrollBottom >= csbi.dwSize.Y)
 						Shift.Flags |= essf_ExtOnly;
 				}
 				else
@@ -1284,10 +1296,10 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 				Info->ScrolledRowsUp++;
 
 				// координату - "отмотать" (она как бы не изменилась)
-				if (bScrollRegion && (ScrollBottom < csbi.dwSize.Y))
+				if (bScrollRegion && (scrollBottom < csbi.dwSize.Y))
 				{
-					y2 = LOSHORT(ScrollBottom) - 1;
-					_ASSERTEX((int)y2 == (int)(ScrollBottom - 1));
+					y2 = LOSHORT(scrollBottom) - 1;
+					_ASSERTEX((int)y2 == (int)(scrollBottom - 1));
 
 					crScrollCursor.X = x2;
 					crScrollCursor.Y = y2;
@@ -1316,7 +1328,7 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 		// '\b': move cursor backward by one cell, don't erase cell, don't move cursor upward
 		if (bIntCursorOp)
 		{
-			_ASSERTE(x2>0);
+			_ASSERTE(x2 > 0 || (static_cast<int>(controlChars) & static_cast<int>(ControlChars::Backspace)));
 			_ASSERTE(pCur < pEnd && (*pCur == L'\n' || *pCur == L'\t' || *pCur == L'\b') && (pFrom == pCur || pFrom == pCur+1));
 			bIntCursorOp = false;
 			crScrollCursor.X = x2;
@@ -1377,6 +1389,8 @@ BOOL ExtWriteText(ExtWriteTextParm* Info)
 	if (lbRc)
 		Info->NumberOfCharsWritten = Info->NumberOfCharsToWrite;
 
+	std::ignore = scrollTop;
+	std::ignore = bVirtualWrap;
 	return lbRc;
 }
 
@@ -1422,7 +1436,7 @@ BOOL ExtFillOutput(ExtFillOutputParm* Info)
 		}
 		else if (Info->Flags & efof_ResetExt)
 		{
-			Info->FillAttr.Flags = CECF_NONE;
+			Info->FillAttr.Flags = ConEmu::ColorFlags::None;
 			// Цвет - без разницы. Будут сброшены только расширенные атрибуты,
 			// реальный цвет в консоли оставляем без изменений
 			Info->FillAttr.ForegroundColor = 7;
@@ -1748,7 +1762,7 @@ BOOL ExtScrollScreen(ExtScrollScreenParm* Info)
 
 	if (Info->Flags & essf_Current)
 	{
-		ExtAttributesParm DefClr = {sizeof(DefClr), h, ConEmuColor{}};
+		ExtAttributesParm DefClr = {sizeof(DefClr), h, ConEmu::Color{}};
 		ExtGetAttributes(&DefClr);
 		Info->FillAttr = DefClr.Attributes;
 	}

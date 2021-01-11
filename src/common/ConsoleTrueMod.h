@@ -28,31 +28,61 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <pshpack1.h>
+#include <cstdint>
+#include <pshpack1.h>  // NOLINT(clang-diagnostic-pragma-pack)
 
-typedef unsigned __int64 CECOLORFLAGS;
-static const CECOLORFLAGS
-	CECF_FG_24BIT      = 0x0000000000000001ULL,
-	CECF_BG_24BIT      = 0x0000000000000002ULL,
-	CECF_24BITMASK     = CECF_FG_24BIT|CECF_BG_24BIT,
+namespace ConEmu {
 
-	CECF_TAB_CHAR      = 0x0100000000000000ULL, // reserved. set in pos where "\t" was written
-	CECF_TAB_SPACE     = 0x0200000000000000ULL, // reserved. set in pos after CECF_TAB_CHAR (where spaces actually was written)
-	
-	CECF_FG_CROSSED    = 0x0800000000000000ULL,
-	CECF_FG_BOLD       = 0x1000000000000000ULL,
-	CECF_FG_ITALIC     = 0x2000000000000000ULL,
-	CECF_FG_UNDERLINE  = 0x4000000000000000ULL,
-	CECF_REVERSE       = 0x8000000000000000ULL,
-	CECF_STYLEMASK     = CECF_FG_BOLD|CECF_FG_ITALIC|CECF_FG_UNDERLINE|CECF_REVERSE|CECF_FG_CROSSED,
-
-	CECF_NONE          = 0;
-
-struct ConEmuColor
+// Flags for color and styles applied on a cell (TrueColor memory mapped buffer)
+enum class ColorFlags : uint64_t
 {
-	CECOLORFLAGS Flags;
+	None = 0,
+
+	// Cell contains 24bit foreground part
+	Fg24Bit = 0x0000000000000001ULL,
+	// Cell contains 24bit background part
+	Bg24Bit = 0x0000000000000002ULL,
+
+	// reserved. set in pos where "\t" was written
+	TabChar = 0x0100000000000000ULL,
+	// reserved. set in pos after TabChar (where spaces actually was written)
+	TabSpace = 0x0200000000000000ULL,
+
+	// Text is crossed out
+	Crossed = 0x0800000000000000ULL,
+	// Bold font is used
+	Bold = 0x1000000000000000ULL,
+	// Italic font is used
+	Italic = 0x2000000000000000ULL,
+	// Text is underlined
+	Underline = 0x4000000000000000ULL,
+
+	// Foreground and background colors are exchanged
+	Reverse = 0x8000000000000000ULL,
+};
+
+inline ColorFlags operator|(const ColorFlags e1, const ColorFlags e2)
+{
+	return static_cast<ColorFlags>(static_cast<uint64_t>(e1) | static_cast<uint64_t>(e2));
+}
+
+inline ColorFlags operator|=(ColorFlags& e1, const ColorFlags e2)
+{
+	return e1 = static_cast<ColorFlags>(static_cast<uint64_t>(e1) | static_cast<uint64_t>(e2));
+}
+
+inline bool operator&(const ColorFlags e1, const ColorFlags e2)
+{
+	return static_cast<ColorFlags>(static_cast<uint64_t>(e1) & static_cast<uint64_t>(e2)) != ColorFlags::None;
+}
+
+struct Color
+{
+	ColorFlags Flags;
 	COLORREF ForegroundColor;
 	COLORREF BackgroundColor;
 };
 
-#include <poppack.h>
+}
+
+#include <poppack.h>  // NOLINT(clang-diagnostic-pragma-pack)

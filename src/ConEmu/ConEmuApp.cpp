@@ -884,11 +884,11 @@ void WarnCreateWindowFail(LPCWSTR pszDescription, HWND hParent, DWORD nErrCode)
 	{
 		swprintf_c(szCreateFail,
 			L"Inside mode: Parent (%s): PID=%u ParentPID=%u HWND=x%p EXE=",
-			(::IsWindow(gpConEmu->mp_Inside->mh_InsideParentWND) ? L"Valid" : L"Invalid"),
-			gpConEmu->mp_Inside->m_InsideParentInfo.ParentPID,
-			gpConEmu->mp_Inside->m_InsideParentInfo.ParentParentPID,
-			static_cast<LPVOID>(gpConEmu->mp_Inside->mh_InsideParentWND));
-		const CEStr lsLog(szCreateFail, gpConEmu->mp_Inside->m_InsideParentInfo.ExeName);
+			(::IsWindow(gpConEmu->mp_Inside->GetParentWnd()) ? L"Valid" : L"Invalid"),
+			gpConEmu->mp_Inside->GetParentInfo().ParentPID,
+			gpConEmu->mp_Inside->GetParentInfo().ParentParentPID,
+			static_cast<LPVOID>(gpConEmu->mp_Inside->GetParentWnd()));
+		const CEStr lsLog(szCreateFail, gpConEmu->mp_Inside->GetParentInfo().ExeName);
 		LogString(lsLog);
 	}
 
@@ -1728,38 +1728,6 @@ bool UpdateWin7TaskList(bool bForce, bool bNoSuccMsg /*= false*/)
 	// Но это не то... Похоже, чтобы добавить такой "путь" в Recent/Frequent list
 	// нужно создавать физический файл (например, с расширением ".conemu"),
 	// и (!) регистрировать для него обработчиком conemu.exe
-	#if 0
-	//SHAddToRecentDocs(SHARD_PATHW, pszTemp);
-
-	//HRESULT hres;
-	//IShellLink* phsl = nullptr;
-	//// Get a pointer to the IShellLink interface.
-	//hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
-	//					   IID_IShellLink, (LPVOID*)&phsl);
-	//if (SUCCEEDED(hres))
-	//{
-	//	STARTUPINFO si = {sizeof(si)};
-	//	GetStartupInfo(&si);
-	//	if (!si.wShowWindow)
-	//		si.wShowWindow = SW_SHOWNORMAL;
-
-	//	phsl->SetPath(gpConEmu->ms_ConEmuExe);
-	//	phsl->SetDescription(pszTemp);
-	//	phsl->SetArguments(pszTemp);
-	//	phsl->SetShowCmd(si.wShowWindow);
-
-	//	DWORD n = GetCurrentDirectory(countof(szExe), szExe);
-	//	if (n && (n < countof(szExe)))
-	//		phsl->SetWorkingDirectory(szExe);
-	//}
-
-	//if (phsl)
-	//{
-	//	//_ASSERTE(SHARD_SHELLITEM == 0x00000008L);
-	//	SHAddToRecentDocs(0x00000008L/*SHARD_SHELLITEM*/, phsl);
-	//	phsl->Release();
-	//}
-	#endif
 
 	SetCursor(LoadCursor(nullptr, IDC_ARROW));
 #endif // __GNUC__
@@ -2794,7 +2762,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// Если в режиме "Inside" подходящего окна не нашли и юзер отказался от "обычного" режима
 	// mh_InsideParentWND инициализируется вызовом InsideFindParent из Settings::LoadSettings()
-	if (gpConEmu->mp_Inside && (gpConEmu->mp_Inside->mh_InsideParentWND == INSIDE_PARENT_NOT_FOUND))
+	if (gpConEmu->mp_Inside && (gpConEmu->mp_Inside->GetParentWnd() == INSIDE_PARENT_NOT_FOUND))
 	{
 		DEBUGSTRSTARTUP(L"Bad InsideParentHWND, exiting");
 		return 100;

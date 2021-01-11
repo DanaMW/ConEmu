@@ -70,10 +70,6 @@ bool FileExists(const wchar_t* asFilePath, uint64_t* pnSize = nullptr);
 
 bool FileSearchInDir(LPCWSTR asFilePath, CEStr& rsFound);
 
-bool IsVsNetHostExe(LPCWSTR asFilePatName);
-
-bool IsGDB(LPCWSTR asFilePatName);
-
 class CEnvRestorer;
 typedef bool (*SearchAppPaths_t)(LPCWSTR asFilePath, CEStr& rsFound, bool abSetPath, CEnvRestorer* rpsPathRestore /*= NULL*/);
 extern SearchAppPaths_t gfnSearchAppPaths /*= NULL*/;
@@ -83,20 +79,24 @@ bool GetShortFileName(LPCWSTR asFullPath, int cchShortNameMax, wchar_t* rsShortN
 wchar_t* GetShortFileNameEx(LPCWSTR asLong, BOOL abFavorLength=TRUE);
 
 DWORD GetModulePathName(HMODULE hModule, CEStr& lsPathName);
+DWORD GetCurrentModulePathName(CEStr& lsPathName);
 
+OSVERSIONINFOEXW MakeOsVersionEx(DWORD dwMajorVersion, DWORD dwMinorVersion);
 bool _VerifyVersionInfo(LPOSVERSIONINFOEXW lpVersionInformation, DWORD dwTypeMask, DWORDLONG dwlConditionMask);
 bool IsWinDBCS();
 bool IsHwFullScreenAvailable();
 bool GetOsVersionInformational(OSVERSIONINFO* pOsVer);
-bool IsWinVerOrHigher(WORD OsVer); // Ex: 0x0601, _WIN32_WINNT_WIN10, ...
+bool IsWinVerOrHigher(WORD osVerNum); // Ex: 0x0601, _WIN32_WINNT_WIN10, ...
+bool IsWinVerEqual(WORD osVerNum);
 bool IsWin2kEql();
 bool IsWin5family();
 bool IsWinXP();
-bool IsWinXPSP1();
+bool IsWinXP(WORD servicePack);
 bool IsWin6();
 bool IsWin7();
 bool IsWin7Eql();
 bool IsWin8();
+// ReSharper disable once CppInconsistentNaming
 bool IsWin8_1();
 bool IsWin10();
 bool IsWindows64();

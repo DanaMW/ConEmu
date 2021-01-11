@@ -1400,8 +1400,9 @@ bool CPluginBase::RunExternalProgramW(wchar_t* pszCommand, wchar_t* pszCurDir, b
 	}
 	else
 	{
-		STARTUPINFO cif= {sizeof(STARTUPINFO)};
-		PROCESS_INFORMATION pri= {0};
+		STARTUPINFO cif = {};
+		cif.cb = sizeof(cif);
+		PROCESS_INFORMATION pri = {};
 		HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
 		DWORD oldConsoleMode;
 		DWORD nErr = 0;
@@ -1570,8 +1571,9 @@ bool CPluginBase::Attach2Gui(bool bLeaveOpened /*= false*/)
 	wchar_t szConEmuBase[MAX_PATH+1], szConEmuGui[MAX_PATH+1];
 	//DWORD nLen = 0;
 	PROCESS_INFORMATION pi; memset(&pi, 0, sizeof(pi));
-	STARTUPINFO si = {sizeof(si)};
-	DWORD dwSelfPID = GetCurrentProcessId();
+	STARTUPINFO si = {};
+	si.cb = sizeof(si);
+	const DWORD dwSelfPID = GetCurrentProcessId();
 	wchar_t* pszSlash = NULL;
 	DWORD nStartWait = 255;
 

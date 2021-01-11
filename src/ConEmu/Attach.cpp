@@ -361,7 +361,7 @@ bool CAttachDlg::CanAttachWindow(HWND hFind, DWORD nSkipPID, CProcessData* apPro
 		lbCan = false;
 	if (lbCan && gpConEmu->isOurConsoleWindow(hFind))
 		lbCan = false;
-	if (lbCan && gpConEmu->mp_Inside && gpConEmu->mp_Inside->isParentProcess(hFind))
+	if (lbCan && gpConEmu->mp_Inside && gpConEmu->mp_Inside->IsParentProcess(hFind))
 		lbCan = false;
 
 	GetClassName(hFind, Info.szClass, countof(Info.szClass));
@@ -725,8 +725,10 @@ bool CAttachDlg::StartAttach(HWND ahAttachWnd, DWORD anPID, DWORD anBits, Attach
 	bool lbRc = false;
 	wchar_t szPipe[MAX_PATH];
 	PROCESS_INFORMATION pi = {};
-	STARTUPINFO si = {sizeof(si)};
-	SHELLEXECUTEINFO sei = {sizeof(sei)};
+	STARTUPINFO si = {};
+	si.cb = sizeof(si);
+	SHELLEXECUTEINFO sei = {};
+	sei.cbSize = sizeof(sei);
 	CESERVER_REQ *pIn = nullptr, *pOut = nullptr;
 	HANDLE hPipeTest = nullptr;
 	HANDLE hPluginTest = nullptr;

@@ -49,7 +49,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DefTermHk.h"
 #include "GuiAttach.h"
 #include "hkConsole.h"
+
+#include "DllOptions.h"
+#include "hlpConsole.h"
 #include "MainThread.h"
+#include "../common/WObjects.h"
 #include "../ConEmuCD/ExportedFunctions.h"
 
 #define SETCONCP_READYTIMEOUT 5000
@@ -370,7 +374,8 @@ BOOL WINAPI OnAllocConsole(void)
 	// Попытаться создать консольное окно "по тихому"
 	if (gpDefTerm && !hOldConWnd && !gnServerPID)
 	{
-		HWND hCreatedCon = gpDefTerm->AllocHiddenConsole(false);
+		// ReSharper disable once CppLocalVariableMayBeConst
+		HWND hCreatedCon = CDefTermHk::AllocHiddenConsole(false);
 		if (hCreatedCon)
 		{
 			hOldConWnd = hCreatedCon;
@@ -552,6 +557,37 @@ HWND WINAPI OnGetConsoleWindow(void)
 }
 
 
+DWORD WINAPI OnGetConsoleProcessList(LPDWORD lpdwProcessList, DWORD dwProcessCount)
+{
+	ORIGINAL_KRNL_EX(GetConsoleProcessList);
+	DWORD result = 0;
+
+	if (F(GetConsoleProcessList))
+		result = F(GetConsoleProcessList)(lpdwProcessList, dwProcessCount);
+
+	// VsDebugConsole.exe waits while it's the only process in the console,
+	// if there are other processes - it does not return control to VS.
+	if (result && lpdwProcessList)
+	{
+		for (DWORD i = 0; i < result; ++i)
+		{
+			if (lpdwProcessList[i] == gnServerPID)
+			{
+				if (i + 1 < result)
+				{
+					const size_t tailLen = result - i - 1;
+					memmove(lpdwProcessList + i, lpdwProcessList + i + 1, tailLen * sizeof(*lpdwProcessList));
+				}
+				--result;
+				break;
+			}
+		}
+	}
+
+	return result;
+}
+
+
 // Undocumented function
 BOOL WINAPI OnSetConsoleKeyShortcuts(BOOL bSet, BYTE bReserveKeys, LPVOID p1, DWORD n1)
 {
@@ -652,7 +688,7 @@ HANDLE WINAPI OnCreateConsoleScreenBuffer(
 		h = F(CreateConsoleScreenBuffer)(dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwFlags, lpScreenBufferData);
 
 	if (h && (h != INVALID_HANDLE_VALUE))
-		HandleKeeper::AllocHandleInfo(h, hs_CreateConsoleScreenBuffer);
+		HandleKeeper::AllocHandleInfo(h, HandleSource::CreateConsoleScreenBuffer);
 
 #ifdef SHOWCREATEBUFFERINFO
 	msprintf(szDebugInfo+lstrlen(szDebugInfo), 32, L"=0x%X", (DWORD)(DWORD_PTR)h);

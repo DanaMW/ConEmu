@@ -244,6 +244,7 @@
     <ClInclude Include="common\ConsoleTrueMod.h" />
     <ClInclude Include="common\DbgHlpGcc.h" />
     <ClInclude Include="common\DefTermBase.h" />
+    <ClInclude Include="common\DefTermChildMap.h" />
     <ClInclude Include="common\Dump.h" />
     <ClInclude Include="common\EmergencyShow.h" />
     <ClInclude Include="common\FarVersion.h" />
@@ -251,7 +252,6 @@
     <ClInclude Include="common\MArray.h" />
     <ClInclude Include="common\MBSTR.h" />
     <ClInclude Include="common\MCircular.h" />
-    <ClInclude Include="common\MEvent.h" />
     <ClInclude Include="common\MFileLogEx.h" />
     <ClInclude Include="common\MFileMapping.h" />
     <ClInclude Include="common\MGlobal.h" />
@@ -290,6 +290,7 @@
     <ClInclude Include="common\WSession.h" />
     <ClInclude Include="common\WUser.h" />
     <ClInclude Include="common\clink.h" />
+    <ClInclude Include="common\crc32.h" />
     <ClInclude Include="common\defines.h" />
     <ClInclude Include="common\md5.h" />
     <ClInclude Include="common\plugin_helper.h" />
@@ -303,7 +304,6 @@
     <ClCompile Include="common\ConEmuCheckEx.cpp" />
     <ClCompile Include="common\EmergencyShow.cpp" />
     <ClCompile Include="common\MBSTR.cpp" />
-    <ClCompile Include="common\MEvent.cpp" />
     <ClCompile Include="common\MFileLogEx.cpp" />
     <ClCompile Include="common\MGlobal.cpp" />
     <ClCompile Include="common\MGuiMacro.cpp" />

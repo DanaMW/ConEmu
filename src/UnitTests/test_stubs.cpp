@@ -39,6 +39,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
 
+#include "../ConEmuHk/Ansi.h"
+
 
 bool gbVerifyFailed = false;
 bool gbVerifyStepFailed = false;
@@ -54,7 +56,6 @@ HWND gh__Wnd = NULL;
 HWND ghWnd = NULL;
 HWND ghWndWork = NULL;
 HWND ghWndApp = NULL;
-HWND ghConWnd = NULL;
 HWND ghDlgPendingFrom = NULL;
 HWND ghLastForegroundWindow = NULL;
 HINSTANCE g_hInstance = NULL;
@@ -69,7 +70,6 @@ LONG gnInMsgBox = 0;
 LONG gnMessageNestingLevel = 0;
 BOOL gbDebugLogStarted = FALSE;
 BOOL gbDebugShowRects = FALSE;
-CEStartupEnv* gpStartEnv = NULL;
 CFontMgr* gpFontMgr = NULL;
 ConEmuHotKeyList* gpHotKeys = NULL;
 MMap<HWND, CVirtualConsole*> gVConDcMap;
@@ -124,6 +124,7 @@ void SkipOneShowWindow() {}
 void ShutdownGuiStep(LPCWSTR asInfo, int nParm1 /*= 0*/, int nParm2 /*= 0*/, int nParm3 /*= 0*/, int nParm4 /*= 0*/) {}
 bool UpdateWin7TaskList(bool bForce, bool bNoSuccMsg /*= false*/) { return false; }
 void WarnCreateWindowFail(LPCWSTR pszDescription, HWND hParent, DWORD nErrCode) {}
+bool CEAnsi::GetFeatures(ConEmu::ConsoleFlags& features) { features = ConEmu::ConsoleFlags::Empty; return false; }
 
 #if defined(_DEBUG)
 BOOL POSTMESSAGE(HWND h, UINT m, WPARAM w, LPARAM l, BOOL extra) { return FALSE; }

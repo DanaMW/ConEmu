@@ -30,38 +30,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 
-#include <windows.h>
-#include <wincon.h>
-
-
-/*  Global  */
-extern bool    gbConEmuCProcess;
-extern DWORD   gnSelfPID;
-extern wchar_t gsConEmuBaseDir[MAX_PATH + 1]; // "%ConEmuBaseDir%"
-extern wchar_t gsExeName[80];       // Only exe name of current process
-extern CEActiveAppFlags gnExeFlags; // cygwin/msys/clink and so on...
-/*  ConEmu/Console */
-extern HWND    ghConWnd;
-extern HWND    ghConEmuWnd;   // Root! window
-extern HWND    ghConEmuWndDC; // ConEmu DC window
-extern DWORD   gnGuiPID;
-extern DWORD   gnServerPID;   // ConEmuC server PID (initialized on startup, during Dll loading)
-extern DWORD   gnImageSubsystem;
-extern DWORD   gnImageBits;
+#include <Windows.h>
 
 #include "../common/Common.h"
-#include "../common/ConEmuCheck.h"
-#include "../common/WObjects.h"
-#include "../common/InQueue.h"
-#include "../common/MMap.h"
 #include "../common/MFileMapping.h"
 
 #include "DbgHooks.h"
-
-bool isSuppressBells();
-#define LogBeepSkip(x) OutputDebugString(x)
-
-void SetServerPID(DWORD anMainSrvPID);
 
 extern MFileMapping<CESERVER_CONSOLE_APP_MAPPING> *gpAppMap;
 CESERVER_CONSOLE_MAPPING_HDR* GetConMap(BOOL abForceRecreate=FALSE);
@@ -69,7 +43,6 @@ CESERVER_CONSOLE_APP_MAPPING* GetAppMapPtr();
 CESERVER_CONSOLE_APP_MAPPING* UpdateAppMapFlags(DWORD nFlags/*enum CEReadConsoleInputFlags*/);
 CESERVER_CONSOLE_APP_MAPPING* UpdateAppMapRows(LONG anLastConsoleRow, bool abForce);
 void OnConWndChanged(HWND ahNewConWnd);
-bool AttachServerConsole();
 void CheckAnsiConVar(LPCWSTR asName);
 
 enum CEReadConsoleInputFlags
@@ -91,7 +64,7 @@ const ConEmuHkDllState
 	ds_DllDeinitializing       = 0x00000020,
 	ds_HeapInitialized         = 0x00000040,
 	ds_HeapDeinitialized       = 0x00000080,
-	ds_DllStoping              = 0x00000100,
+	ds_DllStopping             = 0x00000100,
 	ds_DllStopped              = 0x00000200,
 	ds_HooksStarting           = 0x00001000,
 	ds_HooksStopping           = 0x00002000,
@@ -112,7 +85,7 @@ const ConEmuHkDllState
 extern ConEmuHkDllState gnDllState;
 
 // Progress of DoDllStop, last one is ds_DllStopped
-#define DLL_STOP_STEP(n) { _ASSERTEX(n>0 && n<=15); gnDllState &= ~ds_DllStopSteps; gnDllState |= (((n) & 0xF) << 28); }
+#define DLL_STOP_STEP(n) { _ASSERTEX((n)>0 && (n)<=15); gnDllState &= ~ds_DllStopSteps; gnDllState |= (((n) & 0xF) << 28); }
 
 // xxxRaw is used internally, during hooks initialization and shutdown
 #define HooksWereSetRaw ((gnDllState & ds_HooksStarted) && !(gnDllState & ds_HooksStopped))
@@ -123,20 +96,6 @@ extern ConEmuHkDllState gnDllState;
 struct AnnotationHeader;
 extern AnnotationHeader* gpAnnotationHeader;
 extern HANDLE ghCurrentOutBuffer;
-
-struct ReadConsoleInfo
-{
-	HANDLE hConsoleInput;
-	DWORD InReadConsoleTID;
-	DWORD LastReadConsoleTID;
-	HANDLE hConsoleInput2;
-	DWORD LastReadConsoleInputTID;
-	BOOL  bIsUnicode;
-	COORD crStartCursorPos;
-	DWORD nConInMode;
-	DWORD nConOutMode;
-};
-extern struct ReadConsoleInfo gReadConsoleInfo;
 
 void CheckHookServer();
 extern bool gbHookServerForcedTermination;
@@ -151,79 +110,8 @@ struct CpConv
 };
 extern struct CpConv gCpConv;
 
-/* ************ Globals for Far ************ */
-extern bool    gbIsFarProcess;
-extern InQueue gInQueue;
-/* ************ Globals for Far ************ */
 
-/* ************ Globals for cmd.exe/clink ************ */
-extern bool     gbIsCmdProcess;
-//extern size_t   gcchLastWriteConsoleMax;
-//extern wchar_t *gpszLastWriteConsole;
-extern int      gnCmdInitialized; // 0 - Not already, 1 - OK, -1 - Fail
-extern bool     gbAllowClinkUsage;
-extern bool     gbClinkInjectRequested;
-extern bool     gbAllowUncPaths;
-/* ************ Globals for cmd.exe/clink ************ */
-
-/* ************ Globals for powershell ************ */
-extern bool gbIsPowerShellProcess;
-extern bool gbPowerShellMonitorProgress;
-extern WORD gnConsolePopupColors;
-extern int  gnPowerShellProgressValue;
-/* ************ Globals for powershell ************ */
-
-/* ************ Globals for Node.JS ************ */
-extern bool gbIsNodeJSProcess;
-/* ************ Globals for Node.JS ************ */
-
-/* ************ Globals for cygwin/msys ************ */
-extern bool gbIsBashProcess;
-extern bool gbIsSshProcess;
-extern bool gbIsLessProcess;
-/* ************ Globals for cygwin/msys ************ */
-
-/* ************ Globals for ViM ************ */
-extern bool gbIsVimProcess;
-extern bool gbIsVimAnsi;
-/* ************ Globals for ViM ************ */
-
-/* ************ Globals for Plink ************ */
-extern bool gbIsPlinkProcess;
-/* ************ Globals for ViM ************ */
-
-/* ************ Globals for MinTTY ************ */
-extern bool gbIsMinTtyProcess;
-/* ************ Globals for ViM ************ */
-
-/* ************ Globals for HIEW32.EXE ************ */
-extern bool gbIsHiewProcess;
-/* ************ Globals for HIEW32.EXE ************ */
-
-/* ************ Globals for DosBox.EXE ************ */
-extern bool gbDosBoxProcess;
-/* ************ Globals for DosBox.EXE ************ */
-
-/* ************ Don't show VirtualAlloc errors ************ */
-extern bool gbSkipVirtualAllocErr;
-/* ************ Don't show VirtualAlloc errors ************ */
-
-/* ************ Globals for "Default terminal ************ */
-extern bool gbPrepareDefaultTerminal;
-extern bool gbIsNetVsHost;
-extern bool gbIsVStudio;
-extern bool gbIsVSDebug; // msvsmon.exe
-extern bool gbIsVsCode;
-extern int  gnVsHostStartConsole;
-extern bool gbIsGdbHost;
-/* ************ Globals for "Default terminal ************ */
-
-/* ************ Hooking time functions ************ */
-extern DWORD gnTimeEnvVarLastCheck;
-extern wchar_t gszTimeEnvVarSave[32];
-/* ************ Hooking time functions ************ */
-
-void GuiSetProgress(AnsiProgressStatus st, WORD pr, LPCWSTR pszName = NULL);
+void GuiSetProgress(AnsiProgressStatus st, WORD pr, LPCWSTR pszName = nullptr);
 
 #if defined(__GNUC__)
 extern "C" {
@@ -239,10 +127,10 @@ extern "C" {
 
 void DoDllStop(bool bFinal, ConEmuHkDllState bFromTerminate = ds_Undefined);
 
-#include <intrin.h>
-
 // Defined in "DbgHooks.h"
 #ifdef USEHOOKLOG
+	#include <intrin.h>
+
 	#define getThreadId() WIN3264TEST(((DWORD*) __readfsdword(24))[9],GetCurrentThreadId())
 
 	#define getTime GetTickCount

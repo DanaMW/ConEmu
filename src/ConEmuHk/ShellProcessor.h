@@ -28,8 +28,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include "../common/Common.h"
 #include "../common/CmdLine.h"
 #include "../common/RConStartArgs.h"
+#include <memory>
 
 struct RConStartArgs;
 
@@ -38,6 +40,62 @@ const ChangeExecFlags
 	CEF_NEWCON_SWITCH   = 1, // If command line has "-new_console"
 	CEF_NEWCON_PREPEND  = 2, // If we need to prepend command with "-new_console" to ensure that "start cmd" will be processed properly
 	CEF_DEFAULT = 0;
+
+enum CmdOnCreateType;
+
+enum class ShellWorkOptions : uint32_t
+{
+	None = 0,
+	// during CreateProcessXXX the flag CREATE_SUSPENDED was already set
+	WasSuspended = 0x00000001,
+	// Either native or .net debugging is supposed
+	WasDebug = 0x00000002,
+
+	// gbd.exe
+	GnuDebugger = 0x00000010,
+	// *.vshost.exe
+	VsNetHost = 0x00000020,
+	// VsDebugConsole.exe
+	VsDebugConsole = 0x00000040,
+	// msvsmon.exe
+	VsDebugger = 0x00000080,
+
+	// Starting ChildGui
+	ChildGui = 0x00000100,
+
+	// Controls if we need to inject ConEmuHk into started executable (either original, or changed ConEmu.exe / ConEmuC.exe).
+	// Modified via SetNeedInjects.
+	NeedInjects = 0x00001000,
+
+	// Controls if we have to inject ConEmuHk regardless of DefTerm settings
+	// Modified via SetForceInjectOriginal.
+	ForceInjectOriginal = 0x00002000,
+
+	// Special case of injecting ConEmuHk during debugging.
+	// The process is started, thread is resumed until modules are initialized,
+	// after that thread is suspended again and StartDefTermHooker is called.
+	PostInjectWasRequested = 0x00004000,
+	
+	// Controls if we need to run console server, if value is false - running fo ConEmu.exe is allowed.
+	// Modified via SetConsoleMode.
+	ConsoleMode = 0x00010000,
+
+	// Special case to remove RealConsole flickering. E.g. in VisualStudio we attached to the console
+	// created by ConEmuC.exe server and later we have to call FreeConsole to avoid unexpected output to ConOut.
+	HiddenConsoleDetachNeed = 0x00020000,
+
+	// Create DefTerm event and mapping before resuming the process
+	InheritDefTerm = 0x00040000,
+
+	// executable was replaced with ConEmu.exe (GUI)
+	ExeReplacedGui = 0x00100000,
+	// executable was replaced with ConEmuC.exe (Console)
+	ExeReplacedConsole = 0x00200000,
+};
+
+ShellWorkOptions operator|=(ShellWorkOptions& e1, ShellWorkOptions e2);
+ShellWorkOptions operator|(ShellWorkOptions e1, ShellWorkOptions e2);
+bool operator&(ShellWorkOptions e1, ShellWorkOptions e2);
 
 class CShellProc
 {
@@ -51,33 +109,76 @@ private:
 	UINT mn_CP; // = AreFileApisANSI() ? CP_ACP : CP_OEMCP;
 
 	// Для конвертации параметров Ansi функций (работаем через Unicode для унификации)
-	LPWSTR mpwsz_TempAction = NULL; // = str2wcs(asAction, nCP);
-	LPWSTR mpwsz_TempFile = NULL; // = str2wcs(asFile, nCP);
-	LPWSTR mpwsz_TempParam = NULL; // = str2wcs(asParam, nCP);
+	LPWSTR mpwsz_TempAction = nullptr; // = str2wcs(asAction, nCP);
+	LPWSTR mpwsz_TempFile = nullptr; // = str2wcs(asFile, nCP);
+	LPWSTR mpwsz_TempParam = nullptr; // = str2wcs(asParam, nCP);
 
-	LPSTR  mpsz_TempRetFile = NULL;
-	LPSTR  mpsz_TempRetParam = NULL;
-	LPSTR  mpsz_TempRetDir = NULL;
-	LPWSTR mpwsz_TempRetFile = NULL;
-	LPWSTR mpwsz_TempRetParam = NULL;
-	LPWSTR mpwsz_TempRetDir = NULL;
+	LPSTR  mpsz_TempRetFile = nullptr;
+	LPSTR  mpsz_TempRetParam = nullptr;
+	LPSTR  mpsz_TempRetDir = nullptr;
+	LPWSTR mpwsz_TempRetFile = nullptr;
+	LPWSTR mpwsz_TempRetParam = nullptr;
+	LPWSTR mpwsz_TempRetDir = nullptr;
 
-	// Копии для ShellExecuteEx - менять мы можем только свою память
-	LPSHELLEXECUTEINFOA mlp_ExecInfoA = NULL, mlp_SaveExecInfoA = NULL;
-	LPSHELLEXECUTEINFOW mlp_ExecInfoW = NULL, mlp_SaveExecInfoW = NULL;
+	template<typename T>
+	struct StructDeleter { // deleter
+		void operator()(T* p) const
+		{
+			SafeFree(p);
+		}
+	};
 
-	// Информация о запускаемом процессе
+	// Copies for ShellExecuteEx - we may change only our memory
+	LPSHELLEXECUTEINFOA mlp_ExecInfoA = nullptr, mlp_SaveExecInfoA = nullptr;
+	LPSHELLEXECUTEINFOW mlp_ExecInfoW = nullptr, mlp_SaveExecInfoW = nullptr;
+	// Copies for CreateProcess
+	std::unique_ptr<STARTUPINFOA, StructDeleter<STARTUPINFOA>> m_lpStartupInfoA;
+	std::unique_ptr<STARTUPINFOW, StructDeleter<STARTUPINFOW>> m_lpStartupInfoW;
+
+	// Information about starting process
 	DWORD mn_ImageSubsystem = 0, mn_ImageBits = 0;
 	CmdArg ms_ExeTmp;
-	BOOL mb_WasSuspended = FALSE; // Если TRUE - значит при вызове CreateProcessXXX уже был флаг CREATE_SUSPENDED
-	BOOL mb_NeedInjects = FALSE;
-	BOOL mb_DebugWasRequested = FALSE;
-	BOOL mb_HiddenConsoleDetachNeed = FALSE;
-	BOOL mb_PostInjectWasRequested = FALSE;
-	//BOOL mb_DosBoxAllowed;
-	bool mb_Opt_DontInject = false; // ConEmuHooks=OFF
-	bool mb_Opt_SkipNewConsole = false; // ConEmuHooks=NOARG
-	bool mb_Opt_SkipCmdStart = false; // ConEmuHooks=NOSTART
+
+	// Describes the request, e.g. runnings options, if we are to start gdb.exe, msvsmon.exe, etc.
+	ShellWorkOptions workOptions_ = ShellWorkOptions::None;
+
+	// during CreateProcessXXX the flag CREATE_SUSPENDED was already set
+	void SetWasSuspended();
+	// DEBUG_ONLY_THIS_PROCESS|DEBUG_PROCESS
+	void SetWasDebug();
+	// gbd.exe
+	void SetGnuDebugger();
+	// *.vshost.exe
+	void SetVsNetHost();
+	// VsDebugConsole.exe
+	void SetVsDebugConsole();
+	// msvsmon.exe
+	void SetVsDebugger();
+	// Starting ChildGui
+	void SetChildGui();
+	void ClearChildGui();
+	// Controls if we need to inject ConEmuHk into started executable (either original, or changed ConEmu.exe / ConEmuC.exe)
+	void SetNeedInjects(bool value);
+	// Controls if we have to inject ConEmuHk regardless of DefTerm settings
+	void SetForceInjectOriginal(bool value);
+	// Controls if we need to call StartDefTermHooker after resuming started process
+	void SetPostInjectWasRequested();
+	// Controls if we need to run console server, if value is false - running fo ConEmu.exe is allowed
+	void SetConsoleMode(bool value);
+	// Controls if we need to call FreeConsole after process creation
+	void SetHiddenConsoleDetachNeed();
+	// Controls if we need to create DefTerm event and mapping before resuming the process
+	void SetInheritDefTerm();
+	// Updates workOptions_ ExeReplacedGui or ExeReplacedConsole
+	void SetExeReplaced(bool ourGuiExe);
+
+	// ConEmuHooks=OFF
+	bool mb_Opt_DontInject = false;
+	// ConEmuHooks=NOARG
+	bool mb_Opt_SkipNewConsole = false;
+	// ConEmuHooks=NOSTART
+	bool mb_Opt_SkipCmdStart = false;
+
 	void CheckHooksDisabled();
 	static bool GetStartingExeName(LPCWSTR asFile, LPCWSTR asParam, CEStr& rsExeTmp);
 
@@ -89,8 +190,32 @@ private:
 
 	CESERVER_CONSOLE_MAPPING_HDR m_SrvMapping = {};
 
-	HWND mh_PreConEmuWnd = NULL, mh_PreConEmuWndDC = NULL;
+	HWND mh_PreConEmuWnd = nullptr, mh_PreConEmuWndDC = nullptr;
 	BOOL mb_TempConEmuWnd = FALSE;
+
+	// Contains ConEmu GUI PID if it's running in inside mode (e.g. in VisualStudio pane)
+	DWORD deftermConEmuInsidePid_ = 0;
+
+	enum class PrepareExecuteResult
+	{
+		// Restrict execution, leads to ERROR_FILE_NOT_FOUND
+		Restrict = -1,
+		// Bypass to WinAPI without modifications
+		Bypass = 0,
+		// Strings or flags were modified
+		Modified = 1,
+	};
+
+	// Parameters stored and passed by during CreateProcess
+	struct CreatePrepareData
+	{
+		// true if process is created without console (redirected IO or detached window)
+		bool consoleNoWindow;
+		// originally requested wShowCmd
+		DWORD defaultShowCmd;
+		// on prepare contains defaultShowCmd, on result contains desired wShowCmd
+		DWORD showCmd;
+	};
 
 private:
 	wchar_t* str2wcs(const char* psz, UINT anCP);
@@ -99,30 +224,33 @@ private:
 	static bool PrepareNewConsoleInFile(
 				CmdOnCreateType aCmd, LPCWSTR& asFile, LPCWSTR& asParam,
 				CEStr& lsReplaceFile, CEStr& lsReplaceParm, CEStr& exeName);
-	bool CheckForDefaultTerminal(
-				enum CmdOnCreateType aCmd, LPCWSTR asAction, const DWORD* anShellFlags, const DWORD* anCreateFlags,
-				const DWORD* anShowCmd,
-				bool& bIgnoreSuspended, bool& bDebugWasRequested, bool& lbGnuDebugger, bool& bConsoleMode);
-	void CheckForExeName(const CEStr& exeName, const DWORD* anCreateFlags, bool lbGnuDebugger,
-		bool& bDebugWasRequested, bool& lbGuiApp, bool& bVsNetHostRequested);
-	int PrepareExecuteParms(
+	bool CheckForDefaultTerminal(CmdOnCreateType aCmd, LPCWSTR asAction, const DWORD* anShellFlags,
+				const DWORD* anCreateFlags, const DWORD* anShowCmd);
+	void CheckForExeName(const CEStr& exeName, const DWORD* anCreateFlags);
+	PrepareExecuteResult PrepareExecuteParams(
 				enum CmdOnCreateType aCmd,
 				LPCWSTR asAction, LPCWSTR asFile, LPCWSTR asParam, LPCWSTR asDir,
 				DWORD* anShellFlags, DWORD* anCreateFlags, DWORD* anStartFlags, DWORD* anShowCmd, // или Shell & Create флаги
 				HANDLE* lphStdIn, HANDLE* lphStdOut, HANDLE* lphStdErr,
 				LPWSTR* psFile, LPWSTR* psParam, LPWSTR* psStartDir);
-	BOOL ChangeExecuteParms(enum CmdOnCreateType aCmd, bool bConsoleMode,
-				LPCWSTR asFile, LPCWSTR asParam, LPCWSTR asExeFile,
+	BOOL ChangeExecuteParams(enum CmdOnCreateType aCmd,
+				LPCWSTR asFile, LPCWSTR asParam,
 				ChangeExecFlags Flags, const RConStartArgs& args,
 				DWORD& ImageBits, DWORD& ImageSubsystem,
 				LPWSTR* psFile, LPWSTR* psParam);
-	BOOL FixShellArgs(DWORD afMask, HWND ahWnd, DWORD* pfMask, HWND* phWnd);
+	BOOL FixShellArgs(DWORD afMask, HWND ahWnd, DWORD* pfMask, HWND* phWnd) const;
 	HWND FindCheckConEmuWindow();
 	void LogExitLine(int rc, int line) const;
 	void LogShellString(LPCWSTR asMessage) const;
-	void RunInjectHooks(LPCWSTR asFrom, PROCESS_INFORMATION *lpPI);
+	void RunInjectHooks(LPCWSTR asFrom, PROCESS_INFORMATION *lpPI) const;
+	CreatePrepareData OnCreateProcessPrepare(const DWORD* anCreationFlags, DWORD dwFlags, WORD wShowWindow, DWORD dwX, DWORD dwY);
+	bool OnCreateProcessResult(PrepareExecuteResult prepareResult, const CreatePrepareData& state, DWORD* anCreationFlags, WORD& siShowWindow, DWORD& siFlags);
+
+	// Validates either ghConEmuWndDC or IsDefTermEnabled
+	static bool IsInterceptionEnabled();
+
 public:
-	CESERVER_REQ* NewCmdOnCreate(enum CmdOnCreateType aCmd,
+	CESERVER_REQ* NewCmdOnCreate(CmdOnCreateType aCmd,
 				LPCWSTR asAction, LPCWSTR asFile, LPCWSTR asParam, LPCWSTR asDir,
 				DWORD* anShellFlags, DWORD* anCreateFlags, DWORD* anStartFlags, DWORD* anShowCmd,
 				int nImageBits, int nImageSubsystem,
@@ -134,19 +262,26 @@ public:
 public:
 	CShellProc();
 	~CShellProc();
+
+	CShellProc(const CShellProc&) = delete;
+	CShellProc(CShellProc&&) = delete;
+	CShellProc& operator=(const CShellProc&) = delete;
+	CShellProc& operator=(CShellProc&&) = delete;
 public:
-	// Эти функции возвращают TRUE, если команда обрабатывается (нужно будет делать Inject)
-	BOOL OnShellExecuteA(LPCSTR* asAction, LPCSTR* asFile, LPCSTR* asDir, LPCSTR* asParam, DWORD* anFlags, DWORD* anShowCmd);
-	BOOL OnShellExecuteW(LPCWSTR* asAction, LPCWSTR* asFile, LPCWSTR* asDir, LPCWSTR* asParam, DWORD* anFlags, DWORD* anShowCmd);
+	// Functions return TRUE when the command is allowed to be executed
+	BOOL OnShellExecuteA(LPCSTR* asAction, LPCSTR* asFile, LPCSTR* asParam, LPCSTR* asDir, DWORD* anFlags, DWORD* anShowCmd);
+	BOOL OnShellExecuteW(LPCWSTR* asAction, LPCWSTR* asFile, LPCWSTR* asParam, LPCWSTR* asDir, DWORD* anFlags, DWORD* anShowCmd);
 	BOOL OnShellExecuteExA(LPSHELLEXECUTEINFOA* lpExecInfo);
 	BOOL OnShellExecuteExW(LPSHELLEXECUTEINFOW* lpExecInfo);
-	BOOL OnCreateProcessA(LPCSTR* asFile, LPCSTR* asCmdLine, LPCSTR* asDir, DWORD* anCreationFlags, LPSTARTUPINFOA lpSI);
-	BOOL OnCreateProcessW(LPCWSTR* asFile, LPCWSTR* asCmdLine, LPCWSTR* asDir, DWORD* anCreationFlags, LPSTARTUPINFOW lpSI);
-	// Вызывается после успешного создания процесса
+	BOOL OnCreateProcessA(LPCSTR* asFile, LPCSTR* asCmdLine, LPCSTR* asDir, DWORD* anCreationFlags, LPSTARTUPINFOA* ppStartupInfo);
+	BOOL OnCreateProcessW(LPCWSTR* asFile, LPCWSTR* asCmdLine, LPCWSTR* asDir, DWORD* anCreationFlags, LPSTARTUPINFOW* ppStartupInfo);
+	// Called after successful process creation
 	void OnCreateProcessFinished(BOOL abSucceeded, PROCESS_INFORMATION *lpPI);
 	void OnShellFinished(BOOL abSucceeded, HINSTANCE ahInstApp, HANDLE ahProcess);
 	// Used with DefTerm+VSDebugger
-	static bool OnResumeDebugeeThreadCalled(HANDLE hThread, PROCESS_INFORMATION* lpPI = NULL);
+	// The hThread is resumed until modules are initialized,
+	// that hThread is suspended again, StartDefTermHooker is called and finally hThread is resumed again.
+	static bool OnResumeDebuggeeThreadCalled(HANDLE hThread, PROCESS_INFORMATION* lpPI = nullptr);
 protected:
 	static PROCESS_INFORMATION m_WaitDebugVsThread;
 public:
@@ -154,19 +289,13 @@ public:
 	bool GetLinkProperties(LPCWSTR asLnkFile, CEStr& rsExe, CEStr& rsArgs, CEStr& rsWorkDir);
 	bool InitOle32();
 protected:
-	HMODULE hOle32 = NULL;
+	HMODULE hOle32 = nullptr;
 	typedef HRESULT (WINAPI* CoInitializeEx_t)(LPVOID pvReserved, DWORD dwCoInit);
 	typedef HRESULT (WINAPI* CoCreateInstance_t)(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv);
-	CoInitializeEx_t CoInitializeEx_f = NULL;
-	CoCreateInstance_t CoCreateInstance_f = NULL;
+	CoInitializeEx_t CoInitializeEx_f = nullptr;
+	CoCreateInstance_t CoCreateInstance_f = nullptr;
 };
 
 // Service functions
 typedef DWORD (WINAPI* GetProcessId_t)(HANDLE Process);
 extern GetProcessId_t gfGetProcessId;
-
-#ifdef _DEBUG
-#ifndef CONEMU_MINIMAL
-void TestShellProcessor();
-#endif
-#endif

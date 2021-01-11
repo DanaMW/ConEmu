@@ -160,6 +160,7 @@ protected:
 	static void ShowConfigMsgBox(const CEStr& szArg, LPCWSTR cmdLineRest);
 	static void ShowServerStartedMsgBox(LPCWSTR asCmdLine);
 	static void ShowComspecStartedMsgBox(LPCWSTR asCmdLine);
+	static void ShowInjectsMsgBox(ConEmuExecAction mode, const wchar_t* asCmdLine, const wchar_t* param);
 	void AddConEmuArg(LPCWSTR asSwitch, LPCWSTR asValue);
 public:
 	int ParseCommandLine(LPCWSTR pszCmdLine, ConsoleMainMode anWorkMode);
@@ -217,6 +218,8 @@ public:
 	SwitchBool creatingHiddenConsole_;
 	/// Server was started from DefTerm application (*.vshost.exe), console could be hidden
 	SwitchBool defTermCall_;
+	/// We should create CEDEFAULTTERMHOOK event and CEINSIDEMAPNAMEP mapping
+	SwitchBool inheritDefTerm_;
 	/// Don't inject ConEmuHk.dll into root process
 	SwitchBool doNotInjectConEmuHk_;
 	/// Attach was initiated from Far Manager

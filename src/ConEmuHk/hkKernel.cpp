@@ -45,9 +45,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/Common.h"
 
-#include <tlhelp32.h>
+#include <TlHelp32.h>
 
 #include "hkKernel.h"
+
+#include "DllOptions.h"
 
 /* **************** */
 
@@ -217,7 +219,7 @@ LPVOID WINAPI OnVirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocation
 	#if defined(REPORT_VIRTUAL_ALLOC)
 		// clink use bunch of VirtualAlloc to try to find suitable memory location
 		// Some processes raises that error too often (in debug)
-		bool bReport = (!gbIsCmdProcess || (dwSize != 0x1000)) && !gbSkipVirtualAllocErr && !gbIsNodeJSProcess;
+		bool bReport = (!gbIsCmdProcess || (dwSize != 0x1000)) && !gbSkipVirtualAllocErr && !gbIsNodeJsProcess;
 		if (bReport)
 		{
 			// Do not report for .Net application

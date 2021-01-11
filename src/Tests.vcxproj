@@ -476,6 +476,7 @@
     <ClInclude Include="common\ConsoleTrueMod.h" />
     <ClInclude Include="common\DbgHlpGcc.h" />
     <ClInclude Include="common\DefTermBase.h" />
+    <ClInclude Include="common\DefTermChildMap.h" />
     <ClInclude Include="common\Dump.h" />
     <ClInclude Include="common\EmergencyShow.h" />
     <ClInclude Include="common\EnvVar.h" />
@@ -496,6 +497,7 @@
     <ClInclude Include="common\MFileMapping.h" />
     <ClInclude Include="common\MGlobal.h" />
     <ClInclude Include="common\MGuiMacro.h" />
+    <ClInclude Include="common\MHandle.h" />
     <ClInclude Include="common\MJsonReader.h" />
     <ClInclude Include="common\MMap.h" />
     <ClInclude Include="common\MModule.h" />
@@ -515,6 +517,7 @@
     <ClInclude Include="common\MTimer.h" />
     <ClInclude Include="common\MToolHelp.h" />
     <ClInclude Include="common\MToolTip.h" />
+    <ClInclude Include="common\MWnd.h" />
     <ClInclude Include="common\MWow64Disable.h" />
     <ClInclude Include="common\Memory.h" />
     <ClInclude Include="common\Monitors.h" />
@@ -546,6 +549,7 @@
     <ClInclude Include="common\WThreads.h" />
     <ClInclude Include="common\WUser.h" />
     <ClInclude Include="common\clink.h" />
+    <ClInclude Include="common\crc32.h" />
     <ClInclude Include="common\defines.h" />
     <ClInclude Include="common\execute.h" />
     <ClInclude Include="common\md5.h" />
@@ -699,6 +703,9 @@
     <ClCompile Include="ConEmu\helper.cpp" />
     <ClCompile Include="ConEmuCD\StartEnv.cpp" />
     <ClCompile Include="ConEmuCD\StartEnv_test.cpp" />
+    <ClCompile Include="ConEmuHk\DllOptions.cpp" />
+    <ClCompile Include="ConEmuHk\ShellProcessor.cpp" />
+    <ClCompile Include="ConEmuHk\ShellProcessor_test.cpp" />
     <ClCompile Include="UnitTests\main_test.cpp" />
     <ClCompile Include="UnitTests\test_mock_file.cpp" />
     <ClCompile Include="UnitTests\test_stubs.cpp" />
@@ -725,6 +732,7 @@
     <ClCompile Include="common\MEvent.cpp" />
     <ClCompile Include="common\MFileLog.cpp" />
     <ClCompile Include="common\MFileLogEx.cpp" />
+    <ClCompile Include="common\MFileMapping_test.cpp" />
     <ClCompile Include="common\MGlobal.cpp" />
     <ClCompile Include="common\MGuiMacro.cpp" />
     <ClCompile Include="common\MJsonReader.cpp" />
@@ -742,6 +750,7 @@
     <ClCompile Include="common\MStrEsc_test.cpp" />
     <ClCompile Include="common\MStrSafe.cpp" />
     <ClCompile Include="common\MTimer.cpp" />
+    <ClCompile Include="common\MToolHelp_test.cpp" />
     <ClCompile Include="common\MToolTip.cpp" />
     <ClCompile Include="common\Memory.cpp" />
     <ClCompile Include="common\Monitors.cpp" />
@@ -778,4 +787,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project> 
+</Project>

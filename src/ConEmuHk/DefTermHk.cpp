@@ -32,10 +32,15 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/MFileLog.h"
 #include "../common/MStrDup.h"
 #include "../common/MToolHelp.h"
+#include "../common/MFileMapping.h"
 #include "hlpConsole.h"
 #include "hlpProcess.h"
 #include "DefTermHk.h"
+
+#include "DllOptions.h"
 #include "SetHook.h"
+#include "../common/DefTermChildMap.h"
+#include "../common/MWnd.h"
 #include "../ConEmu/version.h"
 
 #define FOREGROUND_CHECK_DELAY  1000
@@ -50,33 +55,19 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef _DEBUG
-	#define DefTermMsg(s) //MessageBox(NULL, s, L"ConEmuHk", MB_SYSTEMMODAL)
+	#define DefTermMsg(s) //MessageBox(nullptr, s, L"ConEmuHk", MB_SYSTEMMODAL)
 #else
-	#define DefTermMsg(s) //MessageBox(NULL, s, L"ConEmuHk", MB_SYSTEMMODAL)
+	#define DefTermMsg(s) //MessageBox(nullptr, s, L"ConEmuHk", MB_SYSTEMMODAL)
 #endif
 
-extern HMODULE ghOurModule; // Хэндл нашей dll'ки (здесь хуки не ставятся)
-
-/* ************ Globals for "Default terminal ************ */
-bool gbPrepareDefaultTerminal = false;
-bool gbIsNetVsHost = false;
-bool gbIsVStudio = false;
-bool gbIsVSDebug = false; // msvsmon.exe
-bool gbIsVsCode = false;
-int  gnVsHostStartConsole = 0;
-bool gbIsGdbHost = false;
-//ConEmuGuiMapping* gpDefaultTermParm = NULL; -- // полный путь к ConEmu.exe (GUI), "/config", параметры для "confirm" и "no-injects"
-
-CDefTermHk* gpDefTerm = NULL;
-
 // helper
-bool isDefTermEnabled()
+bool CDefTermHk::IsDefTermEnabled()
 {
 	if (!gbPrepareDefaultTerminal || !gpDefTerm)
 		return false;
-	bool bDontCheckName = (gbIsNetVsHost || gbIsVSDebug)
+	const bool bDontCheckName = (gbIsNetVsHost || gbIsVSDebugConsole || gbIsVSDebugger)
 		// Especially for Code, which starts detached "cmd /c start /wait"
-		|| ((ghConWnd == NULL) && (gnImageSubsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI))
+		|| ((ghConWnd == nullptr) && (gnImageSubsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI))
 		;
 	if (!gpDefTerm->isDefaultTerminalAllowed(bDontCheckName))
 		return false;
@@ -97,7 +88,7 @@ void WINAPI RequestDefTermShutdown()
 	DoDllStop(true, ds_OnDefTermShutdown);
 }
 
-bool InitDefTerm()
+bool CDefTermHk::InitDefTerm()
 {
 	bool lbRc = true;
 
@@ -105,11 +96,11 @@ bool InitDefTerm()
 	msprintf(szInfo, countof(szInfo), L"!!! TH32CS_SNAPMODULE, TID=%u, InitDefaultTerm\n", GetCurrentThreadId());
 	DebugStr(szInfo); // Don't call DefTermLogString here - gpDefTerm was not initialized yet
 
-	_ASSERTEX(gpDefTerm==NULL);
+	_ASSERTEX(gpDefTerm==nullptr);
 	gpDefTerm = new CDefTermHk();
 	if (!gpDefTerm)
 	{
-		_ASSERTEX(gpDefTerm!=NULL);
+		_ASSERTEX(gpDefTerm!=nullptr);
 		return false;
 	}
 
@@ -120,15 +111,16 @@ bool InitDefTerm()
 	// после обновления в уже хукнутый процесс загружается
 	// вторая "ConEmuHk.YYMMDD.dll", а старую при этом нужно
 	// выгрузить. Этим и займемся.
-	HMODULE hPrevHooks = NULL;
-	_ASSERTEX(gnSelfPID!=0 && ghOurModule!=NULL);
-	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, gnSelfPID);
-	if (hSnap != INVALID_HANDLE_VALUE)
+	HMODULE hPrevHooks = nullptr;
+	_ASSERTEX(gnSelfPID!=0 && ghOurModule!=nullptr);
+	MToolHelpModule snapshot(gnSelfPID);
+	if (snapshot.Open())
 	{
-		MODULEENTRY32 mi = {sizeof(mi)};
+		MODULEENTRY32 mi = {};
 		//wchar_t szOurName[MAX_PATH] = L"";
 		//GetModuleFileName(ghOurModule, szOurName, MAX_PATH);
-		wchar_t szMinor[8] = L""; lstrcpyn(szMinor, WSTRING(MVV_4a), countof(szMinor));
+		wchar_t szMinor[8] = L"";
+		lstrcpyn(szMinor, WSTRING(MVV_4a), countof(szMinor));
 		wchar_t szAddName[40];
 		msprintf(szAddName, countof(szAddName),
 			CEDEFTERMDLLFORMAT /*L"ConEmuHk%s.%02u%02u%02u%s.dll"*/,
@@ -137,28 +129,27 @@ bool InitDefTerm()
 		wchar_t* pszDot = wcschr(szAddName, L'.');
 		wchar_t szCheckName[MAX_PATH+1];
 
-		if (pszDot && Module32First(hSnap, &mi))
+		if (pszDot)
 		{
 			pszDot[1] = 0; // Need to check only name, without version number
-			int nCurLen = lstrlen(szAddName);
-			do {
+			const int nCurLen = lstrlen(szAddName);
+			while (snapshot.Next(mi))
+			{
 				if (mi.hModule == ghOurModule)
 					continue;
 				lstrcpyn(szCheckName, PointToName(mi.szExePath), nCurLen+1);
 				if (lstrcmpi(szCheckName, szAddName) == 0)
 				{
 					msprintf(szInfo, countof(szInfo),
-						L"Prevous ConEmuHk module found at address " WIN3264TEST(L"0x%08X",L"0x%X%08X") L": %s",
+						L"Previous ConEmuHk module found at address " WIN3264TEST(L"0x%08X",L"0x%X%08X") L": %s",
 						WIN3264WSPRINT(mi.hModule), mi.szExePath);
 					DefTermLogString(szInfo);
 
 					hPrevHooks = mi.hModule;
 					break; // Prev (old version) instance found!
 				}
-			} while (Module32Next(hSnap, &mi));
+			}
 		}
-
-		CloseHandle(hSnap);
 	}
 
 	if (hPrevHooks)
@@ -169,8 +160,10 @@ bool InitDefTerm()
 		gpDefTerm->mh_InitDefTermContinueFrom = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 
 		// gh#322: We must not call MH_Uninitialize because it deinitializes HEAP
-		//	but when we are in DefTerm mode, this OPCODE addresses are used ATM...
-		HANDLE hThread = apiCreateThread(CDefTermHk::InitDefTermContinue, (LPVOID)hPrevHooks, &gpDefTerm->mn_InitDefTermContinueTID, "InitDefTermContinue");
+		// but when we are in DefTerm mode, this OPCODE addresses are used ATM...
+		// ReSharper disable once CppLocalVariableMayBeConst
+		HANDLE hThread = apiCreateThread(CDefTermHk::InitDefTermContinue, static_cast<LPVOID>(hPrevHooks),
+			&gpDefTerm->mn_InitDefTermContinueTID, "InitDefTermContinue");
 		if (hThread)
 		{
 			CloseHandle(hThread);
@@ -182,7 +175,7 @@ bool InitDefTerm()
 	}
 	else
 	{
-		CDefTermHk::InitDefTermContinue(NULL);
+		CDefTermHk::InitDefTermContinue(nullptr);
 	}
 
 	return lbRc;
@@ -190,7 +183,8 @@ bool InitDefTerm()
 
 DWORD CDefTermHk::InitDefTermContinue(LPVOID ahPrevHooks)
 {
-	HMODULE hPrevHooks = (HMODULE)ahPrevHooks;
+	// ReSharper disable once CppLocalVariableMayBeConst
+	HMODULE hPrevHooks = static_cast<HMODULE>(ahPrevHooks);
 	DWORD nFromWait = 1;
 
 	// Old library was found, unload it before continue
@@ -211,35 +205,36 @@ DWORD CDefTermHk::InitDefTermContinue(LPVOID ahPrevHooks)
 		SafeCloseHandle(gpDefTerm->mh_InitDefTermContinueFrom);
 
 		typedef void (WINAPI* RequestDefTermShutdown_t)();
-		RequestDefTermShutdown_t fnShutdown = (RequestDefTermShutdown_t)GetProcAddress(hPrevHooks, "RequestDefTermShutdown");
+		const auto fnShutdown = reinterpret_cast<RequestDefTermShutdown_t>(GetProcAddress(hPrevHooks, "RequestDefTermShutdown"));
 		if (fnShutdown)
 		{
 			fnShutdown();
 		}
+		else
+		{
+			_ASSERTE(FALSE && "RequestDefTermShutdown not found in ConEmuHk.dll");
+		}
 
 		SetLastError(0);
-		BOOL bFree = FreeLibrary(hPrevHooks);
-		DWORD nFreeRc = GetLastError();
+		const BOOL bFree = FreeLibrary(hPrevHooks);
+		const DWORD nFreeRc = GetLastError();
 		if (!bFree)
 		{
 			gpDefTerm->DisplayLastError(L"Unloading failed", nFreeRc);
 			return 2;
 		}
-		else
-		{
-			DefTermLogString(L"Unloading succeeded");
-		}
+		DefTermLogString(L"Unloading succeeded");
 	}
 
 	// For Visual Studio check all spawned processes (children of gnSelfPID), find *.vshost.exe
 	if (gbIsVStudio)
 	{
 		//_ASSERTEX(FALSE && "Continue to find existing *.vshost.exe");
-		HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (hSnap != INVALID_HANDLE_VALUE)
+		MToolHelpProcess snapshot;
+		if (snapshot.Open())
 		{
-			PROCESSENTRY32 pe = {sizeof(pe)};
-			if (Process32First(hSnap, &pe)) do
+			PROCESSENTRY32 pe = {};
+			while (snapshot.Next(pe))
 			{
 				if (pe.th32ParentProcessID == gnSelfPID)
 				{
@@ -251,23 +246,18 @@ DWORD CDefTermHk::InitDefTermContinue(LPVOID ahPrevHooks)
 						break;
 					}
 				}
-			} while (Process32Next(hSnap, &pe));
-			CloseHandle(hSnap);
+			}
 		}
 	}
 	else
 	{
 		MToolHelpProcess findForks;
-		MArray<PROCESSENTRY32> Forks;
+		MArray<PROCESSENTRY32> forks = findForks.FindForks(GetCurrentProcessId());
 		TODO("OPTIMIZE: Try to find and process children from all levels, BUT ONLY from ROOT process?");
-		if (findForks.FindForks(Forks))
+		for (const auto& p : forks)
 		{
-			PROCESSENTRY32 p;
-			while (Forks.pop_back(p))
-			{
-				DefTermLogString(L"Forked process found, hooking");
-				gpDefTerm->StartDefTermHooker(p.th32ProcessID);
-			}
+			DefTermLogString(L"Forked process found, hooking");
+			gpDefTerm->StartDefTermHooker(p.th32ProcessID);
 		}
 	}
 
@@ -281,17 +271,17 @@ DWORD CDefTermHk::InitDefTermContinue(LPVOID ahPrevHooks)
 	return 0;
 }
 
-void DefTermLogString(LPCSTR asMessage, LPCWSTR asLabel /*= NULL*/)
+void CDefTermHk::DefTermLogString(LPCSTR asMessage, LPCWSTR asLabel /*= nullptr*/)
 {
 	if (!gpDefTerm || !asMessage || !*asMessage)
 		return;
-	INT_PTR iLen = lstrlenA(asMessage);
+	const auto iLen = lstrlenA(asMessage);
 	CEStr lsMsg;
 	MultiByteToWideChar(CP_ACP, 0, asMessage, iLen, lsMsg.GetBuffer(iLen), iLen);
 	DefTermLogString(lsMsg.ms_Val, asLabel);
 }
 
-void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel /*= NULL*/)
+void CDefTermHk::DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel /*= nullptr*/)
 {
 	if (!asMessage || !*asMessage)
 	{
@@ -311,6 +301,7 @@ void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel /*= NULL*/)
 	}
 
 	LPCWSTR pszReady = asMessage;
+	// ReSharper disable once CppJoinDeclarationAndAssignment
 	CEStr lsBuf;
 	if (asLabel && *asLabel)
 	{
@@ -322,6 +313,42 @@ void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel /*= NULL*/)
 	gpDefTerm->LogHookingStatus(GetCurrentProcessId(), pszReady);
 }
 
+bool CDefTermHk::LoadDefTermSrvMapping(CESERVER_CONSOLE_MAPPING_HDR& srvMapping)
+{
+	srvMapping = CESERVER_CONSOLE_MAPPING_HDR{};
+
+	if (!gbPrepareDefaultTerminal || !gpDefTerm)
+		return false;
+
+	const auto insideSettings = gpDefTerm->LoadInsideSettings();
+	const auto& opt = gpDefTerm->m_Opt;
+
+	srvMapping.cbSize = sizeof(srvMapping);
+
+	srvMapping.nProtocolVersion = CESERVER_REQ_VER;
+	srvMapping.nGuiPID = gpDefTerm->insideConEmuPid_.load();
+	srvMapping.hConEmuRoot = gpDefTerm->insideConEmuWnd_.load();
+	srvMapping.hConEmuWndDc = nullptr;
+	srvMapping.hConEmuWndBack = nullptr;
+	srvMapping.Flags = opt.nConsoleFlags;
+	srvMapping.useInjects = opt.bNoInjects ? ConEmuUseInjects::DontUse : ConEmuUseInjects::Use;
+
+	lstrcpy(srvMapping.sConEmuExe, opt.pszConEmuExe ? opt.pszConEmuExe : L"");
+	lstrcpy(srvMapping.ComSpec.ConEmuBaseDir, opt.pszConEmuBaseDir ? opt.pszConEmuBaseDir : L"");
+	lstrcpy(srvMapping.ComSpec.ConEmuExeDir, opt.pszConEmuExe ? opt.pszConEmuExe : L"");
+	wchar_t* pszName = const_cast<wchar_t*>(PointToName(srvMapping.ComSpec.ConEmuExeDir));
+	if (pszName && pszName > srvMapping.ComSpec.ConEmuExeDir)
+		*(pszName - 1) = L'\0';
+
+	if (srvMapping.ComSpec.ConEmuExeDir[0] == L'\0' || srvMapping.ComSpec.ConEmuBaseDir[0] == L'\0')
+	{
+		_ASSERTE(srvMapping.ComSpec.ConEmuExeDir[0] && srvMapping.ComSpec.ConEmuBaseDir[0]);
+		return false;
+	}
+
+	return true;
+}
+
 
 /* ************ Globals for "Default terminal ************ */
 
@@ -329,29 +356,34 @@ void DefTermLogString(LPCWSTR asMessage, LPCWSTR asLabel /*= NULL*/)
 CDefTermHk::CDefTermHk()
 	: CDefTermBase(false)
 {
-	mh_StopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	mh_StopEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
 	wchar_t szSelfName[MAX_PATH+1] = L"";
-	GetModuleFileName(NULL, szSelfName, countof(szSelfName));
+	GetModuleFileName(nullptr, szSelfName, countof(szSelfName));
 	lstrcpyn(ms_ExeName, PointToName(szSelfName), countof(ms_ExeName));
 
-	mp_FileLog = NULL;
+	mp_FileLog = nullptr;
+
+	insideLock_ = new MSectionSimple(true);
 
 	mn_LastCheck = 0;
 	ReloadSettings();
 
 	mn_InitDefTermContinueTID = 0;
-	mh_InitDefTermContinueFrom = NULL;
+	mh_InitDefTermContinueFrom = nullptr;
 }
 
 CDefTermHk::~CDefTermHk()
 {
 	SafeDelete(mp_FileLog);
-	StopHookers();
+	CDefTermHk::StopHookers();
+	insideMapInfo_.reset();
 }
 
 void CDefTermHk::StartDefTerm()
 {
+	LoadInsideSettings();
+
 	Initialize(false, false, false);
 }
 
@@ -366,12 +398,14 @@ void CDefTermHk::StopHookers()
 
 	WaitForSingleObject(mh_PostThread, STOP_HOOKERS_TIMEOUT);
 
+	SafeDelete(insideLock_);
+
 	CDefTermBase::StopHookers();
 }
 
 bool CDefTermHk::isDefaultTerminalAllowed(bool bDontCheckName /*= false*/)
 {
-	_ASSERTEX((gbPrepareDefaultTerminal==false) || ((gpDefTerm!=NULL) && (this==gpDefTerm)));
+	_ASSERTEX((gbPrepareDefaultTerminal==false) || ((gpDefTerm!=nullptr) && (this==gpDefTerm)));
 
 	if (!gbPrepareDefaultTerminal || !this)
 	{
@@ -379,53 +413,55 @@ bool CDefTermHk::isDefaultTerminalAllowed(bool bDontCheckName /*= false*/)
 		return false;
 	}
 
-	DWORD nDelta = (GetTickCount() - mn_LastCheck);
+	const DWORD nDelta = (GetTickCount() - mn_LastCheck);
 	if (nDelta > SERIALIZE_CHECK_TIMEOUT)
 	{
 		ReloadSettings();
 	}
 
-	// Разрешен ли вообще?
+	// Is it even allowed?
 	if (!m_Opt.bUseDefaultTerminal)
 		return false;
-	// Известны пути?
+	// All paths are known?
 	if (!m_Opt.pszConEmuExe || !*m_Opt.pszConEmuExe || !m_Opt.pszConEmuBaseDir || !*m_Opt.pszConEmuBaseDir)
 		return false;
-	// Проверить НАШ exe-шник на наличие в m_Opt.pszzHookedApps
-	if (!bDontCheckName && !IsAppMonitored(ms_ExeName))
+	// Check current executable in m_Opt.pszzHookedApps
+	if (!bDontCheckName && !IsAppNameMonitored(ms_ExeName))
 		return false;
-	// Да
+	// Okay
 	return true;
 }
 
+// Start checking loop, required for Aggressive mode
 void CDefTermHk::PostCreateThreadFinished()
 {
-	// Запустить цикл проверки, необходимый для Agressive mode
+	// ReSharper disable once CppEntityAssignedButNoRead
 	DWORD dwWait = WAIT_TIMEOUT;
-	DWORD nForePID = 0;
-	HWND  hFore = NULL;
+	DWORD nForePid = 0;
+	HWND  hFore = nullptr;
 	while ((dwWait = WaitForSingleObject(mh_StopEvent, FOREGROUND_CHECK_DELAY)) == WAIT_TIMEOUT)
 	{
 		// If non-aggressive - don't do anything here...
-		if (!isDefaultTerminalAllowed(true) || !m_Opt.bAgressive)
+		if (!m_Opt.bAggressive || !isDefaultTerminalAllowed(true))
 			continue;
 
 		// Aggressive mode
 		hFore = GetForegroundWindow();
 		if (!hFore)
 			continue;
-		if (!GetWindowThreadProcessId(hFore, &nForePID))
+		if (!GetWindowThreadProcessId(hFore, &nForePid))
 			continue;
-		CheckForeground(hFore, nForePID, false);
+		CheckForeground(hFore, nForePid, false);
 	}
 }
 
 void CDefTermHk::ReloadSettings()
 {
-	MSectionLockSimple CS;
-	CS.Lock(mcs);
+	MSectionLockSimple cs;
+	cs.Lock(mcs);
 
-	m_Opt.Serialize();
+	if (!LoadInsideSettings())
+		m_Opt.Serialize();
 	mn_LastCheck = GetTickCount();
 
 	if (m_Opt.bDebugLog)
@@ -436,6 +472,188 @@ void CDefTermHk::ReloadSettings()
 	{
 		SafeDelete(mp_FileLog);
 	}
+}
+
+DWORD CDefTermHk::GetConEmuInsidePid()
+{
+	if (!gpDefTerm)
+		return 0;
+	const auto insideOpt = gpDefTerm->LoadInsideSettings();
+	if (!insideOpt)
+		return 0;
+	if (!insideOpt->bUseDefaultTerminal)
+		return 0;
+	if (!insideOpt->hConEmuRoot || !IsWindow(insideOpt->hConEmuRoot))
+		return 0;
+	// ConEmu inside is ready for DefTerm
+	return insideOpt->nGuiPID;
+}
+
+void CDefTermHk::CreateChildMapping(const DWORD childPid, const MHandle& childHandle, const DWORD conemuInsidePid)
+{
+	if (!gpDefTerm)
+		return;
+
+	MSectionLockSimple cs; cs.Lock(&gpDefTerm->childDataLock_);
+
+	if (!gpDefTerm->childData_)
+		gpDefTerm->childData_ = std::make_shared<CDefTermChildMap>();
+
+	gpDefTerm->childData_->CreateChildMapping(childPid, childHandle, conemuInsidePid);
+}
+
+/// @brief Try to find appropriate mapping with DefTerm options (Inside mode)
+/// @return returns smart pointer to loaded DefTerm settings from ConEmu's mappings (even if DefTerm is disabled there)
+std::shared_ptr<CONEMU_INSIDE_DEFTERM_MAPPING> CDefTermHk::LoadInsideSettings()
+{
+	MSectionLockSimple cs;
+	cs.Lock(insideLock_);
+
+	std::shared_ptr<CONEMU_INSIDE_DEFTERM_MAPPING> insideMapInfo = insideMapInfo_;
+
+	const auto now = std::chrono::steady_clock::now();
+	const auto delay = now - insideMapLastCheck_;
+	if (delay < insideMapCheckDelay_)
+	{
+		return insideMapInfo;
+	}
+	insideMapLastCheck_ = now;
+
+	DWORD conemuGuiPid = FindInsideParentConEmuPid();
+	if (conemuGuiPid == 0)
+	{
+		conemuGuiPid = LoadInsideConEmuPid(CEINSIDEMAPNAMEP, GetCurrentProcessId());
+	}
+
+	if (conemuGuiPid == 0)
+	{
+		if (insideMapInfo_)
+			m_Opt.bUseDefaultTerminal = false;
+		insideMapInfo_.reset();
+		return {};
+	}
+
+	MFileMapping<CONEMU_INSIDE_DEFTERM_MAPPING> mapping;
+	mapping.InitName(CEDEFTERMMAPNAME, conemuGuiPid);
+	if (mapping.Open())
+	{
+		if (!insideMapInfo)
+		{
+			insideMapInfo = std::shared_ptr<CONEMU_INSIDE_DEFTERM_MAPPING>(
+				static_cast<CONEMU_INSIDE_DEFTERM_MAPPING*>(calloc(1, sizeof(CONEMU_INSIDE_DEFTERM_MAPPING))),
+				StructDeleter<CONEMU_INSIDE_DEFTERM_MAPPING>{});
+		}
+		if (insideMapInfo)
+		{
+			if (!mapping.GetTo(insideMapInfo.get()))
+				insideMapInfo.reset();
+		}
+	}
+
+	if (!insideMapInfo)
+	{
+		if (insideMapInfo_)
+			m_Opt.bUseDefaultTerminal = false;
+		insideMapInfo_.reset();
+		insideConEmuPid_.store(0);
+		insideConEmuWnd_.store(nullptr);
+		return {};
+	}
+
+	auto setString = [this](wchar_t*& var, wchar_t* str)
+	{
+		if (var && var != str && !m_Opt.bExternalPointers)
+			SafeFree(var);
+		var = str;
+	};
+
+	auto setMszString = [this](wchar_t*& var, wchar_t* str, const size_t cchMax)
+	{
+		if (var && var != str && !m_Opt.bExternalPointers)
+			SafeFree(var);
+		const size_t cchLen = std::min(wcslen(str), cchMax - 2);
+		str[cchLen + 1] = L'\0';
+		wchar_t* bar = wcschr(str, L'|');
+		while (bar)
+		{
+			*bar = L'\0';
+			bar = wcschr(bar + 1, L'|');
+		}
+		var = str;
+	};
+
+	static wchar_t emptyStr[2] = L"";
+
+	auto& info = *insideMapInfo;
+	m_Opt.bUseDefaultTerminal = info.bUseDefaultTerminal;
+	m_Opt.bAggressive = false;
+	m_Opt.bNoInjects = info.isDefaultTerminalNoInjects;
+	m_Opt.bNewWindow = false;
+	m_Opt.bDebugLog = info.isDefaultTerminalDebugLog;
+	m_Opt.nDefaultTerminalConfirmClose = info.nDefaultTerminalConfirmClose;
+	m_Opt.nConsoleFlags = info.flags;
+	setString(m_Opt.pszConEmuExe, info.sConEmuExe);
+	setString(m_Opt.pszConEmuBaseDir, info.sConEmuBaseDir);
+	setString(m_Opt.pszCfgFile, emptyStr);
+	setString(m_Opt.pszConfigName, emptyStr);
+	setMszString(m_Opt.pszzHookedApps, info.defaultTerminalApps, countof(info.defaultTerminalApps));
+	m_Opt.bExternalPointers = true;
+
+	insideConEmuPid_.store(info.nGuiPID);
+	insideConEmuWnd_.store(info.hConEmuRoot);
+
+	insideMapInfo_ = insideMapInfo;
+	return insideMapInfo;
+}
+
+/// @brief Try to detect root window, where ConEmu could be integrated into (Inside mode)
+/// @return PID of the ConEmu instance, integrated into our window (Inside mode)
+DWORD CDefTermHk::FindInsideParentConEmuPid()
+{
+	const DWORD curPid = GetCurrentProcessId();
+
+	const MWnd hFore = GetForegroundWindow();
+
+	if (hFore)
+	{
+		DWORD pid = 0;
+		if (GetWindowThreadProcessId(hFore, &pid) && pid == curPid)
+		{
+			const DWORD conemuGuiPid = LoadInsideConEmuPid(CEINSIDEMAPNAMEW, hFore.GetPortableHandle());
+			if (conemuGuiPid)
+				return conemuGuiPid;
+		}
+	}
+
+	MWnd hTop = FindWindowExW(nullptr, nullptr, nullptr, nullptr);
+	while (hTop)
+	{
+		if (hTop != hFore && IsWindowVisible(hTop))
+		{
+			DWORD pid = 0;
+			if (GetWindowThreadProcessId(hTop, &pid) && pid == curPid)
+			{
+				const DWORD conemuGuiPid = LoadInsideConEmuPid(CEINSIDEMAPNAMEW, hTop.GetPortableHandle());
+				if (conemuGuiPid)
+					return conemuGuiPid;
+			}
+		}
+		hTop = FindWindowExW(nullptr, hTop, nullptr, nullptr);
+	}
+
+	return 0;
+}
+
+DWORD CDefTermHk::LoadInsideConEmuPid(const wchar_t* mapNameFormat, DWORD param)
+{
+	MFileMapping<CONEMU_INSIDE_MAPPING> mapping;
+	mapping.InitName(mapNameFormat, param);
+	if (!mapping.Open())
+		return 0;
+	CONEMU_INSIDE_MAPPING info{};
+	if (!mapping.GetTo(&info))
+		return 0;
+	return info.nGuiPID;
 }
 
 void CDefTermHk::LogInit()
@@ -450,7 +668,7 @@ void CDefTermHk::LogInit()
 			return;
 	}
 
-	HRESULT hr = mp_FileLog->CreateLogFile();
+	const HRESULT hr = mp_FileLog->CreateLogFile();
 	if (hr != 0)
 	{
 		SafeDelete(mp_FileLog);
@@ -474,7 +692,7 @@ void CDefTermHk::LogHookingStatus(DWORD nForePID, LPCWSTR sMessage)
 		return;
 	}
 	wchar_t szPID[16];
-	CEStr lsLog(L"DefTerm[", ultow_s(nForePID, szPID, 10), L"]: ", sMessage);
+	const CEStr lsLog(L"DefTerm[", ultow_s(nForePID, szPID, 10), L"]: ", sMessage);
 	mp_FileLog->LogString(lsLog);
 }
 
@@ -483,13 +701,13 @@ CDefTermBase* CDefTermHk::GetInterface()
 	return this;
 }
 
-int CDefTermHk::DisplayLastError(LPCWSTR asLabel, DWORD dwError/*=0*/, DWORD dwMsgFlags/*=0*/, LPCWSTR asTitle/*=NULL*/, HWND hParent/*=NULL*/)
+int CDefTermHk::DisplayLastError(LPCWSTR asLabel, DWORD dwError/*=0*/, DWORD dwMsgFlags/*=0*/, LPCWSTR asTitle/*=nullptr*/, HWND hParent/*=nullptr*/)
 {
 	if (dwError)
 	{
 		wchar_t szInfo[64];
-		msprintf(szInfo, countof(szInfo), L", ErrCode=x%X(%i)", dwError, (int)dwError);
-		CEStr lsMsg = lstrmerge(asLabel, szInfo);
+		msprintf(szInfo, countof(szInfo), L", ErrCode=x%X(%i)", dwError, static_cast<int>(dwError));
+		const CEStr lsMsg = lstrmerge(asLabel, szInfo);
 		LogHookingStatus(GetCurrentProcessId(), lsMsg);
 	}
 	else
@@ -505,46 +723,54 @@ void CDefTermHk::ShowTrayIconError(LPCWSTR asErrText)
 	DefTermMsg(asErrText);
 }
 
-HWND CDefTermHk::AllocHiddenConsole(bool bTempForVS)
+HWND CDefTermHk::AllocHiddenConsole(const bool bTempForVS)
 {
-	// Function AttachConsole exists in WinXP and above, need dynamic link
-	AttachConsole_t _AttachConsole = GetAttachConsoleProc();
-	if (!_AttachConsole)
+	if (!gpDefTerm)
 	{
-		LogHookingStatus(GetCurrentProcessId(), L"Can't create hidden console, function does not exist");
-		return NULL;
+		_ASSERTE(gpDefTerm != nullptr);
+		return nullptr;
 	}
 
-	LogHookingStatus(GetCurrentProcessId(), L"AllocHiddenConsole");
+	// Function AttachConsole exists in WinXP and above, need dynamic link
+	const auto attachConsole = GetAttachConsoleProc();
+	if (!attachConsole)
+	{
+		gpDefTerm->LogHookingStatus(GetCurrentProcessId(), L"Can't create hidden console, function does not exist");
+		return nullptr;
+	}
 
-	ReloadSettings();
-	_ASSERTEX(isDefTermEnabled() && (gbIsNetVsHost || bTempForVS || gbPrepareDefaultTerminal));
+	gpDefTerm->LogHookingStatus(GetCurrentProcessId(), L"AllocHiddenConsole");
 
-	if (!isDefTermEnabled())
+	gpDefTerm->ReloadSettings();
+	_ASSERTEX(IsDefTermEnabled() && (gbIsNetVsHost || bTempForVS || gbPrepareDefaultTerminal));
+
+	if (!IsDefTermEnabled())
 	{
 		// Disabled in settings or registry
-		LogHookingStatus(GetCurrentProcessId(), L"Application skipped by settings");
-		return NULL;
+		gpDefTerm->LogHookingStatus(GetCurrentProcessId(), L"Application skipped by settings");
+		return nullptr;
 	}
 
-	HANDLE hSrvProcess = NULL;
-	DWORD nAttachPID = bTempForVS ? 0 : gnSelfPID;
-	DWORD nSrvPID = StartConsoleServer(nAttachPID, true, &hSrvProcess);
-	if (!nSrvPID)
+	HANDLE hSrvProcess = nullptr;
+	const DWORD nAttachPid = bTempForVS ? 0 : gnSelfPID;
+	const DWORD nSrvPid = gpDefTerm->StartConsoleServer(nAttachPid, true, &hSrvProcess);
+	if (!nSrvPid)
 	{
 		// Failed to start process?
-		return NULL;
+		return nullptr;
 	}
-	_ASSERTEX(hSrvProcess!=NULL);
+	_ASSERTEX(hSrvProcess!=nullptr);
 
-	HWND hCreatedCon = NULL;
+	HWND hCreatedCon = nullptr;
 
 	// Do while server process is alive
-	DWORD nStart = GetTickCount(), nMaxDelta = 30000, nDelta = 0;
+	const DWORD nStart = GetTickCount();
+	const DWORD nMaxDelta = 30000;
+	DWORD nDelta = 0;
 	DWORD nWait = WaitForSingleObject(hSrvProcess, 0);
 	while (nWait != WAIT_OBJECT_0)
 	{
-		if (_AttachConsole(nSrvPID))
+		if (attachConsole(nSrvPid))
 		{
 			hCreatedCon = GetRealConsoleWindow();
 			if (hCreatedCon)
@@ -561,57 +787,56 @@ HWND CDefTermHk::AllocHiddenConsole(bool bTempForVS)
 	return hCreatedCon;
 }
 
-DWORD CDefTermHk::StartConsoleServer(DWORD nAttachPID, bool bNewConWnd, PHANDLE phSrvProcess)
+DWORD CDefTermHk::StartConsoleServer(DWORD nAttachPid, bool bNewConWnd, PHANDLE phSrvProcess)
 {
-	// Options must be loaded already
-	const CEDefTermOpt* pOpt = GetOpt();
-	if (!pOpt || !isDefTermEnabled())
+	if (!IsDefTermEnabled())
 	{
-		LogHookingStatus(GetCurrentProcessId(), L"Applicatio skipped by settings");
+		LogHookingStatus(GetCurrentProcessId(), L"Application skipped by settings");
 		return 0;
 	}
+	// Options must be loaded already
+	const CEDefTermOpt& opt = GetOpt();
 
+	// ReSharper disable once CppEntityAssignedButNoRead
 	bool bAttachCreated = false;
 
 	CEStr szAddArgs, szAddArgs2;
-	size_t cchAddArgLen;
-	size_t cchMax;
-	wchar_t* pszCmdLine;
+	CEStr pszCmdLine;
 	DWORD nErr = 0;
-	STARTUPINFO si = {sizeof(si)};
+	STARTUPINFO si = {};
+	si.cb = sizeof(si);
 	PROCESS_INFORMATION pi = {};
 
-	cchAddArgLen = GetSrvAddArgs(false, szAddArgs, szAddArgs2);
+	size_t cchAddArgLen = GetSrvAddArgs(false, false, szAddArgs, szAddArgs2);
 
 	wchar_t szExeName[MAX_PATH] = L"";
-	if (GetModuleFileName(NULL, szExeName, countof(szExeName)) && szExeName[0])
-		cchAddArgLen += 20 + lstrlen(szExeName);
+	if (GetModuleFileName(nullptr, szExeName, countof(szExeName)) && szExeName[0])
+		cchAddArgLen += 20 + wcslen(szExeName);
 
-	cchMax = MAX_PATH+100+cchAddArgLen;
-	pszCmdLine = (wchar_t*)malloc(cchMax*sizeof(*pszCmdLine));
-	if (pszCmdLine)
+	const size_t cchMax = MAX_PATH + 100 + cchAddArgLen;
+	if (pszCmdLine.GetBuffer(cchMax))
 	{
-		_ASSERTE(nAttachPID || bNewConWnd);
+		_ASSERTE(nAttachPid || bNewConWnd);
 
-		msprintf(pszCmdLine, cchMax, L"\"%s\\%s\" /ATTACH %s/TRMPID=%u",
-			pOpt->pszConEmuBaseDir,
+		msprintf(pszCmdLine.data(), cchMax, L"\"%s\\%s\" /ATTACH %s/TRMPID=%u",
+			opt.pszConEmuBaseDir,
 			ConEmuC_EXE_3264,
 			bNewConWnd ? L"/CREATECON " : L"",
-			nAttachPID);
+			nAttachPid);
 
 		if (szExeName[0])
 		{
-			_wcscat_c(pszCmdLine, cchMax, L" /ROOTEXE \"");
-			_wcscat_c(pszCmdLine, cchMax, szExeName);
-			_wcscat_c(pszCmdLine, cchMax, L"\"");
+			_wcscat_c(pszCmdLine.data(), cchMax, L" /ROOTEXE \"");
+			_wcscat_c(pszCmdLine.data(), cchMax, szExeName);
+			_wcscat_c(pszCmdLine.data(), cchMax, L"\"");
 		}
 
 		if (!szAddArgs.IsEmpty())
-			_wcscat_c(pszCmdLine, cchMax, szAddArgs);
+			_wcscat_c(pszCmdLine.data(), cchMax, szAddArgs);
 
 		_ASSERTEX(szAddArgs2.IsEmpty()); // No "-new_console" switches are expected here!
 
-		DWORD nCreateFlags = NORMAL_PRIORITY_CLASS | (bNewConWnd ? CREATE_NEW_CONSOLE : 0);
+		const DWORD nCreateFlags = NORMAL_PRIORITY_CLASS | (bNewConWnd ? CREATE_NEW_CONSOLE : 0);
 		if (bNewConWnd)
 		{
 			si.wShowWindow = SW_HIDE;
@@ -620,7 +845,8 @@ DWORD CDefTermHk::StartConsoleServer(DWORD nAttachPID, bool bNewConWnd, PHANDLE 
 
 		LogHookingStatus(GetCurrentProcessId(), pszCmdLine);
 
-		if (CreateProcess(NULL, pszCmdLine, NULL, NULL, FALSE, nCreateFlags, NULL, pOpt->pszConEmuBaseDir, &si, &pi))
+		if (CreateProcess(nullptr, pszCmdLine.data(), nullptr, nullptr,
+			FALSE, nCreateFlags, nullptr, opt.pszConEmuBaseDir, &si, &pi))
 		{
 			LogHookingStatus(GetCurrentProcessId(), L"Console server was successfully created");
 			bAttachCreated = true;
@@ -634,25 +860,37 @@ DWORD CDefTermHk::StartConsoleServer(DWORD nAttachPID, bool bNewConWnd, PHANDLE 
 		else
 		{
 			nErr = GetLastError();
-			wchar_t* pszErrMsg = (wchar_t*)malloc(MAX_PATH*3*sizeof(*pszErrMsg));
-			if (pszErrMsg)
+			CEStr pszErrMsg;
+			if (pszErrMsg.GetBuffer(MAX_PATH * 3))
 			{
-				msprintf(pszErrMsg, MAX_PATH*3, L"ConEmuHk: Failed to start attach server, Err=%u! %s\n", nErr, pszCmdLine);
+				msprintf(pszErrMsg.data(), MAX_PATH * 3, L"ConEmuHk: Failed to start attach server, Err=%u! %s\n", nErr, pszCmdLine.c_str());
 				LogHookingStatus(GetCurrentProcessId(), pszErrMsg);
 				wchar_t szTitle[64];
 				msprintf(szTitle, countof(szTitle), WIN3264TEST(L"ConEmuHk",L"ConEmuHk64") L", PID=%u", GetCurrentProcessId());
 				//OutputDebugString(pszErrMsg);
-				MessageBox(NULL, pszErrMsg, szTitle, MB_ICONSTOP|MB_SYSTEMMODAL);
-				free(pszErrMsg);
+				MessageBox(nullptr, pszErrMsg, szTitle, MB_ICONSTOP | MB_SYSTEMMODAL);
 			}
 			// Failed to start, pi.dwProcessId must be 0
-			_ASSERTEX(pi.dwProcessId==0);
+			_ASSERTEX(pi.dwProcessId == 0);
 			pi.dwProcessId = 0;
 		}
-		free(pszCmdLine);
 	}
 
+	std::ignore = bAttachCreated;
 	return pi.dwProcessId;
+}
+
+bool CDefTermHk::FindConEmuInside(DWORD& guiPid, HWND& guiHwnd)
+{
+	const auto insideMapping = LoadInsideSettings();
+	if (!insideMapping)
+		return false;
+	if (!insideMapping->nGuiPID || !insideMapping->hConEmuRoot || !IsWindow(insideMapping->hConEmuRoot))
+		return false;
+
+	guiPid = insideMapping->nGuiPID;
+	guiHwnd = insideMapping->hConEmuRoot;
+	return true;
 }
 
 void CDefTermHk::OnAllocConsoleFinished(HWND hNewConWnd)
@@ -672,9 +910,9 @@ void CDefTermHk::OnAllocConsoleFinished(HWND hNewConWnd)
 
 	ReloadSettings();
 
-	if (!isDefTermEnabled())
+	if (!IsDefTermEnabled())
 	{
-		_ASSERTEX(isDefTermEnabled());
+		_ASSERTEX(IsDefTermEnabled());
 		// Disabled in settings or registry
 		LogHookingStatus(GetCurrentProcessId(), L"OnAllocConsoleFinished: !isDefTermEnabled()");
 		return;
@@ -683,14 +921,14 @@ void CDefTermHk::OnAllocConsoleFinished(HWND hNewConWnd)
 	// VsConsoleHost has some specifics (debugging managed apps)
 	if (gbIsNetVsHost)
 	{
-		// По идее, после AllocConsole окно RealConsole всегда видимо
-		BOOL bConWasVisible = IsWindowVisible(hNewConWnd);
+		// It's expected, that after AllocConsole the RealConsole window is always visible
+		const BOOL bConWasVisible = IsWindowVisible(hNewConWnd);
 		_ASSERTEX(bConWasVisible);
-		// Чтобы минимизировать "мелькания" - сразу спрячем его
+		// To minimize blinking hide it immediately
 		ShowWindow(hNewConWnd, SW_HIDE);
 		LogHookingStatus(GetCurrentProcessId(), L"Console window was hidden");
 
-		if (!StartConsoleServer(gnSelfPID, false, NULL))
+		if (!StartConsoleServer(gnSelfPID, false, nullptr))
 		{
 			if (bConWasVisible)
 				ShowWindow(hNewConWnd, SW_SHOW);
@@ -711,20 +949,25 @@ void CDefTermHk::OnAllocConsoleFinished(HWND hNewConWnd)
 	OnConWndChanged(hNewConWnd);
 }
 
-size_t CDefTermHk::GetSrvAddArgs(bool bGuiArgs, CEStr& rsArgs, CEStr& rsNewCon)
+size_t CDefTermHk::GetSrvAddArgs(const bool bGuiArgs, const bool forceInjects, CEStr& rsArgs, CEStr& rsNewCon)
 {
+	if (!gpDefTerm)
+	{
+		_ASSERTE(gpDefTerm != nullptr);
+		return 0;
+	}
+
 	rsArgs.Clear();
 	rsNewCon.Clear();
 
-	if (!this)
-		return 0;
+	const auto& opt = gpDefTerm->m_Opt;
 
-	size_t cchMax = 64
-		+ ((m_Opt.pszCfgFile && *m_Opt.pszCfgFile) ? (20 + lstrlen(m_Opt.pszCfgFile)) : 0)
-		+ ((m_Opt.pszConfigName && *m_Opt.pszConfigName) ? (12 + lstrlen(m_Opt.pszConfigName)) : 0)
+	const size_t cchMax = 128
+		+ ((opt.pszCfgFile && *opt.pszCfgFile) ? (20 + wcslen(opt.pszCfgFile)) : 0)
+		+ ((opt.pszConfigName && *opt.pszConfigName) ? (12 + wcslen(opt.pszConfigName)) : 0)
 		;
 	wchar_t* psz = rsArgs.GetBuffer(cchMax);
-	size_t cchNew = 32; // "-new_console:ni"
+	const size_t cchNew = 32; // "-new_console:ni"
 	wchar_t* pszNew = rsNewCon.GetBuffer(cchNew);
 
 	if (!psz || !pszNew)
@@ -735,29 +978,37 @@ size_t CDefTermHk::GetSrvAddArgs(bool bGuiArgs, CEStr& rsArgs, CEStr& rsNewCon)
 
 	wchar_t szNewConSw[10] = L"";
 
+	DWORD guiPid = 0;
+	HWND guiHwnd = nullptr;
+
 	// Do not inject ConEmuHk in the target process?
-	if (m_Opt.bNoInjects && !bGuiArgs)
-		_wcscat_c(psz, cchMax, L" /NOINJECT");
-	else if (m_Opt.bNoInjects)
-		wcscat_c(szNewConSw, L"i");
+	if (!forceInjects)
+	{
+		if (opt.bNoInjects && !bGuiArgs)
+			_wcscat_c(psz, cchMax, L" /NOINJECT");
+		else if (opt.bNoInjects)
+			wcscat_c(szNewConSw, L"i");
+	}
 
 	// New or existing window we shall use?
-	if (m_Opt.bNewWindow && !bGuiArgs)
+	if (opt.bNewWindow && !bGuiArgs)
 		_wcscat_c(psz, cchMax, L" /GHWND=NEW");
-	else if (m_Opt.bNewWindow)
+	else if (opt.bNewWindow)
 		_wcscat_c(psz, cchMax, L" /NOSINGLE");
+	else if (!opt.bNewWindow && !bGuiArgs && gpDefTerm->FindConEmuInside(guiPid, guiHwnd))
+		msprintf(psz + wcslen(psz), cchMax - wcslen(psz), L" /GID=%u /GHWND=%08X", guiPid, LODWORD(guiHwnd));
 	else if (bGuiArgs)
 		_wcscat_c(psz, cchMax, L" /REUSE");
 
 	// Confirmations
-	if (m_Opt.nDefaultTerminalConfirmClose == 1)
+	if (opt.nDefaultTerminalConfirmClose == TerminalConfirmClose::Always)
 	{
 		if (!bGuiArgs)
 			_wcscat_c(psz, cchMax, L" /CONFIRM");
 		else
 			wcscat_c(szNewConSw, L"c");
 	}
-	else if (m_Opt.nDefaultTerminalConfirmClose == 2)
+	else if (opt.nDefaultTerminalConfirmClose == TerminalConfirmClose::Never)
 	{
 		if (!bGuiArgs)
 			_wcscat_c(psz, cchMax, L" /NOCONFIRM");
@@ -766,26 +1017,26 @@ size_t CDefTermHk::GetSrvAddArgs(bool bGuiArgs, CEStr& rsArgs, CEStr& rsNewCon)
 	}
 
 	// That switches must be processed in server too!
-	if (m_Opt.pszCfgFile && *m_Opt.pszCfgFile)
+	if (opt.pszCfgFile && *opt.pszCfgFile)
 	{
 		_wcscat_c(psz, cchMax, L" /LoadCfgFile \"");
-		_wcscat_c(psz, cchMax, m_Opt.pszCfgFile);
+		_wcscat_c(psz, cchMax, opt.pszCfgFile);
 		_wcscat_c(psz, cchMax, L"\"");
 	}
-	if (m_Opt.pszConfigName && *m_Opt.pszConfigName)
+	if (opt.pszConfigName && *opt.pszConfigName)
 	{
 		_wcscat_c(psz, cchMax, L" /CONFIG \"");
-		_wcscat_c(psz, cchMax, m_Opt.pszConfigName);
+		_wcscat_c(psz, cchMax, opt.pszConfigName);
 		_wcscat_c(psz, cchMax, L"\"");
 	}
 
-	if (*szNewConSw)
+	if (szNewConSw[0])
 	{
 		_wcscpy_c(pszNew, cchNew, L"-new_console:");
 		_wcscat_c(pszNew, cchNew, szNewConSw);
 		_wcscat_c(pszNew, cchNew, L" ");
 	}
 
-	size_t cchLen = wcslen(psz) + wcslen(pszNew);
+	const size_t cchLen = wcslen(psz) + wcslen(pszNew);
 	return cchLen;
 }

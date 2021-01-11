@@ -737,11 +737,11 @@ bool WorkerServer::AltServerWasStarted(DWORD nPID, HANDLE hAltServer, bool force
 		nPID, hAltServer, forceThaw ? L"true" : L"false");
 	if (gpLogSize)
 	{
-		PROCESSENTRY32 AltSrv;
-		if (GetProcessInfo(nPID, &AltSrv))
+		PROCESSENTRY32 altSrv{};
+		if (GetProcessInfo(nPID, altSrv))
 		{
-			int iLen = lstrlen(szFnArg);
-			lstrcpyn(szFnArg+iLen, PointToName(AltSrv.szExeFile), countof(szFnArg)-iLen);
+			const int iLen = lstrlen(szFnArg);
+			lstrcpyn(szFnArg+iLen, PointToName(altSrv.szExeFile), countof(szFnArg)-iLen);
 		}
 	}
 	LogFunction(szFnArg);
@@ -1039,11 +1039,11 @@ void WorkerServer::ServerInitEnvVars()
 		SetConEmuWindows(gpSrv->guiSettings.hGuiWnd, gState.conemuWndDC_, gState.conemuWndBack_);
 
 		#ifdef _DEBUG
-		bool bNewConArg = ((gpSrv->guiSettings.Flags & CECF_ProcessNewCon) != 0);
+		bool bNewConArg = ((gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::ProcessNewCon) != 0);
 		//SetEnvironmentVariable(ENV_CONEMU_HOOKS, bNewConArg ? ENV_CONEMU_HOOKS_ENABLED : ENV_CONEMU_HOOKS_NOARGS);
 		#endif
 
-		bool bAnsi = ((gpSrv->guiSettings.Flags & CECF_ProcessAnsi) != 0);
+		bool bAnsi = ((gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::ProcessAnsi) != 0);
 		SetEnvironmentVariable(ENV_CONEMUANSI_VAR_W, bAnsi ? L"ON" : L"OFF");
 
 		if (bAnsi)
@@ -1836,7 +1836,7 @@ int WorkerServer::ProcessCommandLineArgs()
 
 	if (gState.runMode_ == RunMode::Server)
 	{
-		_ASSERTE(!gState.noCreateProcess_);
+		// _ASSERTE(!gState.noCreateProcess_); valid, e.g. attaching running console into ConEmu
 		SetConEmuWorkEnvVar(ghOurModule);
 	}
 
@@ -1981,8 +1981,8 @@ bool WorkerServer::IsCrashHandlerAllowed()
 	if (gState.runMode_ == RunMode::AltServer)
 	{
 		// By default, handler is not installed in AltServer
-		// gpSet->isConsoleExceptionHandler --> CECF_ConExcHandler
-		const bool allowHandler = gpSrv && gpSrv->pConsole && (gpSrv->pConsole->hdr.Flags & CECF_ConExcHandler);
+		// gpSet->isConsoleExceptionHandler --> ConEmu::ConsoleFlags::ConExcHandler
+		const bool allowHandler = gpSrv && gpSrv->pConsole && (gpSrv->pConsole->hdr.Flags & ConEmu::ConsoleFlags::ConExcHandler);
 		if (!allowHandler)
 			return false; // disabled in ConEmu settings
 	}
@@ -2776,7 +2776,7 @@ bool WorkerServer::TryConnect2Gui(HWND hGui, DWORD anGuiPid, CESERVER_REQ* pIn)
 	// Refresh settings
 	ReloadGuiSettings(&pStartStopRet->GuiMapping);
 
-	// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+	// Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 	InitAnsiLog(pStartStopRet->AnsiLog);
 
 	if (!gState.attachMode_) // Часть с "обычным" запуском сервера
@@ -2811,7 +2811,7 @@ bool WorkerServer::TryConnect2Gui(HWND hGui, DWORD anGuiPid, CESERVER_REQ* pIn)
 
 			if (gpConsoleArgs->IsForceHideConWnd())
 			{
-				if (!(gpSrv->guiSettings.Flags & CECF_RealConVisible))
+				if (!(gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::RealConVisible))
 					apiShowWindow(gState.realConWnd_, SW_HIDE);
 			}
 
@@ -3134,8 +3134,8 @@ HWND WorkerServer::Attach2Gui(DWORD nTimeout)
 	_ASSERTE(bCmdSet || ((gState.attachMode_ & (am_Async|am_Simple)) && this->RootProcessId()));
 	if (!bCmdSet && this->RootProcessId())
 	{
-		PROCESSENTRY32 pi;
-		if (GetProcessInfo(this->RootProcessId(), &pi))
+		PROCESSENTRY32 pi{};
+		if (GetProcessInfo(this->RootProcessId(), pi))
 		{
 			msprintf(pIn->StartStop.sCmdLine, cchCmdMax, L"\"%s\"", pi.szExeFile);
 		}
@@ -3350,15 +3350,13 @@ int WorkerServer::CreateMapHeader()
 		}
 	}
 
-	//TODO("Добавить к nConDataSize размер необходимый для хранения crMax ячеек");
-	int nTotalSize = 0;
-	DWORD nMaxCells = (crMax.X * crMax.Y);
-	//DWORD nHdrSize = ((LPBYTE)gpSrv->pConsoleDataCopy->Buf) - ((LPBYTE)gpSrv->pConsoleDataCopy);
-	//_ASSERTE(sizeof(CESERVER_REQ_CONINFO_DATA) == (sizeof(COORD)+sizeof(CHAR_INFO)));
-	int nMaxDataSize = nMaxCells * sizeof(CHAR_INFO); // + nHdrSize;
+	const uint32_t nMaxCells = (crMax.X * crMax.Y);
+	const uint32_t nMaxDataSize = nMaxCells * sizeof(CHAR_INFO); // + nHdrSize;
+	const uint32_t nTotalSize = sizeof(CESERVER_REQ_CONINFO_FULL) + (nMaxCells * sizeof(CHAR_INFO));
+
 	bool lbCreated, lbUseExisting = false;
 
-	gpSrv->pConsoleDataCopy = (CHAR_INFO*)calloc(nMaxDataSize,1);
+	gpSrv->pConsoleDataCopy = static_cast<CHAR_INFO*>(calloc(nMaxDataSize, 1));
 
 	if (!gpSrv->pConsoleDataCopy)
 	{
@@ -3367,8 +3365,8 @@ int WorkerServer::CreateMapHeader()
 	}
 
 	//gpSrv->pConsoleDataCopy->crMaxSize = crMax;
-	nTotalSize = sizeof(CESERVER_REQ_CONINFO_FULL) + (nMaxCells * sizeof(CHAR_INFO));
-	gpSrv->pConsole = (CESERVER_REQ_CONINFO_FULL*)calloc(nTotalSize,1);
+
+	gpSrv->pConsole = static_cast<CESERVER_REQ_CONINFO_FULL*>(calloc(nTotalSize, 1));
 
 	if (!gpSrv->pConsole)
 	{
@@ -3378,6 +3376,11 @@ int WorkerServer::CreateMapHeader()
 
 	if (!gpSrv->pGuiInfoMap)
 		gpSrv->pGuiInfoMap = new MFileMapping<ConEmuGuiMapping>;
+	if (!gpSrv->pGuiInfoMap)
+	{
+		_printf("ConEmuC: calloc(MFileMapping<ConEmuGuiMapping>) failed, pGuiInfoMap is null", 0); //-V576
+		goto wrap;
+	}
 
 	if (!gpSrv->pConsoleMap)
 		gpSrv->pConsoleMap = new MFileMapping<CESERVER_CONSOLE_MAPPING_HDR>;
@@ -3412,13 +3415,24 @@ int WorkerServer::CreateMapHeader()
 	if (!lbCreated)
 	{
 		_ASSERTE(FALSE && "Failed to create/open mapping!");
-		_wprintf(gpSrv->pConsoleMap->GetErrorText());
+		if (!gpSrv->pConsoleMap->IsValid())
+		{
+			_wprintf(gpSrv->pConsoleMap->GetErrorText());
+		}
+		else if (!gpSrv->pAppMap->IsValid())
+		{
+			_wprintf(gpSrv->pAppMap->GetErrorText());
+		}
+
 		SafeDelete(gpSrv->pConsoleMap);
+		SafeDelete(gpSrv->pAppMap);
+
 		iRc = CERR_CREATEMAPPINGERR; goto wrap;
 	}
-	else if (gState.runMode_ == RunMode::AltServer)
+
+	if (gState.runMode_ == RunMode::AltServer)
 	{
-		// На всякий случай, перекинем параметры
+		// Just in case, reload parameters
 		if (gpSrv->pConsoleMap->GetTo(&gpSrv->pConsole->hdr))
 		{
 			lbUseExisting = true;
@@ -3436,7 +3450,7 @@ int WorkerServer::CreateMapHeader()
 		gpSrv->pAppMap->SetFrom(&init);
 	}
 
-	// !!! Warning !!! Изменил здесь, поменяй и ReloadGuiSettings/CopySrvMapFromGuiMap !!!
+	// !!! Warning !!! On any change here, do the same in ReloadGuiSettings/CopySrvMapFromGuiMap !!!
 	gpSrv->pConsole->cbMaxSize = nTotalSize;
 	gpSrv->pConsole->hdr.cbSize = sizeof(gpSrv->pConsole->hdr);
 	if (!lbUseExisting)
@@ -3576,7 +3590,7 @@ void WorkerServer::UpdateConsoleMapHeader(LPCWSTR asReason /*= nullptr*/)
 
 		if (gState.runMode_ == RunMode::Server)
 		{
-			// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+			// Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 			gpSrv->pConsole->hdr.AnsiLog = gpSrv->AnsiLog;
 		}
 
@@ -3783,7 +3797,7 @@ void WorkerServer::CloseMapHeader()
 }
 
 
-// Limited logging of console contents (same output as processed by CECF_ProcessAnsi)
+// Limited logging of console contents (same output as processed by ConEmu::ConsoleFlags::ProcessAnsi)
 void WorkerServer::InitAnsiLog(const ConEmuAnsiLog& AnsiLog)
 {
 	LogFunction(L"InitAnsiLog");
@@ -3867,11 +3881,11 @@ int WorkerServer::ReadConsoleInfo()
 
 	if (!apiGetConsoleSelectionInfo(&lsel))
 	{
-		SetConEmuFlags(gpSrv->pConsole->ConState.Flags,CECI_Paused,(CECI_None));
+		SetConEmuFlags(gpSrv->pConsole->ConState.Flags, CECI_Paused, (CECI_None));
 	}
 	else
 	{
-		SetConEmuFlags(gpSrv->pConsole->ConState.Flags,CECI_Paused,((lsel.dwFlags & CONSOLE_SELECTION_IN_PROGRESS) ? CECI_Paused : CECI_None));
+		SetConEmuFlags(gpSrv->pConsole->ConState.Flags, CECI_Paused, ((lsel.dwFlags & CONSOLE_SELECTION_IN_PROGRESS) ? CECI_Paused : CECI_None));
 	}
 
 	if (!GetConsoleCursorInfo(hOut, &lci))
@@ -5331,8 +5345,8 @@ DWORD WorkerServer::RefreshThread(LPVOID /*lpvParam*/)
 	BOOL bConsoleActive = (BOOL)-1;
 	BOOL bDCWndVisible = (BOOL)-1;
 	BOOL bNewActive = (BOOL)-1, bNewFellInSleep = FALSE;
-	BOOL ActiveSleepInBg = (gpSrv->guiSettings.Flags & CECF_SleepInBackg);
-	BOOL RetardNAPanes = (gpSrv->guiSettings.Flags & CECF_RetardNAPanes);
+	BOOL ActiveSleepInBg = (gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::SleepInBackground);
+	BOOL RetardInactivePanes = (gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::RetardInactivePanes);
 	BOOL bOurConActive = (BOOL)-1, bOneConActive = (BOOL)-1;
 	bool bLowSpeed = false;
 	BOOL bOnlyCursorChanged;
@@ -5727,11 +5741,11 @@ DWORD WorkerServer::RefreshThread(LPVOID /*lpvParam*/)
 			LogString(lbOneConActive ? L"bOneConActive changed to true" : L"bOneConActive changed to false");
 		bOneConActive = lbOneConActive;
 
-		ActiveSleepInBg = (gpSrv->guiSettings.Flags & CECF_SleepInBackg);
-		RetardNAPanes = (gpSrv->guiSettings.Flags & CECF_RetardNAPanes);
+		ActiveSleepInBg = (gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::SleepInBackground);
+		RetardInactivePanes = (gpSrv->guiSettings.Flags & ConEmu::ConsoleFlags::RetardInactivePanes);
 
 		BOOL lbNewActive;
-		if (bOurConActive || (bDCWndVisible && !RetardNAPanes))
+		if (bOurConActive || (bDCWndVisible && !RetardInactivePanes))
 		{
 			// Mismatch may appears during console closing
 			//if (gpLogSize && gbInShutdown && (bDCWndVisible != bOurConActive))

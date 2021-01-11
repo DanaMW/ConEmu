@@ -51,6 +51,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportedFunctions.h"
 #include "StartEnv.h"
 #include "StdCon.h"
+#include "../common/DefTermChildMap.h"
 #include "../common/MProcess.h"
 #include "../common/ProcessSetEnv.h"
 #include "../common/SetEnvVar.h"
@@ -543,16 +544,14 @@ int WorkerBase::PostProcessCanAttach() const
 		&& ((gState.runMode_ == RunMode::Server) || (gState.runMode_ == RunMode::AutoAttach))
 		&& (gState.conemuPid_ == 0))
 	{
-		//-- ассерт не нужен вроде
-		//_ASSERTE(!gbAlternativeAttach && "Alternative mode must be already processed!");
+		_ASSERTE(FALSE && "Continue to attach!");
 
 		_ASSERTE(!gpConsoleArgs->debugPidList_.exists);
 
 		BOOL lbIsWindowVisible = FALSE;
-		// Добавим проверку на telnet
 		if (!gState.realConWnd_
-			|| !(lbIsWindowVisible = gpConsoleArgs->IsAutoAttachAllowed())
-			|| isTerminalMode())
+			|| !((lbIsWindowVisible = gpConsoleArgs->IsAutoAttachAllowed()))
+			|| isTerminalMode() /*telnet*/)
 		{
 			if (gpLogSize)
 			{
@@ -720,7 +719,8 @@ int WorkerBase::ParamColorIndexes() const
 
 			if (gnDefPopupColors && IsWin6())
 			{
-				MY_CONSOLE_SCREEN_BUFFER_INFOEX csbi = { sizeof(csbi) };  // NOLINT(clang-diagnostic-missing-field-initializers)
+				MY_CONSOLE_SCREEN_BUFFER_INFOEX csbi = {};
+				csbi.cbSize = sizeof(csbi);
 				if (apiGetConsoleScreenBufferInfoEx(hConOut, &csbi))
 				{
 					// Microsoft bug? When console is started elevated - it does NOT show
@@ -1649,10 +1649,10 @@ int WorkerBase::CheckAttachProcess()
 	if (liArgsFailed)
 	{
 		const DWORD nSelfPID = GetCurrentProcessId();
-		PROCESSENTRY32 self = {sizeof(self)}, parent = {sizeof(parent)};
+		PROCESSENTRY32 self = {}, parent = {};
 		// Not optimal, needs refactoring
-		if (GetProcessInfo(nSelfPID, &self))
-			GetProcessInfo(self.th32ParentProcessID, &parent);
+		if (GetProcessInfo(nSelfPID, self))
+			GetProcessInfo(self.th32ParentProcessID, parent);
 
 		LPCWSTR pszCmdLine = GetCommandLineW(); if (!pszCmdLine) pszCmdLine = L"";
 
@@ -1833,6 +1833,21 @@ CEStr WorkerBase::ExpandTaskCmd(LPCWSTR asCmdLine) const
 	ExecuteFreeResult(pOut);
 
 	return pszResult;
+}
+
+void WorkerBase::CreateDefTermChildMapping(const PROCESS_INFORMATION& pi)
+{
+	if (!defTermChildMap_)
+		defTermChildMap_ = std::make_shared<CDefTermChildMap>();
+
+	if (gState.conemuPid_ == 0)
+	{
+		_ASSERTE(gState.conemuPid_ != 0);
+		return;
+	}
+
+	defTermChildMap_->CreateChildMapping(pi.dwProcessId, pi.hProcess, gState.conemuPid_);
+
 }
 
 void WorkerBase::FreezeRefreshThread()

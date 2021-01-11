@@ -29,16 +29,16 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define HIDE_USE_EXCEPTION_INFO
 #include "ConsoleMain.h"
 #include "ConEmuSrv.h"
-#include "crc32.h"
+#include "../common/crc32.h"
 #include "DownloaderCall.h"
 #include "ExitCodes.h"
 
-#include "../ConEmuHk/Ansi.h"
 #include "../common/WThreads.h"
 #include "../common/WFiles.h"
 #include "../common/MAssert.h"
 #include "../common/EnvVar.h"
 #include "../common/defines.h"
+#include "../common/WObjects.h"
 
 #undef _DOWNLOADER_ASSERT
 #define _DOWNLOADER_ASSERT(x) //_ASSERTE(x)

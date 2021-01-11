@@ -1939,17 +1939,17 @@ BOOL CConEmuMain::CreateMainWindow()
 
 	if (mp_Inside)
 	{
-		if (!mp_Inside->mh_InsideParentWND)
+		if (!mp_Inside->GetParentWnd())
 		{
 			_ASSERTE(mp_Inside == nullptr); // Must be cleared already!
-			_ASSERTE(!mp_Inside->m_InsideIntegration || mp_Inside->mh_InsideParentWND);
+			_ASSERTE(!mp_Inside->GetInsideIntegration() || mp_Inside->GetParentWnd());
 			//m_InsideIntegration = ii_None;
 			SafeDelete(mp_Inside);
 		}
 		else
 		{
 			DWORD nParentTID, nParentPID;
-			nParentTID = GetWindowThreadProcessId(mp_Inside->mh_InsideParentWND, &nParentPID);
+			nParentTID = GetWindowThreadProcessId(mp_Inside->GetParentWnd(), &nParentPID);
 			_ASSERTE(nParentTID && nParentPID);
 			BOOL bAttach = AttachThreadInput(GetCurrentThreadId(), nParentTID, TRUE);
 			if (!bAttach)
@@ -2005,7 +2005,7 @@ BOOL CConEmuMain::CreateMainWindow()
 		_ASSERTE(this->WndWidth.Value && this->WndHeight.Value);
 	}
 
-	HWND hParent = mp_Inside ? mp_Inside->mh_InsideParentWND : ghWndApp;
+	HWND hParent = mp_Inside ? mp_Inside->GetParentWnd() : ghWndApp;
 
 	if (gpSet->isLogging())
 	{
@@ -2018,11 +2018,11 @@ BOOL CConEmuMain::CreateMainWindow()
 			opt.DesktopMode ? L" Desktop" : L"",
 			LODWORD(hParent),
 			this->WndPos.x, this->WndPos.y, nWidth, nHeight, style, styleEx,
-			GetWindowModeName(gpSet->isQuakeStyle ? (ConEmuWindowMode)gpSet->_WindowMode : WindowMode));
+			GetWindowModeName(gpSet->isQuakeStyle ? static_cast<ConEmuWindowMode>(gpSet->_WindowMode) : WindowMode));
 		LogString(szCreate);
 	}
 
-	// Create window intentionally small in size, we ajust it lately
+	// Create window intentionally small in size, we adjust it lately
 	const int minWidth = 160, minHeight = 16;
 	POINT ptCreate = this->RealPosFromVisual(WndPos.x, WndPos.y);
 	SizeInfo::RequestDpi({gpSetCls->QueryDpi(), gpSetCls->QueryDpi()});
@@ -2035,7 +2035,7 @@ BOOL CConEmuMain::CreateMainWindow()
 		DWORD nErrCode = GetLastError();
 
 		// Don't warn, if "Inside" mode was requested and parent was closed
-		_ASSERTE(!mp_Inside || (hParent == mp_Inside->mh_InsideParentWND));
+		_ASSERTE(!mp_Inside || (hParent == mp_Inside->GetParentWnd()));
 
 		WarnCreateWindowFail(L"main window", hParent, nErrCode);
 
@@ -2167,13 +2167,20 @@ void CConEmuMain::InitComSpecStr(ConEmuComspec& ComSpec)
 	wcscpy_c(ComSpec.ConEmuBaseDir, ms_ConEmuBaseDir);
 }
 
-void CConEmuMain::GetGuiInfo(ConEmuGuiMapping& GuiInfo)
+void CConEmuMain::GetGuiInfo(ConEmuGuiMapping& GuiInfo) const
 {
 	GuiInfo = m_GuiInfo;
 }
 
+const ConEmuGuiMapping& CConEmuMain::GetGuiInfo() const
+{
+	return m_GuiInfo;
+}
+
 void CConEmuMain::UpdateGuiInfoMapping()
 {
+	using ConEmu::ConsoleFlags;
+
 	m_GuiInfo.nProtocolVersion = CESERVER_REQ_VER;
 
 	static DWORD ChangeNum = 0; ChangeNum++; if (!ChangeNum) ChangeNum = 1;
@@ -2184,35 +2191,36 @@ void CConEmuMain::UpdateGuiInfoMapping()
 
 	m_GuiInfo.nLoggingType = CSetPgDebug::GetActivityLoggingType();
 	m_GuiInfo.useInjects = (gpSet->isUseInjects ? ConEmuUseInjects::Use : ConEmuUseInjects::DontUse);
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_UseTrueColor,(gpSet->isTrueColorer ? CECF_UseTrueColor : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_ProcessAnsi,(gpSet->isProcessAnsi ? CECF_ProcessAnsi : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_AnsiExecAny|CECF_AnsiExecCmd,((gpSet->isAnsiExec==ansi_Allowed) ? CECF_AnsiExecAny : (gpSet->isAnsiExec==ansi_CmdOnly) ? CECF_AnsiExecCmd : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_SuppressBells,(gpSet->isSuppressBells ? CECF_SuppressBells : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_ConExcHandler,(gpSet->isConsoleExceptionHandler ? CECF_ConExcHandler : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_ProcessNewCon,(gpSet->isProcessNewConArg ? CECF_ProcessNewCon : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_ProcessCmdStart,(gpSet->isProcessCmdStart ? CECF_ProcessCmdStart : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_ProcessCtrlZ,(gpSet->isProcessCtrlZ ? CECF_ProcessCtrlZ : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_RealConVisible,(gpSet->isConVisible ? CECF_RealConVisible : 0));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::UseTrueColor,(gpSet->isTrueColorer ? ConsoleFlags::UseTrueColor : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::ProcessAnsi,(gpSet->isProcessAnsi ? ConsoleFlags::ProcessAnsi : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags, ConsoleFlags::AnsiExecAny | ConsoleFlags::AnsiExecCmd,
+		((gpSet->isAnsiExec == ansi_Allowed) ? ConsoleFlags::AnsiExecAny : (gpSet->isAnsiExec == ansi_CmdOnly) ? ConsoleFlags::AnsiExecCmd : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::SuppressBells,(gpSet->isSuppressBells ? ConsoleFlags::SuppressBells : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::ConExcHandler,(gpSet->isConsoleExceptionHandler ? ConsoleFlags::ConExcHandler : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::ProcessNewCon,(gpSet->isProcessNewConArg ? ConsoleFlags::ProcessNewCon : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::ProcessCmdStart,(gpSet->isProcessCmdStart ? ConsoleFlags::ProcessCmdStart : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::ProcessCtrlZ,(gpSet->isProcessCtrlZ ? ConsoleFlags::ProcessCtrlZ : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::RealConVisible,(gpSet->isConVisible ? ConsoleFlags::RealConVisible : ConsoleFlags::Empty));
 	// использовать расширение командной строки (ReadConsole). 0 - нет, 1 - старая версия (0.1.1), 2 - новая версия
 	switch (gpSet->isUseClink())
 	{
 	case 1:
-		SetConEmuFlags(m_GuiInfo.Flags,CECF_UseClink_Any,CECF_UseClink_1);
+		SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::UseClink_Any,ConsoleFlags::UseClink_1);
 		break;
 	case 2:
-		SetConEmuFlags(m_GuiInfo.Flags,CECF_UseClink_Any,CECF_UseClink_2);
+		SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::UseClink_Any,ConsoleFlags::UseClink_2);
 		break;
 	default:
 		_ASSERTE(gpSet->isUseClink()==0);
-		SetConEmuFlags(m_GuiInfo.Flags,CECF_UseClink_Any,CECF_Empty);
+		SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::UseClink_Any,ConsoleFlags::Empty);
 	}
 
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_BlockChildDbg,(m_DbgInfo.bBlockChildrenDebuggers ? CECF_BlockChildDbg : 0));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::BlockChildDbg,(m_DbgInfo.bBlockChildrenDebuggers ? ConsoleFlags::BlockChildDbg : ConsoleFlags::Empty));
 
-	// m_GuiInfo.Flags[CECF_SleepInBackg], m_GuiInfo.hActiveCons, m_GuiInfo.dwActiveTick, m_GuiInfo.bGuiActive
+	// m_GuiInfo.Flags[ConsoleFlags::SleepInBackground], m_GuiInfo.hActiveCons, m_GuiInfo.dwActiveTick, m_GuiInfo.bGuiActive
 	UpdateGuiInfoMappingActive(isMeForeground(true, true), false);
 
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_DosBox,(CheckDosBoxExists() ? CECF_DosBox : 0));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::DosBox,(CheckDosBoxExists() ? ConsoleFlags::DosBox : ConsoleFlags::Empty));
 
 	wcscpy_c(m_GuiInfo.sConEmuExe, ms_ConEmuExe);
 	//-- переехали в m_GuiInfo.ComSpec
@@ -2353,12 +2361,18 @@ void CConEmuMain::UpdateGuiInfoMapping()
 	}
 	#endif
 
+	if (mp_DefTrm)
+	{
+		mp_DefTrm->UpdateDefTermMapping();
+	}
 }
 
 void CConEmuMain::UpdateGuiInfoMappingActive(bool bActive, bool bUpdatePtr /*= true*/)
 {
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_SleepInBackg,(gpSet->isSleepInBackground ? CECF_SleepInBackg : 0));
-	SetConEmuFlags(m_GuiInfo.Flags,CECF_RetardNAPanes,(gpSet->isRetardInactivePanes ? CECF_RetardNAPanes : 0));
+	using ConEmu::ConsoleFlags;
+
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::SleepInBackground,(gpSet->isSleepInBackground ? ConsoleFlags::SleepInBackground : ConsoleFlags::Empty));
+	SetConEmuFlags(m_GuiInfo.Flags,ConsoleFlags::RetardInactivePanes,(gpSet->isRetardInactivePanes ? ConsoleFlags::RetardInactivePanes : ConsoleFlags::Empty));
 
 	m_GuiInfo.bGuiActive = bActive;
 
@@ -3113,7 +3127,8 @@ bool CConEmuMain::CreateWnd(RConStartArgsEx& args)
 	LPCWSTR pszAddArgs = MakeConEmuStartArgs(szAddArgs);
 
 	// Start new ConEmu.exe process with chosen arguments...
-	STARTUPINFO si = {sizeof(si)};
+	STARTUPINFO si = {};
+	si.cb = sizeof(si);
 	PROCESS_INFORMATION pi = {};
 	wchar_t* pszCmdLine = nullptr;
 	size_t cchMaxLen = _tcslen(ms_ConEmuExe)
@@ -4496,8 +4511,9 @@ bool CConEmuMain::StartDebugLogConsole()
 	WCHAR  szExe[MAX_PATH*2] = {0};
 	bool lbRc = false;
 	//DWORD nLen = 0;
-	PROCESS_INFORMATION pi = {nullptr};
-	STARTUPINFO si = {sizeof(si)};
+	PROCESS_INFORMATION pi = {};
+	STARTUPINFO si = {};
+	si.cb = sizeof(si);
 	DWORD dwSelfPID = GetCurrentProcessId();
 	// "/ATTACH" - низя, а то заблокируемся при попытке подключения к "отлаживаемому" GUI
 	swprintf_c(szExe, L"\"%s\" /DEBUGPID=%u /BW=80 /BH=25 /BZ=%u",
@@ -5588,7 +5604,7 @@ bool CConEmuMain::RecheckForegroundWindow(LPCWSTR asFrom, HWND* phFore /*= nullp
 
 	if (mp_Inside)
 	{
-		if (mp_Inside->isParentProcess(hForeWnd))
+		if (mp_Inside->IsParentProcess(hForeWnd))
 		{
 			if (hForcedForeground)
 			{
@@ -5626,7 +5642,7 @@ bool CConEmuMain::RecheckForegroundWindow(LPCWSTR asFrom, HWND* phFore /*= nullp
 				{
 					NewState |= fgf_ConEmuDialog;
 				}
-				else if (mp_Inside && mp_Inside->isParentProcess(hForeWnd))
+				else if (mp_Inside && mp_Inside->IsParentProcess(hForeWnd))
 				{
 					// Already processed
 				}
@@ -5725,8 +5741,8 @@ bool CConEmuMain::isInside()
 	if (!mp_Inside)
 		return false;
 
-	_ASSERTE(mp_Inside->m_InsideIntegration != CConEmuInside::ii_None);
-	return (mp_Inside->m_InsideIntegration != CConEmuInside::ii_None);
+	_ASSERTE(mp_Inside->GetInsideIntegration() != CConEmuInside::ii_None);
+	return (mp_Inside->GetInsideIntegration() != CConEmuInside::ii_None);
 }
 
 // Returns true if we were started in "Inside" mode
@@ -5737,10 +5753,10 @@ bool CConEmuMain::isInsideInvalid()
 	if (!isInside())
 		return false;
 	// If we failed to or not yet determined the parent window HWND
-	if (!mp_Inside->mh_InsideParentWND)
+	if (!mp_Inside->GetParentWnd())
 		return false;
 	// Check parent descriptor
-	if (::IsWindow(mp_Inside->mh_InsideParentWND))
+	if (::IsWindow(mp_Inside->GetParentWnd()))
 		return false;
 	// Abnormal termination of parent window?
 	return true;
@@ -6517,7 +6533,7 @@ wchar_t* CConEmuMain::LoadConsoleBatch_Task(LPCWSTR asSource, RConStartArgsEx* p
 					}
 					else
 					{
-						pszNewCmd = args.CreateCommandLine();
+						pszNewCmd = args.CreateCommandLine(false);
 					}
 					return pszNewCmd;
 				}
@@ -11677,15 +11693,15 @@ LRESULT CConEmuMain::OnShellHook(WPARAM wParam, LPARAM lParam)
 					AllowSetForegroundWindow(dwPID);
 
 					WARNING("Проверить, успевает ли диалог показаться, или потом для него ShowWindow зовется?");
-					if (IsWindowVisible(hWnd))  // ? оно успело ?
+					if (IsWindowVisible(hWnd))  // was it in time?
 					{
 						bool lbConPID = isConsolePID(dwPID);
 
-						PROCESSENTRY32 prc = {sizeof(PROCESSENTRY32)};
+						PROCESSENTRY32 prc = {};
 						if (!lbConPID)
 						{
 							// Получить PID родительского процесса этого окошка
-							if (GetProcessInfo(dwPID, &prc))
+							if (GetProcessInfo(dwPID, prc))
 							{
 								dwParentPID = prc.th32ParentProcessID;
 
@@ -11713,8 +11729,9 @@ LRESULT CConEmuMain::OnShellHook(WPARAM wParam, LPARAM lParam)
 		#ifdef _DEBUG
 		case HSHELL_ACTIVATESHELLWINDOW:
 		{
-			// Не вызывается
-			wchar_t szDbg[128]; swprintf_c(szDbg, L"HSHELL_ACTIVATESHELLWINDOW(lParam=0x%08X)\n", (DWORD)lParam);
+			// Is not called
+			wchar_t szDbg[128];
+			swprintf_c(szDbg, L"HSHELL_ACTIVATESHELLWINDOW(lParam=0x%08X)\n", LODWORD(lParam));
 			DEBUGSTRFOREGROUND(szDbg);
 		}
 		break;
@@ -11727,11 +11744,11 @@ LRESULT CConEmuMain::OnShellHook(WPARAM wParam, LPARAM lParam)
 			// Когда активируется Desktop - lParam == 0
 
 			wchar_t szDbg[128], szClass[64];
-			if (!lParam || !GetClassName((HWND)lParam, szClass, 63))
+			if (!lParam || !GetClassName(reinterpret_cast<HWND>(lParam), szClass, 63))
 				wcscpy_c(szClass, L"<nullptr>");
 
-			BOOL lbLBtn = isPressed(VK_LBUTTON);
-			swprintf_c(szDbg, L"HSHELL_WINDOWACTIVATED(lParam=0x%08X, %s, %i)\n", (DWORD)lParam, szClass, lbLBtn);
+			const BOOL lbLBtn = isPressed(VK_LBUTTON);
+			swprintf_c(szDbg, L"HSHELL_WINDOWACTIVATED(lParam=0x%08X, %s, %i)\n", LODWORD(lParam), szClass, lbLBtn);
 			DEBUGSTRFOREGROUND(szDbg);
 			#endif
 
@@ -11852,7 +11869,7 @@ void CConEmuMain::OnTimer_Background()
 	if (!mp_Inside)
 		return; // Don't care otherwise
 
-	if (!IsWindow(mp_Inside->mh_InsideParentWND))
+	if (!IsWindow(mp_Inside->GetParentWnd()))
 	{
 		// Don't kill consoles? Let RealConsoles appear to user?
 		// CVConGroup::DoCloseAllVCon(true);
@@ -12186,7 +12203,7 @@ void CConEmuMain::OnTimer_ActivateSplit()
 		bool isChildGui = false;
 		if (!isIconic()
 			&& (hForeWnd == ghWnd
-				|| (mp_Inside && mp_Inside->isParentProcess(hForeWnd))
+				|| (mp_Inside && mp_Inside->IsParentProcess(hForeWnd))
 				|| (isChildGui = CVConGroup::isOurGuiChildWindow(hForeWnd))
 			))
 		{

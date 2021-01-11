@@ -32,6 +32,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DefaultTerm.h"
 #include "ConEmu.h"
 #include "ConEmuStart.h"
+#include "Inside.h"
 #include "Options.h"
 #include "OptionsClass.h"
 #include "Status.h"
@@ -48,10 +49,10 @@ CDefaultTerminal::CDefaultTerminal()
 
 CDefaultTerminal::~CDefaultTerminal()
 {
-	StopHookers();
+	CDefTermBase::StopHookers();
 }
 
-bool CDefaultTerminal::isDefaultTerminalAllowed(bool bDontCheckName /*= false*/)
+bool CDefaultTerminal::isDefaultTerminalAllowed(const bool bDontCheckName /*= false*/)
 {
 	if (gpConEmu->DisableSetDefTerm || !gpSet->isSetDefaultTerminal)
 		return false;
@@ -61,11 +62,10 @@ bool CDefaultTerminal::isDefaultTerminalAllowed(bool bDontCheckName /*= false*/)
 bool CDefaultTerminal::IsRegisteredOsStartup(CEStr* rszData, bool* pbLeaveInTSA)
 {
 	bool bCurState = false, bLeaveTSA = gpSet->isRegisterOnOsStartupTSA;
-	LPCWSTR ValueName = StartupValueName /* L"ConEmuDefaultTerminal" */;
+	const auto* valueName = StartupValueName /* L"ConEmuDefaultTerminal" */;
 	CEStr lsData;
-	int iLen;
 
-	iLen = RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", ValueName, lsData);
+	const int iLen = RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", valueName, lsData);
 	if (iLen > 0)
 	{
 		bCurState = true;
@@ -79,7 +79,7 @@ bool CDefaultTerminal::IsRegisteredOsStartup(CEStr* rszData, bool* pbLeaveInTSA)
 	return bCurState;
 }
 
-void CDefaultTerminal::ApplyAndSave(bool bApply, bool bSaveToReg)
+void CDefaultTerminal::ApplyAndSave(const bool bApply, const bool bSaveToReg)
 {
 	// Get new values from gpSet
 	if (bApply)
@@ -87,23 +87,23 @@ void CDefaultTerminal::ApplyAndSave(bool bApply, bool bSaveToReg)
 
 	// And save to [HKCU\Software\ConEmu]
 	if (bSaveToReg)
-		m_Opt.Serialize(true);
+		m_Opt.Serialize(CEDefTermOpt::SerializeMode::Save);
 }
 
 void CDefaultTerminal::CheckRegisterOsStartup()
 {
-	LPCWSTR ValueName = StartupValueName;
+	const auto* ValueName = StartupValueName;
 	bool bCurState = false;
-	bool bNeedState = gpSet->isSetDefaultTerminal && gpSet->isRegisterOnOsStartup;
+	const bool bNeedState = gpSet->isSetDefaultTerminal && gpSet->isRegisterOnOsStartup;
 	LONG lRc;
 	bool bPrevTSA = false;
 
 	// Need to acquire proper startup (config+xml at least) arguments
 	CEStr szAddArgs;
-	LPCWSTR pszAddArgs = gpConEmu->MakeConEmuStartArgs(szAddArgs);
+	const auto* pszAddArgs = gpConEmu->MakeConEmuStartArgs(szAddArgs);
 
 	// Allocate memory
-	CEStr szNeedValue(
+	const CEStr szNeedValue(
 		L"\"", gpConEmu->ms_ConEmuExe, L"\" ",
 		pszAddArgs, // -config, -loadcfgfile and others...
 		L"-SetDefTerm -Detached -MinTSA",
@@ -136,7 +136,7 @@ void CDefaultTerminal::CheckRegisterOsStartup()
 	}
 }
 
-void CDefaultTerminal::StartGuiDefTerm(bool bManual, bool bNoThreading /*= false*/)
+void CDefaultTerminal::StartGuiDefTerm(const bool bManual, const bool bNoThreading /*= false*/)
 {
 	// Do not need to run init procedure, if feature is disabled
 	if (!isDefaultTerminalAllowed())
@@ -171,7 +171,7 @@ void CDefaultTerminal::PreCreateThread()
 	CheckRegisterOsStartup();
 
 	// Write to [HKCU\Software\ConEmu]
-	m_Opt.Serialize(true);
+	m_Opt.Serialize(CEDefTermOpt::SerializeMode::Save);
 }
 
 void CDefaultTerminal::PostCreateThreadFinished()
@@ -183,7 +183,7 @@ CDefTermBase* CDefaultTerminal::GetInterface()
 	return this;
 }
 
-int CDefaultTerminal::DisplayLastError(LPCWSTR asLabel, DWORD dwError/*=0*/, DWORD dwMsgFlags/*=0*/, LPCWSTR asTitle/*=nullptr*/, HWND hParent/*=nullptr*/)
+int CDefaultTerminal::DisplayLastError(LPCWSTR asLabel, const DWORD dwError/*=0*/, const DWORD dwMsgFlags/*=0*/, LPCWSTR asTitle/*=nullptr*/, HWND hParent/*=nullptr*/)
 {
 	return ::DisplayLastError(asLabel, dwError, dwMsgFlags, asTitle, hParent);
 }
@@ -197,22 +197,28 @@ void CDefaultTerminal::ReloadSettings()
 {
 	m_Opt.bUseDefaultTerminal = gpSet->isSetDefaultTerminal;
 
-	m_Opt.bAgressive = gpSet->isRegisterAgressive;
+	m_Opt.bAggressive = gpSet->isRegisterAggressive;
 	m_Opt.bNoInjects = gpSet->isDefaultTerminalNoInjects;
 	m_Opt.bNewWindow = gpSet->isDefaultTerminalNewWindow;
 	m_Opt.bDebugLog  = gpSet->isDefaultTerminalDebugLog;
 	m_Opt.nDefaultTerminalConfirmClose = gpSet->nDefaultTerminalConfirmClose;
 
-	ConEmuGuiMapping GuiInfo = {};
-	gpConEmu->GetGuiInfo(GuiInfo);
-	m_Opt.nConsoleFlags = GuiInfo.Flags;
+	const auto& guiInfo = gpConEmu->GetGuiInfo();
+	m_Opt.nConsoleFlags = guiInfo.Flags;
 
 	m_Opt.bExternalPointers = true;
+	// in "external pointers" mode m_Opt does not release memory
 	m_Opt.pszConEmuExe = gpConEmu->ms_ConEmuExe;
 	m_Opt.pszConEmuBaseDir = gpConEmu->ms_ConEmuBaseDir;
-	m_Opt.pszCfgFile = gpConEmu->opt.LoadCfgFile.Exists ? (wchar_t*)gpConEmu->opt.LoadCfgFile.GetStr() : nullptr;
-	m_Opt.pszConfigName = (wchar_t*)gpSetCls->GetConfigName();
-	m_Opt.pszzHookedApps = (wchar_t*)gpSet->GetDefaultTerminalAppsMSZ(); // ASCIIZZ
+	m_Opt.pszCfgFile = gpConEmu->opt.LoadCfgFile.Exists ? const_cast<wchar_t*>(gpConEmu->opt.LoadCfgFile.GetStr()) : nullptr;
+	m_Opt.pszConfigName = const_cast<wchar_t*>(gpSetCls->GetConfigName());
+	m_Opt.pszzHookedApps = const_cast<wchar_t*>(gpSet->GetDefaultTerminalAppsMSZ()); // ASCIIZZ
+
+	if (gpConEmu->mp_Inside)
+	{
+		UpdateDefTermMapping();
+		gpConEmu->mp_Inside->UpdateDefTermMapping();
+	}
 }
 
 void CDefaultTerminal::AutoClearThreads()
@@ -224,7 +230,7 @@ void CDefaultTerminal::AutoClearThreads()
 	ClearThreads(false);
 }
 
-void CDefaultTerminal::ConhostLocker(bool bLock, bool& bWasLocked)
+void CDefaultTerminal::ConhostLocker(const bool bLock, bool& bWasLocked)
 {
 	if (bLock)
 	{
@@ -236,20 +242,18 @@ void CDefaultTerminal::ConhostLocker(bool bLock, bool& bWasLocked)
 	}
 }
 
-// nPID = 0 when hooking is done (remove status bar notification)
-// sName is executable name or window class name
-bool CDefaultTerminal::NotifyHookingStatus(DWORD nPID, LPCWSTR sName)
+bool CDefaultTerminal::NotifyHookingStatus(const DWORD processId, LPCWSTR sName)
 {
 	wchar_t szInfo[200] = L"";
 
-	if (nPID)
+	if (processId)
 	{
-		msprintf(szInfo, countof(szInfo), L"DefTerm[%u]: Setup", nPID);
+		msprintf(szInfo, countof(szInfo), L"DefTerm[%u]: Setup", processId);
 		if (sName && *sName)
 		{
 			wcscat_c(szInfo, L" ");
-			int nLen = lstrlen(szInfo);
-			lstrcpyn(szInfo+nLen, sName, countof(szInfo)-nLen);
+			const int nLen = lstrlen(szInfo);
+			lstrcpyn(szInfo + nLen, sName, countof(szInfo) - nLen);
 		}
 	}
 
@@ -258,10 +262,51 @@ bool CDefaultTerminal::NotifyHookingStatus(DWORD nPID, LPCWSTR sName)
 	return true;
 }
 
-void CDefaultTerminal::LogHookingStatus(DWORD nForePID, LPCWSTR sMessage)
+bool CDefaultTerminal::IsAppAllowed(HWND hFore, DWORD processId)
 {
-	wchar_t szPID[16];
-	CEStr lsLog(L"DefTerm[", ultow_s(nForePID, szPID, 10), L"]: ", sMessage);
+	if (!gpConEmu->mp_Inside)
+		return true;
+	if (gpConEmu->mp_Inside->GetParentInfo().ParentPID == processId)
+		return true;
+	return false;
+}
+
+void CDefaultTerminal::UpdateDefTermMapping()
+{
+	if (!insideMapping_.IsValid())
+	{
+		insideMapping_.InitName(CEDEFTERMMAPNAME, GetCurrentProcessId());
+		if (!insideMapping_.Create())
+		{
+			DisplayLastError(insideMapping_.GetErrorText(), insideMapping_.GetLastErrorCode());
+			return;
+		}
+	}
+
+	CONEMU_INSIDE_DEFTERM_MAPPING info{};
+	info.cbSize = sizeof(info);
+	info.nProtocolVersion = CESERVER_REQ_VER;
+	wcscpy_c(info.sConEmuExe, gpConEmu->ms_ConEmuExe);
+	wcscpy_c(info.sConEmuBaseDir, gpConEmu->ms_ConEmuBaseDir);
+	info.nGuiPID = GetCurrentProcessId();
+	info.hConEmuRoot = ghWnd;
+	info.bUseDefaultTerminal = gpSet->isSetDefaultTerminal;
+	info.isDefaultTerminalNoInjects = gpSet->isDefaultTerminalNoInjects;
+	info.isDefaultTerminalDebugLog = gpSet->isDefaultTerminalDebugLog;
+	info.nDefaultTerminalConfirmClose = gpSet->nDefaultTerminalConfirmClose;
+	const CEStr apps(gpSet->GetDefaultTerminalApps());
+	lstrcpyn(info.defaultTerminalApps, apps.c_str(L""), countof(info.defaultTerminalApps));
+
+	const auto& guiInfo = gpConEmu->GetGuiInfo();
+	info.flags = guiInfo.Flags;
+
+	insideMapping_.SetFrom(&info);
+}
+
+void CDefaultTerminal::LogHookingStatus(const DWORD nForePID, LPCWSTR sMessage)
+{
+	wchar_t szPID[16] = L"";
+	const CEStr lsLog(L"DefTerm[", ultow_s(nForePID, szPID, 10), L"]: ", sMessage);
 	gpConEmu->LogString(lsLog);
 }
 

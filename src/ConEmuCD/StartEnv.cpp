@@ -37,6 +37,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Actions.h"
 #include "StartEnv.h"
 
+
+#include "../common/WObjects.h"
 #include "../ConEmuHk/SetHook.h"
 
 wchar_t* gpszForcedTitle = nullptr;
@@ -92,16 +94,16 @@ CStartEnv::~CStartEnv()
 
 void CStartEnv::Alias(LPCWSTR asName, LPCWSTR asValue)
 {
-	// NULL will remove alias
+	// nullptr will remove alias
 	// We set aliases for "cmd.exe" executable, as Far Manager supports too
 	wchar_t szExe[] = L"cmd.exe";
 	// MSDN tells LPCWSTR, but SDK defines the function as LPWSTR
-	AddConsoleAlias((LPWSTR)asName, (asValue && *asValue) ? (LPWSTR)asValue : NULL, szExe);
+	AddConsoleAlias((LPWSTR)asName, (asValue && *asValue) ? (LPWSTR)asValue : nullptr, szExe);
 }
 
 void CStartEnv::ChCp(LPCWSTR asCP)
 {
-	UINT nCP = GetCpFromString(asCP);
+	const UINT nCP = GetCpFromString(asCP);
 	if (nCP > 0 && nCP <= 0xFFFF)
 	{
 		//Issue 60: BUGBUG: On some OS versions (Win2k3, WinXP) SetConsoleCP (and family) just hangs
@@ -111,7 +113,7 @@ void CStartEnv::ChCp(LPCWSTR asCP)
 
 void CStartEnv::Echo(LPCWSTR asSwitches, LPCWSTR asText)
 {
-	CEStr lsFull = lstrmerge(asSwitches, (asSwitches && *asSwitches) ? L" " : NULL, L"\"", asText, L"\"");
+	CEStr lsFull = lstrmerge(asSwitches, (asSwitches && *asSwitches) ? L" " : nullptr, L"\"", asText, L"\"");
 	DoOutput(ConEmuExecAction::OutEcho, lsFull);
 }
 
@@ -132,7 +134,7 @@ void CStartEnv::Set(LPCWSTR asName, LPCWSTR asValue)
 		{
 			// Example: PATH=%ConEmuBaseDir%\Scripts;%PATH%;C:\Tools\Arc
 			CEStr lsSelfName(L"%", asName, L"%");
-			wchar_t* pchName = lsSelfName.IsEmpty() ? NULL : StrStrI(asValue, lsSelfName);
+			wchar_t* pchName = lsSelfName.IsEmpty() ? nullptr : StrStrI(asValue, lsSelfName);
 			if (pchName)
 			{
 				bool bDiffFound = false;
@@ -176,7 +178,7 @@ void CStartEnv::Set(LPCWSTR asName, LPCWSTR asValue)
 	// Expand value
 	wchar_t* pszExpanded = ExpandEnvStr(asValue);
 	LPCWSTR pszSet = pszExpanded ? pszExpanded : asValue;
-	SetEnvironmentVariable(asName, (pszSet && *pszSet) ? pszSet : NULL);
+	SetEnvironmentVariable(asName, (pszSet && *pszSet) ? pszSet : nullptr);
 	SafeFree(pszExpanded);
 }
 
@@ -191,6 +193,6 @@ void CStartEnv::Title(LPCWSTR asTitle)
 
 void CStartEnv::Type(LPCWSTR asSwitches, LPCWSTR asFile)
 {
-	CEStr lsFull = lstrmerge(asSwitches, (asSwitches && *asSwitches) ? L" " : NULL, L"\"", asFile, L"\"");
+	CEStr lsFull = lstrmerge(asSwitches, (asSwitches && *asSwitches) ? L" " : nullptr, L"\"", asFile, L"\"");
 	DoOutput(ConEmuExecAction::OutType, lsFull);
 }

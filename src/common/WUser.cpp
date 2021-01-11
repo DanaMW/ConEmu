@@ -98,7 +98,7 @@ void getWindowInfo(HWND ahWnd, wchar_t (&rsInfo)[1024], bool bProcessName /*= fa
 			if (GetWindowThreadProcessId(ahWnd, &nPID))
 			{
 				PROCESSENTRY32 pi = {};
-				if (bProcessName && GetProcessInfo(nPID, &pi))
+				if (bProcessName && GetProcessInfo(nPID, pi))
 				{
 					pi.szExeFile[100] = 0;
 					msprintf(szProc, countof(szProc), L" - %s [%u]", pi.szExeFile, nPID);
@@ -117,9 +117,7 @@ bool IsUserAdmin()
 {
 	// No need to show any "Shield" on XP or 2k
 	_ASSERTE(_WIN32_WINNT_VISTA==0x600);
-	OSVERSIONINFOEXW osvi = {sizeof(osvi), HIBYTE(_WIN32_WINNT_VISTA), LOBYTE(_WIN32_WINNT_VISTA)};
-	DWORDLONG const dwlConditionMask = VerSetConditionMask(VerSetConditionMask(0, VER_MAJORVERSION, VER_GREATER_EQUAL), VER_MINORVERSION, VER_GREATER_EQUAL);
-	if (!_VerifyVersionInfo(&osvi, VER_MAJORVERSION | VER_MINORVERSION, dwlConditionMask))
+	if (!IsWin6())
 		return false;
 
 	BOOL b;

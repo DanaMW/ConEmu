@@ -91,14 +91,15 @@ struct NeedCmdOptions
 /// <summary>
 /// Determines if we need a cmd.exe to run the command line.
 /// </summary>
-/// <param name="bRootCmd"></param>
-/// <param name="asCmdLine"></param>
-/// <param name="szExe"></param>
-/// <param name="options">optional pointer to <ref>NeedCmdOptions</ref> struct</param>
+/// <param name="bRootCmd">true if we are starting root console process (first after ConEmuC server)</param>
+/// <param name="asCmdLine">Command line to examine</param>
+/// <param name="szExe">[OUT] buffer receiving the first executable file (PE or script)</param>
+/// <param name="options">[OUT] optional pointer to <ref>NeedCmdOptions</ref> struct</param>
 /// <returns>true - if to execute a command we have to add "cmd.exe /c ...", false - asCmdLine could be executed intact</returns>
 bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* options = nullptr);
 
 bool IsQuotationNeeded(LPCWSTR pszPath);
+bool IsNonPrintable(wchar_t chr);
 const wchar_t* SkipNonPrintable(const wchar_t* asParams);
 
 int AddEndSlash(wchar_t* rsPath, int cchMax);

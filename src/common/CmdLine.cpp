@@ -386,11 +386,17 @@ const wchar_t* NextLine(const wchar_t* asLines, CEStr &rsLine, NEXTLINEFLAGS Fla
 	//const wchar_t szSpacesLines[] = L" \t\r\n";
 
 	if ((Flags & (NLF_TRIM_SPACES|NLF_SKIP_EMPTY_LINES)) == (NLF_TRIM_SPACES|NLF_SKIP_EMPTY_LINES))
+	{
 		psz = SkipNonPrintable(psz);
+	}
 	else if (Flags & NLF_TRIM_SPACES)
+	{
 		while (*psz == L' ' || *psz == L'\t') psz++;
+	}
 	else if (Flags & NLF_SKIP_EMPTY_LINES)
+	{
 		while (*psz == L'\r' || *psz == L'\n') psz++;
+	}
 
 	if (!*psz)
 	{
@@ -435,12 +441,18 @@ int AddEndSlash(wchar_t* rsPath, int cchMax)
 	return nLen;
 }
 
+bool IsNonPrintable(const wchar_t chr)
+{
+	return (chr == L' ' || chr == L'\t' || chr == L'\r' || chr == L'\n');
+}
+
 const wchar_t* SkipNonPrintable(const wchar_t* asParams)
 {
 	if (!asParams)
 		return nullptr;
 	const wchar_t* psz = asParams;
-	while (*psz == L' ' || *psz == L'\t' || *psz == L'\r' || *psz == L'\n') psz++;
+	while (IsNonPrintable(*psz))
+		psz++;
 	return psz;
 }
 
@@ -602,7 +614,7 @@ bool GetFilePathFromSpaceDelimitedString(const wchar_t* commandLine, CEStr& szEx
 		if (!szTemp.IsEmpty()
 			&& ((IsFilePath(szTemp, true) && !wcschr(szTemp, L'%'))
 				// or file/dir may be found via env.var. substitution or searching in %PATH%
-				|| FileExistsSearch(szTemp.c_str(), szTemp))
+				|| FileExistsSearch(szTemp.c_str(), szTemp, true))
 			// Than check if it is a FILE (not a directory)
 			&& FileExists(szTemp, &nTempSize) && nTempSize)
 		{
@@ -732,7 +744,7 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* o
 			CEStr expanded;
 			const wchar_t* exeToCheck = nullptr;
 			// file/dir may be found via env.var. substitution or searching in %PATH%
-			if (FileExistsSearch(szExe.c_str(), expanded))
+			if (FileExistsSearch(szExe.c_str(), expanded, true))
 				exeToCheck = expanded.IsEmpty() ? szExe.c_str() : expanded.c_str();
 			// or it's already a full specified file path
 			else if (IsFilePath(szExe, true))
@@ -787,7 +799,7 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* o
 			_ASSERTE(lstrcmpiW(szExe, L"start") != 0);
 
 			// Expand environment variables and search in the %PATH%
-			if (FileExistsSearch(szExe.c_str(), szExe))
+			if (FileExistsSearch(szExe.c_str(), szExe, true))
 			{
 				rsArguments = SkipNonPrintable(pwszCopy);
 			}
@@ -1037,7 +1049,7 @@ bool CompareProcessNames(LPCWSTR pszProcess1, LPCWSTR pszProcess2)
 			return false;
 	}
 
-	int iCmp = lstrcmpi(pszName1, pszName2);
+	const int iCmp = lstrcmpi(pszName1, pszName2);
 	return (iCmp == 0);
 }
 

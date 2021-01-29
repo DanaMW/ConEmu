@@ -2525,14 +2525,16 @@ void CRealBuffer::ApplyConsoleInfo(const CESERVER_REQ* pInfo, bool& bSetApplyFin
 			#endif
 
 
-			LONG nLastConsoleRow = mp_RCon->m_AppMap.IsValid() ? mp_RCon->m_AppMap.Ptr()->nLastConsoleRow : -1;
+			const LONG nLastConsoleRow = mp_RCon->m_AppMap.IsValid() ? mp_RCon->m_AppMap.Ptr()->nLastConsoleRow : -1;
 
 			int newDynamicHeight = 0;
 			bool lbRealTurnedOn = IsBufferHeightTurnedOn(sbi);
 			con.srRealWindow = pInfo->ConState.srRealWindow;
 			// if (nLastConsoleRow > 0) -- even if nLastConsoleRow is zero (no hooks in console application), try to deal with srWindow
 			{
-				LONG maxRow = std::max<LONG>(nLastConsoleRow, std::max<LONG>(sbi.srWindow.Bottom, std::max<LONG>(con.srRealWindow.Bottom, sbi.dwCursorPosition.Y)));
+				const LONG maxRow = std::max<LONG>(nLastConsoleRow,
+					std::max<LONG>(sbi.srWindow.Bottom,
+						std::max<LONG>(con.srRealWindow.Bottom, sbi.dwCursorPosition.Y)));
 				if (maxRow > 0 && maxRow < sbi.dwSize.Y)
 					newDynamicHeight = maxRow + 1;
 			}
@@ -2546,6 +2548,7 @@ void CRealBuffer::ApplyConsoleInfo(const CESERVER_REQ* pInfo, bool& bSetApplyFin
 			#endif
 			con.m_sbi = sbi;
 			con.nDynamicHeight = newDynamicHeight;
+			con.nLastReportedConsoleRow = nLastConsoleRow;
 
 			// Если мышкой тащат ползунок скроллера - не менять TopVisible
 			if (!mp_RCon->InScroll()
@@ -3170,13 +3173,12 @@ bool CRealBuffer::ProcessFarHyperlink(UINT messg, COORD crFrom, bool bUpdateScre
 										if (bRunOutside)
 										{
 											// Need to check registry for 'App Paths' and set up '%PATH%'
-											LPCWSTR pszTemp = args.pszSpecialCmd;
-											CmdArg szExe;
+											pszTemp = args.pszSpecialCmd;
+											szExe.Release();
 											CEnvRestorer szPrevPath;
-											wchar_t* pszPrevPath = nullptr;
 											if ((pszTemp = NextArg(pszTemp, szExe)))
 											{
-												if (SearchAppPaths((LPCWSTR)szExe, szExe, true, &szPrevPath))
+												if (SearchAppPaths(szExe.c_str(), szExe, true, &szPrevPath))
 												{
 													wchar_t* pszChanged = MergeCmdLine(szExe, pszTemp);
 													if (pszChanged)

@@ -315,7 +315,7 @@ int WorkerBase::PostProcessPrepareCommandLine()
 
 	xf_check();
 
-	LPCWSTR lsCmdLine = gpConsoleArgs->command_.c_str(L"");
+	LPCWSTR lsCmdLine = SkipNonPrintable(gpConsoleArgs->command_.c_str(L""));
 
 	bool needSetEnv = false;
 	if (gState.runMode_ == RunMode::Server)
@@ -379,9 +379,7 @@ int WorkerBase::PostProcessPrepareCommandLine()
 		CStartEnvTitle setTitleVar(&gpszForcedTitle);
 		ProcessSetEnvCmd(lsCmdLine, pSetEnv, &setTitleVar);
 	}
-	
-	LPCWSTR pszArguments4EnvVar = nullptr;
-	CEStr szExeTest;
+
 
 	if (gState.runMode_ == RunMode::Comspec && (!lsCmdLine || !*lsCmdLine))
 	{
@@ -399,108 +397,23 @@ int WorkerBase::PostProcessPrepareCommandLine()
 			return CERR_EMPTY_COMSPEC_CMDLINE;
 		}
 	}
-	else
-	{
-		NeedCmdOptions opt{};
-		opt.alwaysConfirmExit = gState.alwaysConfirmExit_;
-
-		pszCheck4NeedCmd_ = lsCmdLine;
-
-		gState.runViaCmdExe_ = IsNeedCmd((gState.runMode_ == RunMode::Server), lsCmdLine, szExeTest, &opt);
-
-		pszArguments4EnvVar = opt.arguments;
-		gState.needCutStartEndQuot_ = opt.needCutStartEndQuot;
-		gState.rootIsCmdExe_ = opt.rootIsCmdExe;
-
-		if (gpConsoleArgs->confirmExitParm_ == RConStartArgs::eConfDefault)
-		{
-			gState.alwaysConfirmExit_ = opt.alwaysConfirmExit;
-		}
-	}
-
 
 	#ifndef WIN64
 	// Команды вида: C:\Windows\SysNative\reg.exe Query "HKCU\Software\Far2"|find "Far"
 	// Для них нельзя отключать редиректор (wow.Disable()), иначе SysNative будет недоступен
 	CheckNeedSkipWowChange(lsCmdLine);
 	#endif
-
-	int nCmdLine = lsCmdLine ? lstrlenW(lsCmdLine) : 0;
-
-	if (!gState.runViaCmdExe_)
+	
+	CEStr runCmd;
+	iRc = GenerateCmdLine(lsCmdLine, runCmd);
+	if (iRc != 0)
 	{
-		nCmdLine += 1; // '\0' termination
-		if (pszArguments4EnvVar && *szExeTest)
-			nCmdLine += lstrlen(szExeTest) + 3;
-	}
-	else
-	{
-		gszComSpec[0] = 0;
-		// ReSharper disable once CppLocalVariableMayBeConst
-		LPCWSTR pszFind = GetComspecFromEnvVar(gszComSpec, countof(gszComSpec));
-		if (!pszFind || !wcschr(pszFind, L'\\') || !FileExists(pszFind))
-		{
-			_ASSERTE(FALSE && "cmd.exe not found!");
-			_printf("Can't find cmd.exe!\n");
-			return CERR_CMDEXENOTFOUND;
-		}
-
-		nCmdLine += lstrlenW(gszComSpec) + 15; // "/C" + quotation + possible "/U"
+		return iRc;
 	}
 
-	// nCmdLine counts length of lsCmdLine + gszComSpec + something for "/C" and things
-	const size_t nCchLen = size_t(nCmdLine) + 1;
 	SafeFree(gpszRunCmd);
-	gpszRunCmd = static_cast<wchar_t*>(calloc(nCchLen, sizeof(wchar_t)));
+	gpszRunCmd = runCmd.Detach();
 
-	if (!gpszRunCmd)
-	{
-		_printf("Can't allocate %i wchars!\n", (DWORD)nCmdLine);
-		return CERR_NOTENOUGHMEM1;
-	}
-
-	// это нужно для смены заголовка консоли. при необходимости COMSPEC впишем ниже, после смены
-	if (pszArguments4EnvVar && *szExeTest && !gState.runViaCmdExe_)
-	{
-		gpszRunCmd[0] = L'"';
-		_wcscat_c(gpszRunCmd, nCchLen, szExeTest);
-		if (*pszArguments4EnvVar)
-		{
-			_wcscat_c(gpszRunCmd, nCchLen, L"\" ");
-			_wcscat_c(gpszRunCmd, nCchLen, pszArguments4EnvVar);
-		}
-		else
-		{
-			_wcscat_c(gpszRunCmd, nCchLen, L"\"");
-		}
-	}
-	else
-	{
-		_wcscpy_c(gpszRunCmd, nCchLen, lsCmdLine);
-	}
-	// !!! gpszRunCmd может поменяться ниже!
-
-	// ====
-	if (gState.runViaCmdExe_)
-	{
-		// -- always quote
-		gpszRunCmd[0] = L'"';
-		_wcscpy_c(gpszRunCmd+1, nCchLen-1, gszComSpec);
-
-		_wcscat_c(gpszRunCmd, nCchLen, gpWorker->IsCmdK() ? L"\" /K " : L"\" /C ");
-
-		// The command line itself
-		_wcscat_c(gpszRunCmd, nCchLen, lsCmdLine);
-	}
-	else if (gState.needCutStartEndQuot_)
-	{
-		// ""c:\arc\7z.exe -?"" - would not start!
-		_wcscpy_c(gpszRunCmd, nCchLen, lsCmdLine+1);
-		wchar_t *pszEndQ = gpszRunCmd + lstrlenW(gpszRunCmd) - 1;
-		_ASSERTE(pszEndQ && *pszEndQ == L'"');
-
-		if (pszEndQ && *pszEndQ == L'"') *pszEndQ = 0;
-	}
 
 	// If working folder was specified
 	if (args_.pszStartupDir && *args_.pszStartupDir)
@@ -512,7 +425,7 @@ int WorkerBase::PostProcessPrepareCommandLine()
 	if (args_.BufHeight == crb_On)
 	{
 		TODO("gcrBufferSize - и ширину буфера");
-		gnBufferHeight = args_.nBufHeight;
+		gnBufferHeight = static_cast<SHORT>(std::max<UINT>(args_.nBufHeight, MAX_CON_BUFFER_HEIGHT));
 		gbParmBufSize = TRUE;
 	}
 
@@ -524,6 +437,103 @@ int WorkerBase::PostProcessPrepareCommandLine()
 	#ifdef _DEBUG
 	OutputDebugString(gpszRunCmd); OutputDebugString(L"\n");
 	#endif
+
+	return 0;
+}
+
+int WorkerBase::GenerateCmdLine(const wchar_t* asCmdLine, CEStr& result)
+{
+	result.Clear();
+
+	CEStr szExeTest;
+
+	if (asCmdLine && *asCmdLine)
+	{
+		NeedCmdOptions opt{};
+
+		pszCheck4NeedCmd_ = asCmdLine;
+
+		gState.runViaCmdExe_ = IsNeedCmd((gState.runMode_ == RunMode::Server), asCmdLine, szExeTest, &opt);
+
+		gState.startEndQuot_ = opt.startEndQuot;
+		gState.rootIsCmdExe_ = opt.rootIsCmdExe;
+
+		if (gpConsoleArgs->confirmExitParm_ == RConStartArgs::eConfDefault
+			&& opt.alwaysConfirmExit)
+		{
+			gState.alwaysConfirmExit_ = true;
+		}
+	}
+
+
+	size_t nCchLen = 5 // '\0' termination + quotation
+		+ (asCmdLine ? wcslen(asCmdLine) : 0)
+		;
+
+	if (gState.runViaCmdExe_)
+	{
+		gszComSpec[0] = 0;
+		// ReSharper disable once CppLocalVariableMayBeConst
+		LPCWSTR pszFind = GetComspecFromEnvVar(gszComSpec, countof(gszComSpec));
+		if (!pszFind || !wcschr(pszFind, L'\\') || !FileExists(pszFind))
+		{
+			_ASSERTE(FALSE && "cmd.exe not found!");
+			_printf("Can't find cmd.exe!\n");
+			return CERR_CMDEXENOTFOUND;
+		}
+
+		nCchLen += wcslen(gszComSpec) + 15; // "/C" + quotation + possible "/U"
+	}
+
+	// nCmdLine counts length of asCmdLine + gszComSpec + something for "/C" and things
+	if (!result.GetBuffer(nCchLen))
+	{
+		_printf("Can't allocate %i wchars!\n", static_cast<int>(nCchLen));
+		return CERR_NOTENOUGHMEM1;
+	}
+
+	// Need to add `cmd /c`?
+	if (gState.runViaCmdExe_)
+	{
+		// ComSpec (cmd, tcc, etc.) always quote
+
+		_wcscpy_c(result.data(), nCchLen, L"\"");
+		_wcscat_c(result.data(), nCchLen, gszComSpec);
+		_wcscat_c(result.data(), nCchLen, gpWorker->IsCmdK() ? L"\" /K " : L"\" /C ");
+
+		// #ComSpec: "/U" is never added?
+	}
+	else
+	{
+		_ASSERTE(result.IsEmpty());
+		result.Clear();
+	}
+
+
+	// The command line itself
+	if (gState.startEndQuot_ == StartEndQuot::NeedAdd)
+	{
+		_wcscat_c(result.data(), nCchLen, L"\"");
+	}
+
+	const wchar_t* const newCmdStart = result.data() + result.GetLen();
+	_wcscat_c(result.data(), nCchLen, asCmdLine);
+
+	if (gState.startEndQuot_ == StartEndQuot::NeedAdd)
+	{
+		_wcscat_c(result.data(), nCchLen, L"\"");
+	}
+	else if (gState.startEndQuot_ == StartEndQuot::NeedCut)
+	{
+		wchar_t *pszEndQ = result.data() + result.GetLen() - 1;
+		while (pszEndQ > newCmdStart && IsNonPrintable(*pszEndQ))
+			--pszEndQ;
+
+		if (pszEndQ > newCmdStart && *pszEndQ == L'"')
+			*pszEndQ = L' ';
+		else
+			_ASSERTE(pszEndQ > newCmdStart && *pszEndQ == L'"');
+	}
 
 	return 0;
 }

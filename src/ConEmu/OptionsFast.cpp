@@ -53,6 +53,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _WIN64
 #include "../common/MWow64Disable.h"
 #endif
+#include "../common/MWnd.h"
 #include "../common/WFiles.h"
 #include "../common/WRegistry.h"
 #include "../common/WUser.h"
@@ -311,7 +312,7 @@ static INT_PTR OnInitDialog(HWND hDlg, UINT messg, WPARAM wParam, LPARAM lParam)
 	SettingsStorage Storage = gpSet->GetSettingsType();
 
 	// Same priority as in CConEmuMain::ConEmuXml (reverse order)
-	CEStr pszSettingsPlaces[] = {
+	CEStr settingsPlaces[] = {
 		CEStr(L"HKEY_CURRENT_USER\\Software\\ConEmu"),
 		ExpandEnvStr(L"%APPDATA%\\ConEmu.xml"),
 		GetFullPathNameEx(L"%ConEmuBaseDir%\\ConEmu.xml"), // compact "C:\ConEmu\src\..\Debug\ConEmu.xml" to "C:\ConEmu\Debug\ConEmu.xml"
@@ -325,16 +326,16 @@ static INT_PTR OnInitDialog(HWND hDlg, UINT messg, WPARAM wParam, LPARAM lParam)
 		iAllowed = 1; // XML is used, registry is not allowed
 		if (Storage.File)
 		{
-			if (lstrcmpi(Storage.File, pszSettingsPlaces[1]) == 0) // %APPDATA%
+			if (lstrcmpi(Storage.File, settingsPlaces[1]) == 0) // %APPDATA%
 				iAllowed = 1; // Any other xml has greater priority
-			else if (lstrcmpi(Storage.File, pszSettingsPlaces[2]) == 0) // %ConEmuBaseDir%
+			else if (lstrcmpi(Storage.File, settingsPlaces[2]) == 0) // %ConEmuBaseDir%
 				iAllowed = 2; // Only %ConEmuDir% has greater priority
-			else if (lstrcmpi(Storage.File, pszSettingsPlaces[3]) == 0) // %ConEmuDir%
+			else if (lstrcmpi(Storage.File, settingsPlaces[3]) == 0) // %ConEmuDir%
 				iAllowed = 3; // Most prioritized
 			else
 			{
 				// Directly specified with "/LoadCfgFile ..."
-				pszSettingsPlaces[3].Set(Storage.File);
+				settingsPlaces[3].Set(Storage.File);
 				iAllowed = 3; // Most prioritized
 			}
 		}
@@ -370,9 +371,9 @@ static INT_PTR OnInitDialog(HWND hDlg, UINT messg, WPARAM wParam, LPARAM lParam)
 	}
 
 	// Populate lbStorageLocation
-	while (!pszSettingsPlaces[iAllowed].IsEmpty())
+	while (!settingsPlaces[iAllowed].IsEmpty())
 	{
-		SendDlgItemMessage(hDlg, lbStorageLocation, CB_ADDSTRING, 0, static_cast<LPARAM>(pszSettingsPlaces[iAllowed]));
+		SendDlgItemMessage(hDlg, lbStorageLocation, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(settingsPlaces[iAllowed].c_str()));
 		iAllowed++;
 	}
 	SendDlgItemMessage(hDlg, lbStorageLocation, CB_SETCURSEL, iDefault, 0);
@@ -381,7 +382,7 @@ static INT_PTR OnInitDialog(HWND hDlg, UINT messg, WPARAM wParam, LPARAM lParam)
 	const CommandTasks* pGrp = nullptr;
 	for (int nGroup = 0; (pGrp = gpSet->CmdTaskGet(nGroup)) != nullptr; nGroup++)
 	{
-		SendDlgItemMessage(hDlg, lbStartupShellFast, CB_ADDSTRING, 0, (LPARAM)pGrp->pszName);
+		SendDlgItemMessage(hDlg, lbStartupShellFast, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(pGrp->pszName));
 	}
 
 	// Show startup task or shell command line
@@ -411,7 +412,7 @@ static INT_PTR OnInitDialog(HWND hDlg, UINT messg, WPARAM wParam, LPARAM lParam)
 		_ASSERTE(FALSE && "Current paletted was not defined?");
 	}
 	// Show its colors in box
-	HWND hChild = GetDlgItem(hDlg, stPalettePreviewFast);
+	const MWnd hChild = GetDlgItem(hDlg, stPalettePreviewFast);
 	if (hChild)
 		gpfn_DefaultColorBoxProc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(hChild, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(ColorBoxProc)));
 
@@ -2133,12 +2134,18 @@ static void CreateVCTask(AppFoundList& App, LPCWSTR pszPlatform, LPCWSTR pszVer,
 		switch (i)
 		{
 		case 0:
+			if (!pszPlatform)
+				continue;
 			pszVcVarsBat.Attach(JoinPath(pszDir, L"vcvarsall.bat"));
 			break;
 		case 1:
+			if (!pszPlatform)
+				continue;
 			pszVcVarsBat.Attach(JoinPath(pszDir, L"VC\\Auxiliary\\Build\\vcvarsall.bat"));
 			break;
 		case 2:
+			if (pszPlatform)
+				continue;
 			pszVcVarsBat.Attach(JoinPath(pszDir, L"Common7\\Tools\\VsDevCmd.bat"));
 			break;
 		default:
@@ -2185,8 +2192,8 @@ static void CreateVCTask(AppFoundList& App, LPCWSTR pszPlatform, LPCWSTR pszVer,
 		lstrmerge(&pszSuffix.ms_Val, L" -new_console:C:\"", pszIconSource, pszIconSfx);
 	}
 
-	CEStr pszName(L"SDK::VS ", pszVer, L" ", pszPlatform, L" tools prompt");
-	CEStr pszSuffixReady(L"\" ", pszPlatform, L" ", pszSuffix);
+	const CEStr pszName(L"SDK::VS ", pszVer, pszPlatform ? L" " : nullptr, pszPlatform, L" tools prompt");
+	const CEStr pszSuffixReady(L"\" ", pszPlatform, pszPlatform ? L" " : nullptr, pszSuffix);
 	App.Add(pszName, pszSuffixReady, pszPrefix, nullptr/*asGuiArg*/, pszVcVarsBat, nullptr);
 }
 
@@ -2255,6 +2262,7 @@ static bool EnumVisualStudioEditions(const CEStr& directory, const WIN32_FIND_DA
 		return true;
 
 	auto* params = static_cast<VisualStudioEditions*>(context);
+	CreateVCTask(params->appList[0], nullptr, params->version, directory);
 	CreateVCTask(params->appList[0], L"x86", params->version, directory);
 	CreateVCTask(params->appList[1], L"x64", params->version, directory);
 	return true;

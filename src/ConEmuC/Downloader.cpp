@@ -27,8 +27,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #define HIDE_USE_EXCEPTION_INFO
-#include <windows.h>
-#include <wininet.h>
+#include <Windows.h>
+#include <WinInet.h>
 #include "../common/Common.h"
 #include "../common/CmdLine.h"
 #include "../common/EnvVar.h"
@@ -37,6 +37,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/crc32.h"
 #include "../ConEmuCD/ExitCodes.h"
 #include "Downloader.h"
+#include <tuple>
+
+
+#include "../common/MHandle.h"
+#include "../common/MWnd.h"
 
 LONG gnIsDownloading = 0;
 
@@ -70,19 +75,19 @@ typedef struct sockaddr {
 
 class CWinInet;
 
-class CDownloader
+class CDownloader final
 {
 protected:
-	CWinInet* wi; // Used
+	CWinInet* wi = nullptr; // Used
 	friend class CWinInet;
-	bool mb_InetMode; // Used
-	bool mb_AsyncMode;
-	bool mb_FtpMode;
-	HANDLE mh_Internet, mh_Connect, mh_SrcFile; // Used
-	INTERNET_STATUS_CALLBACK mp_SetCallbackRc;
+	bool mb_InetMode = false; // Used
+	bool mb_AsyncMode = true;
+	bool mb_FtpMode = false;
+	HANDLE mh_Internet = nullptr, mh_Connect = nullptr, mh_SrcFile = nullptr; // Used
+	INTERNET_STATUS_CALLBACK mp_SetCallbackRc = nullptr;
 	MSectionSimple mcs_Handle;
 
-	DWORD mn_InternetContentLen, mn_InternetContentReady; // Used
+	DWORD mn_InternetContentLen = 0, mn_InternetContentReady = 0; // Used
 
 	bool InitInterface();
 
@@ -90,30 +95,29 @@ protected:
 		wchar_t* szProxy;
 		wchar_t* szProxyUser;
 		wchar_t* szProxyPassword;
-	} m_Proxy;
+	} m_Proxy{};
 
 	struct {
 		wchar_t* szUser;
 		wchar_t* szPassword;
-	} m_Server;
+	} m_Server{};
 
-	wchar_t* msz_AgentName;
+	wchar_t* msz_AgentName = nullptr;
 
-	DWORD mn_Timeout;     // DOWNLOADTIMEOUT by default
-	DWORD mn_RecvTimeout; // INTERNET_OPTION_RECEIVE_TIMEOUT
-	DWORD mn_DataTimeout; // INTERNET_OPTION_DATA_RECEIVE_TIMEOUT
+	DWORD mn_Timeout = DOWNLOADTIMEOUT;     // DOWNLOADTIMEOUT by default
+	DWORD mn_RecvTimeout = 0; // INTERNET_OPTION_RECEIVE_TIMEOUT
+	DWORD mn_DataTimeout = 0; // INTERNET_OPTION_DATA_RECEIVE_TIMEOUT
 	bool  SetupTimeouts();
 
-	bool IsLocalFile(LPWSTR& asPathOrUrl);
-	bool IsLocalFile(LPCWSTR& asPathOrUrl);
+	static bool IsLocalFile(LPCWSTR& asPathOrUrl);
 
 	BOOL ReadSource(LPCWSTR asSource, BOOL bInet, HANDLE hSource, BYTE* pData, DWORD cbData, DWORD* pcbRead);
 	BOOL WriteTarget(LPCWSTR asTarget, HANDLE hTarget, const BYTE* pData, DWORD cbData);
 
 	bool SetProxyForHandle(HANDLE hInternet);
 
-	FDownloadCallback mfn_Callback[dc_LogCallback+1];
-	LPARAM m_CallbackLParam[dc_LogCallback+1];
+	FDownloadCallback mfn_Callback[dc_LogCallback+1]{};
+	LPARAM m_CallbackLParam[dc_LogCallback+1]{};
 
 	void UpdateProgress();
 
@@ -124,19 +128,24 @@ protected:
 	bool WaitAsyncResult();
 	#endif
 
-	HANDLE mh_CloseEvent;
-	LONG   mn_CloseRef;
+	HANDLE mh_CloseEvent = nullptr;
+	LONG   mn_CloseRef = 0;
 	bool   InetCloseHandle(HINTERNET& h, bool bForceSync = false);
 
-	HANDLE mh_ReadyEvent;
-	LONG   mn_ReadyRef;
-	INTERNET_ASYNC_RESULT m_Result;
+	HANDLE mh_ReadyEvent = nullptr;
+	LONG   mn_ReadyRef = 0;
+	INTERNET_ASYNC_RESULT m_Result{};
 	bool ExecRequest(BOOL bResult, DWORD& nErrCode, MSectionLockSimple& CS);
 	HINTERNET ExecRequest(HINTERNET hResult, DWORD& nErrCode, MSectionLockSimple& CS);
 
 public:
 	CDownloader();
-	virtual ~CDownloader();
+	~CDownloader();
+
+	CDownloader(const CDownloader&) = delete;
+	CDownloader(CDownloader&&) = delete;
+	CDownloader& operator=(const CDownloader&) = delete;
+	CDownloader& operator=(CDownloader&&) = delete;
 
 	void SetProxy(LPCWSTR asProxy, LPCWSTR asProxyUser, LPCWSTR asProxyPassword);
 	void SetLogin(LPCWSTR asUser, LPCWSTR asPassword);
@@ -152,11 +161,11 @@ public:
 	void RequestTerminate();
 
 protected:
-	bool mb_RequestTerminate; // Used
+	bool mb_RequestTerminate = false; // Used
 };
 
 
-// Избежать статической линковки к WinInet.dll
+// Avoid WinInet.dll static link
 class CWinInet
 {
 public:
@@ -172,74 +181,64 @@ public:
 	typedef INTERNET_STATUS_CALLBACK (WINAPI* InternetSetStatusCallbackW_t)(HINTERNET hInternet, INTERNET_STATUS_CALLBACK lpfnInternetCallback);
 	typedef BOOL (WINAPI* FtpSetCurrentDirectoryW_t)(HINTERNET hConnect, LPCWSTR lpszDirectory);
 	typedef HINTERNET (WINAPI* FtpOpenFileW_t)(HINTERNET hConnect, LPCWSTR lpszFileName, DWORD dwAccess, DWORD dwFlags, DWORD_PTR dwContext);
-	//typedef BOOL (WINAPI* DeleteUrlCacheEntryW_t)(LPCWSTR lpszUrlName);
 
-
-
-	HttpOpenRequestW_t _HttpOpenRequestW;
-	HttpQueryInfoW_t _HttpQueryInfoW;
-	HttpSendRequestW_t _HttpSendRequestW;
-	InternetCloseHandle_t _InternetCloseHandle;
-	InternetConnectW_t _InternetConnectW;
-	InternetOpenW_t _InternetOpenW;
-	InternetReadFile_t _InternetReadFile;
-	InternetSetOptionW_t _InternetSetOptionW;
-	InternetQueryOptionW_t _InternetQueryOptionW;
-	InternetSetStatusCallbackW_t _InternetSetStatusCallbackW;
-	FtpSetCurrentDirectoryW_t _FtpSetCurrentDirectoryW;
-	FtpOpenFileW_t _FtpOpenFileW;
-	//DeleteUrlCacheEntryW_t _DeleteUrlCacheEntryW;
+	HttpOpenRequestW_t _HttpOpenRequestW = nullptr;
+	HttpQueryInfoW_t _HttpQueryInfoW = nullptr;
+	HttpSendRequestW_t _HttpSendRequestW = nullptr;
+	InternetCloseHandle_t _InternetCloseHandle = nullptr;
+	InternetConnectW_t _InternetConnectW = nullptr;
+	InternetOpenW_t _InternetOpenW = nullptr;
+	InternetReadFile_t _InternetReadFile = nullptr;
+	InternetSetOptionW_t _InternetSetOptionW = nullptr;
+	InternetQueryOptionW_t _InternetQueryOptionW = nullptr;
+	InternetSetStatusCallbackW_t _InternetSetStatusCallbackW = nullptr;
+	FtpSetCurrentDirectoryW_t _FtpSetCurrentDirectoryW = nullptr;
+	FtpOpenFileW_t _FtpOpenFileW = nullptr;
 protected:
-	HMODULE _hWinInet;
+	HMODULE _hWinInet = nullptr;
 	bool LoadFuncInt(CDownloader* pUpd, FARPROC* pfn, LPCSTR n)
 	{
 		char func[64];
 		lstrcpyA(func,n);
-		for (char* p = func; *p && *(p+1); p+=2) { char c = p[0]; p[0] = p[1]; p[1] = c; }
+		for (char* p = func; *p && *(p+1); p+=2) { const char c = p[0]; p[0] = p[1]; p[1] = c; }
 		*pfn = GetProcAddress(_hWinInet, func);
-		if (*pfn == NULL)
+		if (*pfn == nullptr)
 		{
 			wchar_t name[64];
 			MultiByteToWideChar(CP_ACP, 0, func, -1, name, countof(name));
 			pUpd->ReportMessage(dc_ErrCallback,
 				L"GetProcAddress(%s) failed, code=%u", at_Str, name, at_Uint, GetLastError(), at_None);
 			FreeLibrary(_hWinInet);
-			_hWinInet = NULL;
+			_hWinInet = nullptr;
 			return false;
 		}
 		return true;
 	}
 public:
+	CWinInet(const CWinInet&) = delete;
+	CWinInet(CWinInet&&) = delete;
+	CWinInet& operator=(const CWinInet&) = delete;
+	CWinInet& operator=(CWinInet&&) = delete;
+
 	CWinInet()
 	{
-		_hWinInet = NULL;
-		_HttpOpenRequestW = NULL;
-		_HttpQueryInfoW = NULL;
-		_HttpSendRequestW = NULL;
-		_InternetCloseHandle = NULL;
-		_InternetConnectW = NULL;
-		_InternetOpenW = NULL;
-		_InternetReadFile = NULL;
-		_InternetSetOptionW = NULL;
-        _InternetQueryOptionW = NULL;
-		_InternetSetStatusCallbackW = NULL;
-		_FtpSetCurrentDirectoryW = NULL;
-		_FtpOpenFileW = NULL;
-		//_DeleteUrlCacheEntryW = NULL;
-	};
+	}
+
 	~CWinInet()
 	{
 		if (_hWinInet)
 			FreeLibrary(_hWinInet);
-	};
+	}
+
 	bool Init(CDownloader* pUpd)
 	{
 		if (_hWinInet)
 			return true;
 
+		// ReSharper disable twice StringLiteralTypo
 		wchar_t name[MAX_PATH] = L"iWInen.tldl";
 
-		for (wchar_t* p = name; *p && *(p+1); p+=2) { wchar_t c = p[0]; p[0] = p[1]; p[1] = c; }
+		for (wchar_t* p = name; *p && *(p+1); p+=2) { const wchar_t c = p[0]; p[0] = p[1]; p[1] = c; }
 		_hWinInet = LoadLibrary(name);
 		if (!_hWinInet)
 		{
@@ -274,42 +273,14 @@ public:
 
 CDownloader::CDownloader()
 {
-	mfn_Callback[dc_ErrCallback] = NULL;
-	m_CallbackLParam[dc_ErrCallback] = 0;
-
-	memset(mfn_Callback, 0, sizeof(mfn_Callback));
-	memset(m_CallbackLParam, 0, sizeof(m_CallbackLParam));
-
-	ZeroStruct(m_Proxy);
-	ZeroStruct(m_Server);
-	msz_AgentName = NULL;
-
-	mb_AsyncMode = true;
-	mb_FtpMode = false;
-	mn_Timeout = DOWNLOADTIMEOUT;
-	mn_RecvTimeout = mn_DataTimeout = 0; // 0 --> use max as mn_Timeout
-	//mh_StopThread = NULL;
-	mb_RequestTerminate = false;
-	mb_InetMode = false;
-	mh_Internet = mh_Connect = mh_SrcFile = NULL;
-	mp_SetCallbackRc = NULL;
-	mn_InternetContentLen = mn_InternetContentReady = 0;
-	wi = NULL;
-
-	mh_CloseEvent = NULL;
-	mn_CloseRef = 0;
-	mh_ReadyEvent = NULL;
-	mn_ReadyRef = 0;
-	ZeroStruct(m_Result);
-
 	mcs_Handle.Init();
 }
 
 CDownloader::~CDownloader()
 {
 	CloseInternet(true);
-	SetProxy(NULL, NULL, NULL);
-	SetLogin(NULL, NULL);
+	SetProxy(nullptr, nullptr, nullptr);
+	SetLogin(nullptr, nullptr);
 	SafeFree(msz_AgentName);
 	SafeCloseHandle(mh_CloseEvent);
 	SafeCloseHandle(mh_ReadyEvent);
@@ -355,7 +326,7 @@ bool CDownloader::SetProxyForHandle(HANDLE hInternet)
 
 	if (m_Proxy.szProxyUser && *m_Proxy.szProxyUser)
 	{
-		if (!wi->_InternetSetOptionW(hInternet, INTERNET_OPTION_PROXY_USERNAME, (LPVOID)m_Proxy.szProxyUser, lstrlen(m_Proxy.szProxyUser)))
+		if (!wi->_InternetSetOptionW(hInternet, INTERNET_OPTION_PROXY_USERNAME, static_cast<LPVOID>(m_Proxy.szProxyUser), lstrlen(m_Proxy.szProxyUser)))
 		{
 			ReportMessage(dc_ErrCallback,
 				L"ProxyUserName failed, code=%u", at_Uint, GetLastError(), at_None);
@@ -364,7 +335,7 @@ bool CDownloader::SetProxyForHandle(HANDLE hInternet)
 	}
 	if (m_Proxy.szProxyPassword && *m_Proxy.szProxyPassword)
 	{
-		if (!wi->_InternetSetOptionW(hInternet, INTERNET_OPTION_PROXY_PASSWORD, (LPVOID)m_Proxy.szProxyPassword, lstrlen(m_Proxy.szProxyPassword)))
+		if (!wi->_InternetSetOptionW(hInternet, INTERNET_OPTION_PROXY_PASSWORD, static_cast<LPVOID>(m_Proxy.szProxyPassword), lstrlen(m_Proxy.szProxyPassword)))
 		{
 			ReportMessage(dc_ErrCallback,
 				L"ProxyPassword failed, code=%u", at_Uint, GetLastError(), at_None);
@@ -384,18 +355,6 @@ wrap:
 // (has "file://" prefix, or "\\server\share\..." or "X:\path\...")
 // and set asPathOrUrl back to local path (if prefix was specified)
 bool CDownloader::IsLocalFile(LPCWSTR& asPathOrUrl)
-{
-	LPWSTR psz = (LPWSTR)asPathOrUrl;
-	bool lbLocal = IsLocalFile(psz);
-	asPathOrUrl = psz;
-	return lbLocal;
-}
-
-// This checks if file is located on local drive
-// (has "file://" prefix, or "\\server\share\..." or "X:\path\...")
-// and set asPathOrUrl back to local path (if prefix was specified)
-// Function DOES NOT modify the contents of buffer pointed by asPathOrUrl!
-bool CDownloader::IsLocalFile(LPWSTR& asPathOrUrl)
 {
 	if (!asPathOrUrl || !*asPathOrUrl)
 	{
@@ -452,7 +411,7 @@ bool CDownloader::InitInterface()
 		{
 			if (!*(phEvents[i]))
 			{
-				*(phEvents[i]) = CreateEvent(NULL, FALSE, FALSE, NULL);
+				*(phEvents[i]) = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 				if (!*(phEvents[i]))
 				{
 					ReportMessage(dc_ErrCallback,
@@ -489,11 +448,14 @@ bool CDownloader::InetCloseHandle(HINTERNET& h, bool bForceSync /*= false*/)
 	if (!h || h == INVALID_HANDLE_VALUE)
 		return false;
 
-	DWORD nErrCode = 0, nWaitResult;
+	DWORD nErrCode = 0;
+	DWORD nWaitResult = -1;
+	// ReSharper disable once CppJoinDeclarationAndAssignment
 	BOOL bClose;
 
-	ReportMessage(dc_LogCallback, L"Close handle x%08X", at_Uint, (DWORD_PTR)h, at_None);
+	ReportMessage(dc_LogCallback, L"Close handle x%08X", at_Uint, reinterpret_cast<DWORD_PTR>(h), at_None);
 	// Debugging and checking purposes
+	// ReSharper disable once CppLocalVariableMayBeConst
 	DEBUGTEST(LONG lCur =)
 	InterlockedIncrement(&mn_CloseRef);
 	_ASSERTE(lCur == 1);
@@ -507,7 +469,7 @@ bool CDownloader::InetCloseHandle(HINTERNET& h, bool bForceSync /*= false*/)
 	nErrCode = GetLastError();
 	if (!bClose)
 	{
-		ReportMessage(dc_LogCallback, L"Close handle x%08X failed, code=%u", at_Uint, (DWORD_PTR)h, at_Uint, nErrCode, at_None);
+		ReportMessage(dc_LogCallback, L"Close handle x%08X failed, code=%u", at_Uint, reinterpret_cast<DWORD_PTR>(h), at_Uint, nErrCode, at_None);
 	}
 	if (!bForceSync && mb_AsyncMode
 		&& (nErrCode != ERROR_INVALID_HANDLE) // Handles mh_SrcFile and mh_Connect fails in WinXP (bClose==true, nErrCode==ERROR_INVALID_HANDLE)
@@ -515,20 +477,20 @@ bool CDownloader::InetCloseHandle(HINTERNET& h, bool bForceSync /*= false*/)
 	{
 		nWaitResult = WaitForSingleObject(mh_CloseEvent, DOWNLOADCLOSEHANDLETIMEOUT);
 		_ASSERTE(nWaitResult == WAIT_OBJECT_0 && "Handle must be closed properly");
-		ReportMessage(dc_LogCallback, L"Async close handle x%08X wait result=%u", at_Uint, (DWORD_PTR)h, at_Uint, nWaitResult, at_None);
+		ReportMessage(dc_LogCallback, L"Async close handle x%08X wait result=%u", at_Uint, reinterpret_cast<DWORD_PTR>(h), at_Uint, nWaitResult, at_None);
 	}
 
 	CS.Unlock();
 
 	// Done
-	h = NULL;
+	h = nullptr;
 	InterlockedDecrement(&mn_CloseRef);
 	return (bClose != FALSE);
 }
 
 bool CDownloader::ExecRequest(BOOL bResult, DWORD& nErrCode, MSectionLockSimple& CS)
 {
-	DWORD nWaitResult;
+	DWORD nWaitResult = -1;
 	nErrCode = bResult ? 0 : GetLastError();
 
 	CS.Unlock();
@@ -549,7 +511,7 @@ bool CDownloader::ExecRequest(BOOL bResult, DWORD& nErrCode, MSectionLockSimple&
 
 HINTERNET CDownloader::ExecRequest(HINTERNET hResult, DWORD& nErrCode, MSectionLockSimple& CS)
 {
-	DWORD nWaitResult;
+	DWORD nWaitResult = -1;
 	nErrCode = hResult ? 0 : GetLastError();
 
 	CS.Unlock();
@@ -560,7 +522,7 @@ HINTERNET CDownloader::ExecRequest(HINTERNET hResult, DWORD& nErrCode, MSectionL
 		ReportMessage(dc_LogCallback, L"Async operation (HANDLE) wait=%u", at_Uint, nWaitResult, at_None);
 		if (nWaitResult == WAIT_OBJECT_0)
 		{
-			hResult = (HINTERNET)m_Result.dwResult;
+			hResult = reinterpret_cast<HINTERNET>(m_Result.dwResult);
 			nErrCode = m_Result.dwError;
 		}
 	}
@@ -570,170 +532,171 @@ HINTERNET CDownloader::ExecRequest(HINTERNET hResult, DWORD& nErrCode, MSectionL
 
 VOID CDownloader::InetCallback(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength)
 {
-    InternetCookieHistory cookieHistory;
-    CDownloader* pObj = (CDownloader*)dwContext;
+	InternetCookieHistory cookieHistory;
+	CDownloader* pObj = reinterpret_cast<CDownloader*>(dwContext);
 	wchar_t sFormat[200];
 
-    UNREFERENCED_PARAMETER(dwStatusInformationLength);
+	UNREFERENCED_PARAMETER(dwStatusInformationLength);
 
 	wcscpy_c(sFormat, L"InetCallback for handle x%08X: ");
-	#define LogCallback(msg,arg) \
+#define LogCallback(msg,arg) \
 		wcscat_c(sFormat, msg);  \
 		pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, (DWORD_PTR)hInternet, at_Uint, arg, at_None);
 
-    switch (dwInternetStatus)
-    {
-        case INTERNET_STATUS_COOKIE_SENT:
-			LogCallback(L"Cookie found and will be sent with request", 0);
-            break;
+	switch (dwInternetStatus)
+	{
+	case INTERNET_STATUS_COOKIE_SENT:
+		LogCallback(L"Cookie found and will be sent with request", 0);
+		break;
 
-        case INTERNET_STATUS_COOKIE_RECEIVED:
-            LogCallback(L"Cookie Received", 0);
-            break;
+	case INTERNET_STATUS_COOKIE_RECEIVED:
+		LogCallback(L"Cookie Received", 0);
+		break;
 
-        case INTERNET_STATUS_COOKIE_HISTORY:
-			wcscat_c(sFormat, L"Cookie History");
+	case INTERNET_STATUS_COOKIE_HISTORY:
+		wcscat_c(sFormat, L"Cookie History");
 
-            _ASSERTE(lpvStatusInformation);
-            _ASSERTE(dwStatusInformationLength == sizeof(InternetCookieHistory));
+		_ASSERTE(lpvStatusInformation);
+		_ASSERTE(dwStatusInformationLength == sizeof(InternetCookieHistory));
 
-            cookieHistory = *((InternetCookieHistory*)lpvStatusInformation);
+		cookieHistory = *static_cast<InternetCookieHistory*>(lpvStatusInformation);
 
-            if (cookieHistory.fAccepted)
-            {
-                wcscat_c(sFormat, L": Cookie Accepted");
-            }
-            if (cookieHistory.fLeashed)
-            {
-                wcscat_c(sFormat, L": Cookie Leashed");
-            }
-            if (cookieHistory.fDowngraded)
-            {
-                wcscat_c(sFormat, L": Cookie Downgraded");
-            }
-            if (cookieHistory.fRejected)
-            {
-                wcscat_c(sFormat, L": Cookie Rejected");
-            }
+		if (cookieHistory.fAccepted)
+		{
+			wcscat_c(sFormat, L": Cookie Accepted");
+		}
+		if (cookieHistory.fLeashed)
+		{
+			wcscat_c(sFormat, L": Cookie Leashed");
+		}
+		if (cookieHistory.fDowngraded)
+		{
+			wcscat_c(sFormat, L": Cookie Downgraded");
+		}
+		if (cookieHistory.fRejected)
+		{
+			wcscat_c(sFormat, L": Cookie Rejected");
+		}
 
-			LogCallback(L"", 0);
+		LogCallback(L"", 0);
 
-            break;
+		break;
 
-        case INTERNET_STATUS_CLOSING_CONNECTION:
-            LogCallback(L"Closing Connection", 0);
-            break;
+	case INTERNET_STATUS_CLOSING_CONNECTION:
+		LogCallback(L"Closing Connection", 0);
+		break;
 
-        case INTERNET_STATUS_CONNECTING_TO_SERVER:
-        case INTERNET_STATUS_CONNECTED_TO_SERVER:
-			_ASSERTE(lpvStatusInformation);
-			wcscat_c(sFormat, dwInternetStatus==INTERNET_STATUS_CONNECTING_TO_SERVER ? L"Connecting" : L"Connected");
-			if (dwStatusInformationLength >= (sizeof(u_short)+8))
-			{
-				wchar_t sAddr[32] = L"";
-				MultiByteToWideChar(CP_ACP, 0,
-					((SOCKADDR*)lpvStatusInformation)->sa_data, std::min<int>(dwStatusInformationLength-sizeof(u_short),countof(sAddr)-1),
-					sAddr, countof(sAddr)-1);
-				wcscat_c(sFormat, L" to Server, family=%u, data=%s");
-				pObj->ReportMessage(dc_LogCallback, sFormat,
-					at_Uint, (DWORD_PTR)hInternet,
-					at_Uint, lpvStatusInformation ? ((SOCKADDR*)lpvStatusInformation)->sa_family : 0,
-					at_Str, sAddr, at_None);
-			}
-			else
-			{
-				_ASSERTE(dwStatusInformationLength >= (sizeof(u_short)+8));
-				wcscat_c(sFormat, L" to Server, datasize=%u");
-				pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, (DWORD_PTR)hInternet, at_Uint, dwStatusInformationLength, at_None);
-			}
-            break;
+	case INTERNET_STATUS_CONNECTING_TO_SERVER:
+	case INTERNET_STATUS_CONNECTED_TO_SERVER:
+		_ASSERTE(lpvStatusInformation);
+		wcscat_c(sFormat, dwInternetStatus == INTERNET_STATUS_CONNECTING_TO_SERVER ? L"Connecting" : L"Connected");
+		if (dwStatusInformationLength >= (sizeof(u_short) + 8))
+		{
+			wchar_t sAddr[32] = L"";
+			MultiByteToWideChar(CP_ACP, 0,
+				static_cast<SOCKADDR*>(lpvStatusInformation)->sa_data, std::min<int>(dwStatusInformationLength - sizeof(u_short), countof(sAddr) - 1),
+				sAddr, countof(sAddr) - 1);
+			wcscat_c(sFormat, L" to Server, family=%u, data=%s");
+			pObj->ReportMessage(dc_LogCallback, sFormat,
+				at_Uint, reinterpret_cast<DWORD_PTR>(hInternet),
+				at_Uint, lpvStatusInformation ? static_cast<SOCKADDR*>(lpvStatusInformation)->sa_family : 0,
+				at_Str, sAddr, at_None);
+		}
+		else
+		{
+			_ASSERTE(dwStatusInformationLength >= (sizeof(u_short) + 8));
+			wcscat_c(sFormat, L" to Server, datasize=%u");
+			pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, reinterpret_cast<DWORD_PTR>(hInternet), at_Uint, dwStatusInformationLength, at_None);
+		}
+		break;
 
-        case INTERNET_STATUS_CONNECTION_CLOSED:
-            LogCallback(L"Connection Closed", 0);
-            break;
+	case INTERNET_STATUS_CONNECTION_CLOSED:
+		LogCallback(L"Connection Closed", 0);
+		break;
 
-        case INTERNET_STATUS_HANDLE_CLOSING:
-            LogCallback(L"Handle Closing x%08x", LODWORD(*((HINTERNET*)lpvStatusInformation)));
-			SetEvent(pObj->mh_CloseEvent);
-            break;
+	case INTERNET_STATUS_HANDLE_CLOSING:
+		LogCallback(L"Handle Closing x%08x", LODWORD(*(static_cast<HINTERNET*>(lpvStatusInformation))));
+		SetEvent(pObj->mh_CloseEvent);
+		break;
 
-        case INTERNET_STATUS_HANDLE_CREATED:
-            _ASSERTE(lpvStatusInformation);
-            LogCallback(L"Handle x%08X created",
-                    ((LPINTERNET_ASYNC_RESULT)lpvStatusInformation)->dwResult);
+	case INTERNET_STATUS_HANDLE_CREATED:
+		_ASSERTE(lpvStatusInformation);
+		LogCallback(L"Handle x%08X created",
+			(static_cast<LPINTERNET_ASYNC_RESULT>(lpvStatusInformation))->dwResult);
 
-            break;
+		break;
 
-        case INTERNET_STATUS_INTERMEDIATE_RESPONSE:
-            LogCallback(L"Intermediate response", 0);
-            break;
+	case INTERNET_STATUS_INTERMEDIATE_RESPONSE:
+		LogCallback(L"Intermediate response", 0);
+		break;
 
-        case INTERNET_STATUS_RECEIVING_RESPONSE:
-            LogCallback(L"Receiving Response", 0);
-            break;
+	case INTERNET_STATUS_RECEIVING_RESPONSE:
+		LogCallback(L"Receiving Response", 0);
+		break;
 
-        case INTERNET_STATUS_RESPONSE_RECEIVED:
-            _ASSERTE(lpvStatusInformation);
-            _ASSERTE(dwStatusInformationLength == sizeof(DWORD));
+	case INTERNET_STATUS_RESPONSE_RECEIVED:
+		_ASSERTE(lpvStatusInformation);
+		_ASSERTE(dwStatusInformationLength == sizeof(DWORD));
 
-            LogCallback(L"Response Received (%u bytes)", *((LPDWORD)lpvStatusInformation));
+		LogCallback(L"Response Received (%u bytes)", *(static_cast<LPDWORD>(lpvStatusInformation)));
 
-            break;
+		break;
 
-        case INTERNET_STATUS_REDIRECT:
-			wcscat_c(sFormat, L"Redirect to '%s'");
-			pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, (DWORD_PTR)hInternet, at_Str, lpvStatusInformation?(LPCWSTR)lpvStatusInformation:L"", at_None);
-            break;
+	case INTERNET_STATUS_REDIRECT:
+		wcscat_c(sFormat, L"Redirect to '%s'");
+		pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, reinterpret_cast<DWORD_PTR>(hInternet),
+			at_Str, lpvStatusInformation ? static_cast<LPCWSTR>(lpvStatusInformation) : L"", at_None);
+		break;
 
-        case INTERNET_STATUS_REQUEST_COMPLETE:
-			wcscat_c(sFormat, L"Request complete, Result=x%08X, Value=%u");
-			_ASSERTE(lpvStatusInformation);
-			pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, (DWORD_PTR)hInternet,
-				at_Uint, ((INTERNET_ASYNC_RESULT*)lpvStatusInformation)->dwResult,
-				at_Uint, ((INTERNET_ASYNC_RESULT*)lpvStatusInformation)->dwError, at_None);
+	case INTERNET_STATUS_REQUEST_COMPLETE:
+		wcscat_c(sFormat, L"Request complete, Result=x%08X, Value=%u");
+		_ASSERTE(lpvStatusInformation);
+		pObj->ReportMessage(dc_LogCallback, sFormat, at_Uint, reinterpret_cast<DWORD_PTR>(hInternet),
+			at_Uint, static_cast<INTERNET_ASYNC_RESULT*>(lpvStatusInformation)->dwResult,
+			at_Uint, static_cast<INTERNET_ASYNC_RESULT*>(lpvStatusInformation)->dwError, at_None);
 
-            pObj->m_Result = *(INTERNET_ASYNC_RESULT*)lpvStatusInformation;
-			SetEvent(pObj->mh_ReadyEvent);
+		pObj->m_Result = *static_cast<INTERNET_ASYNC_RESULT*>(lpvStatusInformation);
+		SetEvent(pObj->mh_ReadyEvent);
 
-            break;
+		break;
 
-        case INTERNET_STATUS_REQUEST_SENT:
-            ASSERTE(lpvStatusInformation);
-            ASSERTE(dwStatusInformationLength == sizeof(DWORD));
+	case INTERNET_STATUS_REQUEST_SENT:
+		ASSERTE(lpvStatusInformation);
+		ASSERTE(dwStatusInformationLength == sizeof(DWORD));
 
-            LogCallback(L"Request sent (%u bytes)", *((LPDWORD)lpvStatusInformation));
-            break;
+		LogCallback(L"Request sent (%u bytes)", *(static_cast<LPDWORD>(lpvStatusInformation)));
+		break;
 
-        case INTERNET_STATUS_DETECTING_PROXY:
-            LogCallback(L"Detecting Proxy", 0);
-            break;
+	case INTERNET_STATUS_DETECTING_PROXY:
+		LogCallback(L"Detecting Proxy", 0);
+		break;
 
-        case INTERNET_STATUS_RESOLVING_NAME:
-            LogCallback(L"Resolving Name", 0);
-            break;
+	case INTERNET_STATUS_RESOLVING_NAME:
+		LogCallback(L"Resolving Name", 0);
+		break;
 
-        case INTERNET_STATUS_NAME_RESOLVED:
-            LogCallback(L"Name Resolved", 0);
-            break;
+	case INTERNET_STATUS_NAME_RESOLVED:
+		LogCallback(L"Name Resolved", 0);
+		break;
 
-        case INTERNET_STATUS_SENDING_REQUEST:
-            LogCallback(L"Sending request", 0);
-            break;
+	case INTERNET_STATUS_SENDING_REQUEST:
+		LogCallback(L"Sending request", 0);
+		break;
 
-        case INTERNET_STATUS_STATE_CHANGE:
-            LogCallback(L"State Change", 0);
-            break;
+	case INTERNET_STATUS_STATE_CHANGE:
+		LogCallback(L"State Change", 0);
+		break;
 
-        case INTERNET_STATUS_P3P_HEADER:
-            LogCallback(L"Received P3P header", 0);
-            break;
+	case INTERNET_STATUS_P3P_HEADER:
+		LogCallback(L"Received P3P header", 0);
+		break;
 
-        default:
-            LogCallback(L"Unknown callback status (%u)", dwInternetStatus);
-            break;
-    }
+	default:
+		LogCallback(L"Unknown callback status (%u)", dwInternetStatus);
+		break;
+	}
 
-    return;
+	return;
 }
 
 bool CDownloader::SetupTimeouts()
@@ -798,35 +761,34 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 	BOOL lbRc = FALSE, lbRead = FALSE, lbWrite = FALSE;
 	DWORD nRead;
 	bool lbNeedTargetClose = false;
-	HANDLE hDstFile = NULL;
+	HANDLE hDstFile = nullptr;
 	bool lbStdOutWrite = false;
 	mb_InetMode = !IsLocalFile(asSource);
-	bool lbTargetLocal = IsLocalFile(asTarget);
+	const bool lbTargetLocal = IsLocalFile(asTarget);
 	_ASSERTE(lbTargetLocal);
 	UNREFERENCED_PARAMETER(lbTargetLocal);
-	DWORD cchDataMax = 64*1024;
-	BYTE* ptrData = (BYTE*)malloc(cchDataMax);
+	const DWORD cchDataMax = 64 * 1024;
+	BYTE* ptrData = static_cast<BYTE*>(malloc(cchDataMax));
 	#if 0
 	BOOL lbFirstThunk = TRUE;
 	#endif
 	DWORD ProxyType = INTERNET_OPEN_TYPE_DIRECT;
-	LPCWSTR ProxyName = NULL;
+	LPCWSTR ProxyName = nullptr;
 	wchar_t szServer[MAX_PATH];
-	wchar_t* pszSrvPath = NULL;
+	wchar_t* pszSrvPath = nullptr;
 	wchar_t *pszColon;
 	INTERNET_PORT nServerPort = INTERNET_DEFAULT_HTTP_PORT;
 	bool bSecureHTTPS = false;
 	bool bFtp = false;
-	HTTP_VERSION_INFO httpver = {1,1};
-	wchar_t szHttpVer[32]; swprintf_c(szHttpVer, L"HTTP/%u.%u", httpver.dwMajorVersion, httpver.dwMinorVersion);
+	HTTP_VERSION_INFO httpVer = {1,1};
+	wchar_t szHttpVer[32]; swprintf_c(szHttpVer, L"HTTP/%u.%u", httpVer.dwMajorVersion, httpVer.dwMinorVersion);
 	const wchar_t szConEmuAgent[] =
 		//L"Mozilla/5.0 (compatible; ConEmu Update)" // This was the cause of not working download redirects
 		L"ConEmu Update" // so we use that to enable redirects
 		;
-	LPCWSTR pszAgent = msz_AgentName ? msz_AgentName : szConEmuAgent;
-	LPCWSTR szAcceptTypes[] = {L"*/*", NULL};
+	const auto* pszAgent = msz_AgentName ? msz_AgentName : szConEmuAgent;
+	LPCWSTR szAcceptTypes[] = {L"*/*", nullptr};
 	LPCWSTR* ppszAcceptTypes = szAcceptTypes;
-	LPCWSTR pszReferrer = NULL;
 	DWORD nFlags, nService;
 	BOOL bFRc;
 	DWORD dwErr;
@@ -883,8 +845,8 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 				L"Only http addresses are supported!\n\t%s", at_Str, asSource, at_None);
 			goto wrap;
 		}
-		LPCWSTR pszSlash = wcschr(pszSource, L'/');
-		if (!pszSlash || (pszSlash == pszSource) || ((pszSlash - pszSource) >= (INT_PTR)countof(szServer)))
+		const auto* pszSlash = wcschr(pszSource, L'/');
+		if (!pszSlash || (pszSlash == pszSource) || ((pszSlash - pszSource) >= static_cast<INT_PTR>(countof(szServer))))
 		{
 			ReportMessage(dc_ErrCallback,
 				L"Invalid server (domain) specified!\n\t%s", at_Str, asSource, at_None);
@@ -921,7 +883,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 		if (lbStdOutWrite)
 			hDstFile = GetStdHandle(STD_OUTPUT_HANDLE);
 		else
-			hDstFile = CreateFile(asTarget, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+			hDstFile = CreateFile(asTarget, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, 0, nullptr);
 
 		if (!hDstFile || hDstFile == INVALID_HANDLE_VALUE)
 		{
@@ -952,11 +914,11 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 			goto wrap;
 
 		// Открыть WinInet
-		if (mh_Internet == NULL)
+		if (mh_Internet == nullptr)
 		{
 			ReportMessage(dc_LogCallback, L"Open internet with agent name '%s'", at_Str, pszAgent, at_None);
 			nFlags = (mb_AsyncMode ? INTERNET_FLAG_ASYNC : 0);
-			mh_Internet = wi->_InternetOpenW(pszAgent, ProxyType, ProxyName, NULL, nFlags);
+			mh_Internet = wi->_InternetOpenW(pszAgent, ProxyType, ProxyName, nullptr, nFlags);
 			if (!mh_Internet)
 			{
 				dwErr = GetLastError();
@@ -964,7 +926,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 					L"Network initialization failed, code=%u", at_Uint, dwErr, at_None);
 				goto wrap;
 			}
-			ReportMessage(dc_LogCallback, L"Internet opened x%08X", at_Uint, (DWORD_PTR)mh_Internet, at_None);
+			ReportMessage(dc_LogCallback, L"Internet opened x%08X", at_Uint, reinterpret_cast<DWORD_PTR>(mh_Internet), at_None);
 
 			if (mb_AsyncMode)
 			{
@@ -991,8 +953,8 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 			}
 
 			// Protocol version
-			ReportMessage(dc_LogCallback, L"Set protocol version (%u.%u)", at_Uint, httpver.dwMajorVersion, at_Uint, httpver.dwMinorVersion, at_None);
-			if (!wi->_InternetSetOptionW(mh_Internet, INTERNET_OPTION_HTTP_VERSION, &httpver, sizeof(httpver)))
+			ReportMessage(dc_LogCallback, L"Set protocol version (%u.%u)", at_Uint, httpVer.dwMajorVersion, at_Uint, httpVer.dwMinorVersion, at_None);
+			if (!wi->_InternetSetOptionW(mh_Internet, INTERNET_OPTION_HTTP_VERSION, &httpVer, sizeof(httpVer)))
 			{
 				ReportMessage(dc_ErrCallback,
 					L"HttpVersion failed, code=%u", at_Uint, GetLastError(), at_None);
@@ -1018,7 +980,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 
 
 		//
-		_ASSERTE(mh_Connect == NULL);
+		_ASSERTE(mh_Connect == nullptr);
 
 		// Try to force reload
 		//if (wi->_DeleteUrlCacheEntryW)
@@ -1027,19 +989,20 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 		//TODO после включения ноута вылезла ошибка ERROR_INTERNET_NAME_NOT_RESOLVED==12007
 
 		// Server:Port
-		if ((pszColon = wcsrchr(szServer, L':')) != NULL)
+		if ((pszColon = wcsrchr(szServer, L':')) != nullptr)
 		{
 			*pszColon = 0;
-			INTERNET_PORT nExplicit = (INTERNET_PORT)LOWORD(wcstoul(pszColon+1, &pszColon, 10));
+			const INTERNET_PORT nExplicit = static_cast<INTERNET_PORT>(LOWORD(wcstoul(pszColon+1, &pszColon, 10)));
 			if (nExplicit)
 				nServerPort = nExplicit;
-			_ASSERTE(nServerPort!=NULL);
+			_ASSERTE(nServerPort != 0);
 		}
 		nFlags = 0; // No special flags
-		nService = bFtp?INTERNET_SERVICE_FTP:INTERNET_SERVICE_HTTP;
+		// ReSharper disable once CppJoinDeclarationAndAssignment
+		nService = bFtp ? INTERNET_SERVICE_FTP : INTERNET_SERVICE_HTTP;
 		ReportMessage(dc_LogCallback, L"Connecting to server %s:%u (%u)", at_Str, szServer, at_Uint, nServerPort, at_Uint, nService, at_None);
 		CS.Lock(&mcs_Handle); // Leaved in ExecRequest
-		mh_Connect = ExecRequest(wi->_InternetConnectW(mh_Internet, szServer, nServerPort, m_Server.szUser, m_Server.szPassword, nService, nFlags, (DWORD_PTR)this), dwErr, CS);
+		mh_Connect = ExecRequest(wi->_InternetConnectW(mh_Internet, szServer, nServerPort, m_Server.szUser, m_Server.szPassword, nService, nFlags, reinterpret_cast<DWORD_PTR>(this)), dwErr, CS);
 		if (!mh_Connect)
 		{
 			if (abShowAllErrors)
@@ -1050,7 +1013,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 			}
 			goto wrap;
 		}
-		ReportMessage(dc_LogCallback, L"Connect opened x%08X", at_Uint, (DWORD_PTR)mh_Connect, at_None);
+		ReportMessage(dc_LogCallback, L"Connect opened x%08X", at_Uint, reinterpret_cast<DWORD_PTR>(mh_Connect), at_None);
 		//WaitAsyncResult();
 
 		if (ProxyName)
@@ -1064,7 +1027,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 		}
 
 		// Повторим для mh_Connect, на всякий случай
-		if (!wi->_InternetSetOptionW(mh_Connect, INTERNET_OPTION_HTTP_VERSION, &httpver, sizeof(httpver)))
+		if (!wi->_InternetSetOptionW(mh_Connect, INTERNET_OPTION_HTTP_VERSION, &httpVer, sizeof(httpVer)))
 		{
 			ReportMessage(dc_ErrCallback,
 				L"HttpVersion failed, code=%u", at_Uint, GetLastError(), at_None);
@@ -1075,7 +1038,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 		if (mb_RequestTerminate)
 			goto wrap;
 
-		_ASSERTE(mh_SrcFile==NULL);
+		_ASSERTE(mh_SrcFile==nullptr);
 		// Send request for the file
 		if (bFtp)
 		{
@@ -1083,12 +1046,12 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 			wchar_t* pszSlash = wcsrchr(pszSrvPath, L'/');
 			// Break path to dir+file
 			if (pszSlash == pszSrvPath)
-				pszSlash = NULL; // Root
+				pszSlash = nullptr; // Root
 			else if (pszSlash)
 				*pszSlash = 0; // It is our memory buffer, we can do anything with it
 			// Set ftp directory
-			LPCWSTR pszSetDir = pszSlash ? pszSrvPath : L"/";
-			LPCWSTR pszFile = pszSlash ? (pszSlash+1) : (*pszSrvPath == L'/') ? (pszSrvPath+1) : pszSrvPath;
+			const auto* pszSetDir = pszSlash ? pszSrvPath : L"/";
+			const auto* pszFile = pszSlash ? (pszSlash + 1) : (*pszSrvPath == L'/') ? (pszSrvPath + 1) : pszSrvPath;
 
 			CS.Lock(&mcs_Handle); // Leaved in ExecRequest
 			if (!ExecRequest(wi->_FtpSetCurrentDirectoryW(mh_Connect, pszSetDir), dwErr, CS))
@@ -1103,8 +1066,8 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 			nFlags = FTP_TRANSFER_TYPE_BINARY;
 
 			CS.Lock(&mcs_Handle); // Leaved in ExecRequest
-			mh_SrcFile = ExecRequest(wi->_FtpOpenFileW(mh_Connect, pszFile, GENERIC_READ, nFlags, (DWORD_PTR)this), dwErr, CS);
-			ReportMessage(dc_LogCallback, L"Ftp file opened x%08X", at_Uint, (DWORD_PTR)mh_SrcFile, at_None);
+			mh_SrcFile = ExecRequest(wi->_FtpOpenFileW(mh_Connect, pszFile, GENERIC_READ, nFlags, reinterpret_cast<DWORD_PTR>(this)), dwErr, CS);
+			ReportMessage(dc_LogCallback, L"Ftp file opened x%08X", at_Uint, reinterpret_cast<DWORD_PTR>(mh_SrcFile), at_None);
 			//WaitAsyncResult();
 
 			if (pszSlash) *pszSlash = L'/'; // return it back
@@ -1127,18 +1090,15 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 		}
 		else
 		{
-			nFlags = 0 //INTERNET_FLAG_KEEP_CONNECTION
-				|(bSecureHTTPS?(INTERNET_FLAG_SECURE|INTERNET_FLAG_IGNORE_CERT_CN_INVALID|INTERNET_FLAG_IGNORE_CERT_DATE_INVALID):0)
-				//|INTERNET_FLAG_HYPERLINK
-				//|INTERNET_FLAG_IGNORE_REDIRECT_TO_HTTP
-				|INTERNET_FLAG_DONT_CACHE
-				|INTERNET_FLAG_NO_CACHE_WRITE
-				|INTERNET_FLAG_PRAGMA_NOCACHE
-				//|INTERNET_FLAG_PRAGMA_NOCACHE
-				|INTERNET_FLAG_RELOAD;
+			nFlags = 0
+				| (bSecureHTTPS ? (INTERNET_FLAG_SECURE | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_IGNORE_CERT_DATE_INVALID) : 0)
+				| INTERNET_FLAG_DONT_CACHE
+				| INTERNET_FLAG_NO_CACHE_WRITE
+				| INTERNET_FLAG_PRAGMA_NOCACHE
+				| INTERNET_FLAG_RELOAD;  // NOLINT(misc-redundant-expression)
 			ReportMessage(dc_LogCallback, L"Opening request with flags x%08X", at_Uint, nFlags, at_None);
-			mh_SrcFile = wi->_HttpOpenRequestW(mh_Connect, L"GET", pszSrvPath, szHttpVer, pszReferrer,
-				ppszAcceptTypes, nFlags, (DWORD_PTR)this);
+			mh_SrcFile = wi->_HttpOpenRequestW(mh_Connect, L"GET", pszSrvPath, szHttpVer, nullptr,
+				ppszAcceptTypes, nFlags, reinterpret_cast<DWORD_PTR>(this));
 
 			if (!mh_SrcFile || (mh_SrcFile == INVALID_HANDLE_VALUE))
 			{
@@ -1154,13 +1114,14 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 				}
 				goto wrap;
 			}
-			ReportMessage(dc_LogCallback, L"Http file opened x%08X", at_Uint, (DWORD_PTR)mh_SrcFile, at_None);
+			ReportMessage(dc_LogCallback, L"Http file opened x%08X", at_Uint, reinterpret_cast<DWORD_PTR>(mh_SrcFile), at_None);
 			//WaitAsyncResult();
 
 			ReportMessage(dc_LogCallback, L"Sending request");
 			ResetEvent(mh_ReadyEvent);
 			CS.Lock(&mcs_Handle); // Leaved in ExecRequest
-			bFRc = ExecRequest(wi->_HttpSendRequestW(mh_SrcFile,NULL,0,NULL,0), dwErr, CS);
+			// ReSharper disable once CppJoinDeclarationAndAssignment
+			bFRc = ExecRequest(wi->_HttpSendRequestW(mh_SrcFile,nullptr,0,nullptr,0), dwErr, CS);
 
 			if (!bFRc)
 			{
@@ -1180,7 +1141,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 				DWORD sz = sizeof(mn_InternetContentLen);
 				DWORD dwIndex = 0;
 				nFlags = HTTP_QUERY_CONTENT_LENGTH|HTTP_QUERY_FLAG_NUMBER;
-				ReportMessage(dc_LogCallback, L"Quering file info with flags x%08X", at_Uint, nFlags, at_None);
+				ReportMessage(dc_LogCallback, L"Querying file info with flags x%08X", at_Uint, nFlags, at_None);
 				CS.Lock(&mcs_Handle); // Leaved in ExecRequest
 				if (!ExecRequest(wi->_HttpQueryInfoW(mh_SrcFile, nFlags, &mn_InternetContentLen, &sz, &dwIndex), dwErr, CS))
 				{
@@ -1191,7 +1152,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 					//if (abShowAllErrors)
 					//	ReportError(L"QueryContentLen failed\nURL=%s\ncode=%u", asSource, dwErr);
 					//goto wrap;
-					ReportMessage(dc_LogCallback, L"Warning: Quering file info failed, code=%u", at_Uint, dwErr, at_None);
+					ReportMessage(dc_LogCallback, L"Warning: Querying file info failed, code=%u", at_Uint, dwErr, at_None);
 				}
 				else
 				{
@@ -1205,7 +1166,7 @@ BOOL CDownloader::DownloadFile(LPCWSTR asSource, LPCWSTR asTarget, DWORD& crc, D
 	else
 	{
 		ReportMessage(dc_LogCallback, L"Opening source from file system");
-		mh_SrcFile = CreateFile(asSource, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+		mh_SrcFile = CreateFile(asSource, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 		if (!mh_SrcFile || (mh_SrcFile == INVALID_HANDLE_VALUE))
 		{
 			ReportMessage(dc_ErrCallback,
@@ -1298,7 +1259,7 @@ wrap:
 	{
 		if (mh_SrcFile && (mh_SrcFile != INVALID_HANDLE_VALUE))
 			CloseHandle(mh_SrcFile);
-		mh_SrcFile = NULL;
+		mh_SrcFile = nullptr;
 	}
 
 	// Close only real-file handle, skip obtained from GetStdHandle()
@@ -1335,17 +1296,17 @@ void CDownloader::CloseInternet(bool bFull)
 	}
 
 	if (bFull)
-		mp_SetCallbackRc = NULL;
+		mp_SetCallbackRc = nullptr;
 
-	mh_SrcFile = NULL;
-	mh_Connect = NULL;
+	mh_SrcFile = nullptr;
+	mh_Connect = nullptr;
 
 	if (bFull)
 	{
-		mh_Internet = NULL;
+		mh_Internet = nullptr;
 	}
 
-	UNREFERENCED_PARAMETER(bClose);
+	std::ignore = bClose;
 }
 
 void CDownloader::RequestTerminate()
@@ -1363,7 +1324,7 @@ void CDownloader::SetAsync(bool bAsync)
 
 void CDownloader::SetTimeout(UINT nWhat, DWORD nTimeout)
 {
-	LPCWSTR pszName = L"unknown";
+	LPCWSTR pszName;
 	switch (nWhat)
 	{
 	case 0:
@@ -1379,6 +1340,8 @@ void CDownloader::SetTimeout(UINT nWhat, DWORD nTimeout)
 		pszName = L"data receive";
 		mn_DataTimeout = nTimeout; // INTERNET_OPTION_DATA_RECEIVE_TIMEOUT
 		break;
+	default:
+		pszName = L"unknown";
 	}
 	ReportMessage(dc_LogCallback, L"Set %s timeout to %u was requested", at_Str, pszName, at_Uint, nTimeout, at_None);
 }
@@ -1386,7 +1349,7 @@ void CDownloader::SetTimeout(UINT nWhat, DWORD nTimeout)
 void CDownloader::SetAgent(LPCWSTR aszAgentName)
 {
 	SafeFree(msz_AgentName);
-	msz_AgentName = (aszAgentName && *aszAgentName) ? lstrdup(aszAgentName) : NULL;
+	msz_AgentName = (aszAgentName && *aszAgentName) ? lstrdup(aszAgentName) : nullptr;
 }
 
 BOOL CDownloader::ReadSource(LPCWSTR asSource, BOOL bInet, HANDLE hSource, BYTE* pData, DWORD cbData, DWORD* pcbRead)
@@ -1420,7 +1383,7 @@ BOOL CDownloader::ReadSource(LPCWSTR asSource, BOOL bInet, HANDLE hSource, BYTE*
 	else
 	{
 		ReportMessage(dc_LogCallback, L"Reading file");
-		lbRc = ReadFile(hSource, pData, cbData, pcbRead, NULL);
+		lbRc = ReadFile(hSource, pData, cbData, pcbRead, nullptr);
 		if (!lbRc)
 			ReportMessage(dc_ErrCallback,
 				L"ReadFile(%s) failed, code=%u", at_Str, asSource, at_Uint, GetLastError(), at_None);
@@ -1433,11 +1396,10 @@ BOOL CDownloader::ReadSource(LPCWSTR asSource, BOOL bInet, HANDLE hSource, BYTE*
 
 BOOL CDownloader::WriteTarget(LPCWSTR asTarget, HANDLE hTarget, const BYTE* pData, DWORD cbData)
 {
-	BOOL lbRc;
 	DWORD nWritten;
 
 	ReportMessage(dc_LogCallback, L"Writing target file %u bytes", at_Uint, cbData, at_None);
-	lbRc = WriteFile(hTarget, pData, cbData, &nWritten, NULL);
+	BOOL lbRc = WriteFile(hTarget, pData, cbData, &nWritten, nullptr);
 
 	if (lbRc && (nWritten != cbData))
 	{
@@ -1477,7 +1439,7 @@ void CDownloader::ReportMessage(CEDownloadCommand rm, LPCWSTR asFormat, CEDownlo
 	va_list argptr;
 	va_start(argptr, nextArgType);
 
-	CEDownloadInfo args = {sizeof(args), m_CallbackLParam[rm], asFormat, 1};
+	CEDownloadInfo args = {sizeof(args), m_CallbackLParam[rm], asFormat, 1, {}};
 
 	size_t i = 0;
 	while (argType != at_None)
@@ -1496,7 +1458,7 @@ void CDownloader::ReportMessage(CEDownloadCommand rm, LPCWSTR asFormat, CEDownlo
 		if (i >= countof(args.Args))
 			break;
 
-		argType = (CEDownloadArgType)va_arg( argptr, int );
+		argType = static_cast<CEDownloadArgType>(va_arg(argptr, int));
 	}
 
 	va_end(argptr);
@@ -1511,7 +1473,7 @@ void CDownloader::UpdateProgress()
 	ReportMessage(dc_ProgressCallback, L"Bytes downloaded %u", at_Uint, mn_InternetContentReady, at_None);
 }
 
-static CDownloader* gpInet = NULL;
+static CDownloader* gpInet = nullptr;
 
 DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErrorArg* argv)
 {
@@ -1524,7 +1486,7 @@ DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErro
 	case dc_Init:
 		if (!gpInet)
 			gpInet = new CDownloader;
-		nResult = (gpInet != NULL);
+		nResult = (gpInet != nullptr);
 		break;
 	case dc_Reset:
 		if (gpInet)
@@ -1539,9 +1501,9 @@ DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErro
 		if (gpInet)
 		{
 			gpInet->SetProxy(
-				(argc > 0 && argv[0].argType == at_Str) ? argv[0].strArg : NULL,
-				(argc > 1 && argv[1].argType == at_Str) ? argv[1].strArg : NULL,
-				(argc > 2 && argv[2].argType == at_Str) ? argv[2].strArg : NULL);
+				(argc > 0 && argv[0].argType == at_Str) ? argv[0].strArg : nullptr,
+				(argc > 1 && argv[1].argType == at_Str) ? argv[1].strArg : nullptr,
+				(argc > 2 && argv[2].argType == at_Str) ? argv[2].strArg : nullptr);
 			nResult = TRUE;
 		}
 		break;
@@ -1549,8 +1511,8 @@ DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErro
 		if (gpInet)
 		{
 			gpInet->SetLogin(
-				(argc > 0 && argv[0].argType == at_Str) ? argv[0].strArg : NULL,
-				(argc > 1 && argv[1].argType == at_Str) ? argv[1].strArg : NULL);
+				(argc > 0 && argv[0].argType == at_Str) ? argv[0].strArg : nullptr,
+				(argc > 1 && argv[1].argType == at_Str) ? argv[1].strArg : nullptr);
 			nResult = TRUE;
 		}
 		break;
@@ -1561,7 +1523,7 @@ DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErro
 		{
 			gpInet->SetCallback(
 				cmd,
-				(argc > 0) ? (FDownloadCallback)argv[0].uintArg : 0,
+				(argc > 0) ? reinterpret_cast<FDownloadCallback>(argv[0].uintArg) : nullptr,
 				(argc > 1) ? argv[1].uintArg : 0);
 			nResult = TRUE;
 		}
@@ -1571,8 +1533,8 @@ DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErro
 		{
 			DWORD crc = 0, size = 0;
 			nResult = gpInet->DownloadFile(
-				(argc > 0 && argv[0].argType == at_Str) ? argv[0].strArg : NULL,
-				(argc > 1 && argv[1].argType == at_Str) ? argv[1].strArg : NULL,
+				(argc > 0 && argv[0].argType == at_Str) ? argv[0].strArg : nullptr,
+				(argc > 1 && argv[1].argType == at_Str) ? argv[1].strArg : nullptr,
 				crc, size,
 				(argc > 2) ? argv[2].uintArg : TRUE);
 			// Succeeded?
@@ -1615,10 +1577,9 @@ DWORD_PTR WINAPI DownloadCommand(CEDownloadCommand cmd, int argc, CEDownloadErro
 		}
 		break;
 
-	#ifdef _DEBUG
+	case dc_SetCmdString:
 	default:
 		_ASSERTE(FALSE && "Unsupported command!");
-	#endif
 	}
 
 	return nResult;
@@ -1633,11 +1594,11 @@ bool PrintToConsole(HANDLE hCon, LPCWSTR asData, int anLen)
 	if (!hCon)
 	{
 		hCon = CreateFileW(L"CONOUT$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-			0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+			nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		bNeedClose = (hCon && (hCon != INVALID_HANDLE_VALUE));
 	}
 
-	if (WriteConsoleW(hCon, asData, anLen, &nWritten, NULL))
+	if (WriteConsoleW(hCon, asData, anLen, &nWritten, nullptr))
 	{
 		bSuccess = true;
 	}
@@ -1660,10 +1621,10 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 	swprintf_c(szTime, L"%i:%02i:%02i.%03i{%u} ",
 	           st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, GetCurrentThreadId());
 
-	CEStr lsAll(lstrmerge(szTime, pszLabel, (pszInfo && *pszInfo) ? pszInfo : L"<NULL>\n"));
+	const CEStr lsAll(lstrmerge(szTime, pszLabel, (pszInfo && *pszInfo) ? pszInfo : L"<nullptr>\n"));
 
 	DWORD nWritten;
-	int iLen = lstrlen(lsAll.ms_Val);
+	const int iLen = lstrlen(lsAll.ms_Val);
 	if (iLen <= 0)
 		return;
 
@@ -1674,7 +1635,7 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 	// Log downloader events to StdError
 	// We may be asked to write downloaded contents to StdOut
 
-	static HANDLE hStdErr = NULL;
+	static HANDLE hStdErr = nullptr;
 	static bool bRedirected = false;
 	if (!hStdErr)
 	{
@@ -1686,7 +1647,7 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 		else
 		{
 			CONSOLE_SCREEN_BUFFER_INFO sbi = {};
-			BOOL bIsConsole = GetConsoleScreenBufferInfo(hStdErr, &sbi);
+			const BOOL bIsConsole = GetConsoleScreenBufferInfo(hStdErr, &sbi);
 			if (!bIsConsole)
 			{
 				bRedirected = true;
@@ -1697,7 +1658,7 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 	{
 		if (gbVerbose)
 		{
-			PrintToConsole(NULL, lsAll.ms_Val, iLen);
+			PrintToConsole(nullptr, lsAll.ms_Val, iLen);
 		}
 		return;
 	}
@@ -1710,17 +1671,17 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 	{
 		if (gbVerbose)
 		{
-			PrintToConsole(NULL, lsAll.ms_Val, iLen);
+			PrintToConsole(nullptr, lsAll.ms_Val, iLen);
 		}
 
-		DWORD cp = GetConsoleCP();
-		DWORD nMax = WideCharToMultiByte(cp, 0, lsAll.ms_Val, iLen, NULL, 0, NULL, NULL);
+		const DWORD cp = GetConsoleCP();
+		const DWORD nMax = WideCharToMultiByte(cp, 0, lsAll.ms_Val, iLen, nullptr, 0, nullptr, nullptr);
 
-		char szOem[200], *pszOem = NULL;
+		char szOem[200], *pszOem = nullptr;
 
 		if (nMax >= countof(szOem))
 		{
-			pszOem = (char*)malloc(nMax+1);
+			pszOem = static_cast<char*>(malloc(nMax + 1));
 		}
 		else
 		{
@@ -1731,9 +1692,9 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 		{
 			pszOem[nMax] = 0; // just for debugging purposes, not requried
 
-			if (WideCharToMultiByte(cp, 0, lsAll.ms_Val, iLen, pszOem, nMax+1, NULL, NULL) > 0)
+			if (WideCharToMultiByte(cp, 0, lsAll.ms_Val, iLen, pszOem, static_cast<int>(nMax + 1), nullptr, nullptr) > 0)
 			{
-				WriteFile(hStdErr, pszOem, nMax, &nWritten, NULL);
+				WriteFile(hStdErr, pszOem, nMax, &nWritten, nullptr);
 			}
 
 			if (pszOem != szOem)
@@ -1744,11 +1705,11 @@ static void PrintDownloadLog(LPCWSTR pszLabel, LPCWSTR pszInfo)
 
 static void WINAPI DownloadCallback(const CEDownloadInfo* pInfo)
 {
-	LPCWSTR pszLabel = pInfo->lParam==(dc_ErrCallback+1) ? CEDLOG_MARK_ERROR
+	const auto* pszLabel = pInfo->lParam==(dc_ErrCallback+1) ? CEDLOG_MARK_ERROR
 		: pInfo->lParam==(dc_ProgressCallback+1) ? CEDLOG_MARK_PROGR
 		: pInfo->lParam==(dc_LogCallback+1) ? CEDLOG_MARK_INFO
 		: L"";
-	CEStr szInfo(pInfo->GetFormatted(true));
+	const CEStr szInfo(pInfo->GetFormatted(true));
 	PrintDownloadLog(pszLabel, szInfo);
 }
 
@@ -1759,11 +1720,11 @@ void InitVerbose()
 	if (!gbVerboseInitialized)
 	{
 		#if defined(WAIT_FOR_DEBUGGER_MSG)
-		MessageBox(NULL, L"Waiting for debugger", L"ConEmu downloader", MB_SYSTEMMODAL);
+		MessageBox(nullptr, L"Waiting for debugger", L"ConEmu downloader", MB_SYSTEMMODAL);
 		#endif
 
 		gbVerboseInitialized = true;
-		HWND hConWnd = GetConsoleWindow();
+		const MWnd hConWnd = GetConsoleWindow();
 		if (hConWnd)
 		{
 			// If STARTUPINFO has SW_HIDE flag - first ShowWindow may be ignored
@@ -1778,7 +1739,7 @@ void InitVerbose()
 
 static void DownloadLog(CEDownloadCommand logLevel, LPCWSTR asMessage)
 {
-	CEDownloadInfo Info = {sizeof(Info), logLevel+1, asMessage};
+	CEDownloadInfo Info = {sizeof(Info), logLevel+1, asMessage, 0, {}};
 
 	if (gbVerbose)
 	{
@@ -1802,33 +1763,36 @@ static void DownloadLog(CEDownloadCommand logLevel, LPCWSTR asMessage)
 int DoDownload(LPCWSTR asCmdLine)
 {
 	int iRc = CERR_CARGUMENT;
+	// ReSharper disable once CppJoinDeclarationAndAssignment
 	DWORD_PTR drc;
 	CmdArg szArg;
-	wchar_t* pszUrl = NULL;
+	wchar_t* pszUrl = nullptr;
 	size_t iFiles = 0;
 	CEDownloadErrorArg args[4];
 	CEStr pszExpanded;
 	wchar_t szFullPath[MAX_PATH*2];
 	wchar_t szResult[80];
+	// ReSharper disable once CppJoinDeclarationAndAssignment
 	DWORD nFullRc;
-	wchar_t *pszProxy = NULL, *pszProxyLogin = NULL, *pszProxyPassword = NULL;
-	wchar_t *pszLogin = NULL, *pszPassword = NULL;
-	wchar_t *pszTimeout = NULL, *pszTimeout1 = NULL, *pszTimeout2 = NULL;
-	wchar_t *pszAsync = NULL;
-	wchar_t *pszAgent = NULL;
+	wchar_t *pszProxy = nullptr, *pszProxyLogin = nullptr, *pszProxyPassword = nullptr;
+	wchar_t *pszLogin = nullptr, *pszPassword = nullptr;
+	wchar_t *pszTimeout = nullptr, *pszTimeout1 = nullptr, *pszTimeout2 = nullptr;
+	wchar_t *pszAsync = nullptr;
+	wchar_t *pszAgent = nullptr;
 
 	gbVerbose = false;
 	gbVerboseInitialized = false;
 
-	DownloadCommand(dc_Init, 0, NULL);
+	DownloadCommand(dc_Init, 0, nullptr);
 
-	args[0].uintArg = (DWORD_PTR)gpfn_DownloadCallback; args[0].argType = at_Uint;
+	args[0].uintArg = reinterpret_cast<DWORD_PTR>(gpfn_DownloadCallback); args[0].argType = at_Uint;
 	args[1].argType = at_Uint;
-	_ASSERTE(dc_ErrCallback==0 && dc_LogCallback==2);
+	_ASSERTE(dc_ErrCallback==0);
+	_ASSERTE(dc_LogCallback==2);
 	for (int i = dc_ErrCallback; i <= dc_LogCallback; i++)
 	{
 		args[1].uintArg = (i+1);
-		DownloadCommand((CEDownloadCommand)i, 2, args);
+		DownloadCommand(static_cast<CEDownloadCommand>(i), 2, args);
 	}
 
 	struct {
@@ -1836,26 +1800,26 @@ int DoDownload(LPCWSTR asCmdLine)
 		wchar_t** ppszValue;
 		bool*     pbValue;
 	} KnownArgs[] = {
-		{L"login", &pszLogin},
-		{L"password", &pszPassword},
-		{L"proxy", &pszProxy},
-		{L"proxylogin", &pszProxyLogin},
-		{L"proxypassword", &pszProxyPassword},
+		{L"login", &pszLogin, nullptr},
+		{L"password", &pszPassword, nullptr},
+		{L"proxy", &pszProxy, nullptr},
+		{L"proxylogin", &pszProxyLogin, nullptr},
+		{L"proxypassword", &pszProxyPassword, nullptr},
 		// -timeout <ms> - default min timeout for all operations (30000 ms)
-		{L"timeout", &pszTimeout},
+		{L"timeout", &pszTimeout, nullptr},
 		// -timeout1 <ms> - INTERNET_OPTION_RECEIVE_TIMEOUT
-		{L"timeout1", &pszTimeout1},
+		{L"timeout1", &pszTimeout1, nullptr},
 		// -timeout2 <ms> - INTERNET_OPTION_DATA_RECEIVE_TIMEOUT
-		{L"timeout2", &pszTimeout2},
+		{L"timeout2", &pszTimeout2, nullptr},
 		// -async Y|N - change internal mode, how ConEmuC interact with WinInet
-		{L"async", &pszAsync},
+		{L"async", &pszAsync, nullptr},
 		// -agent "AgentName" - to change from default agent name "ConEmu Update"
-		{L"agent", &pszAgent},
+		{L"agent", &pszAgent, nullptr},
 		// -debug - may be used to show console and print progress even if output is redirected
-		{L"debug", NULL, &gbVerbose}, {L"verbose", NULL, &gbVerbose},
+		{L"debug", nullptr, &gbVerbose}, {L"verbose", nullptr, &gbVerbose},
 		// -nolog - don't write any logging messages to console
-		{L"nolog", NULL, &gbNoLog},
-		{NULL}
+		{L"nolog", nullptr, &gbNoLog},
+		{}
 	};
 
 	while ((asCmdLine = NextArg(asCmdLine, szArg)))
@@ -1884,7 +1848,7 @@ int DoDownload(LPCWSTR asCmdLine)
 			}
 			if (!bKnown)
 			{
-				CEStr lsInfo(lstrmerge(L"Unknown argument '", psz, L"'"));
+				const CEStr lsInfo(lstrmerge(L"Unknown argument '", psz, L"'"));
 				DownloadLog(dc_ErrCallback, lsInfo);
 				iRc = CERR_CARGUMENT;
 				goto wrap;
@@ -1899,12 +1863,12 @@ int DoDownload(LPCWSTR asCmdLine)
 
 		SafeFree(pszUrl);
 		pszUrl = szArg.Detach();
-		if (!(asCmdLine = NextArg(asCmdLine, szArg)))
+		if (!((asCmdLine = NextArg(asCmdLine, szArg))))
 		{
 			// If NOT redirected to file already
-			HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+			const MHandle hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 			CONSOLE_SCREEN_BUFFER_INFO sbi = {};
-			BOOL bIsConsole = GetConsoleScreenBufferInfo(hStdOut, &sbi);
+			const BOOL bIsConsole = GetConsoleScreenBufferInfo(hStdOut, &sbi);
 
 			if (bIsConsole)
 			{
@@ -1956,12 +1920,13 @@ int DoDownload(LPCWSTR asCmdLine)
 		// Timeouts: all, INTERNET_OPTION_RECEIVE_TIMEOUT, INTERNET_OPTION_DATA_RECEIVE_TIMEOUT
 		for (UINT i = 0; i <= 2; i++)
 		{
-			LPCWSTR pszValue = NULL; wchar_t* pszEnd;
+			LPCWSTR pszValue = nullptr; wchar_t* pszEnd;
 			switch (i)
 			{
 			case 0: pszValue = pszTimeout; break;
 			case 1: pszValue = pszTimeout1; break;
 			case 2: pszValue = pszTimeout2; break;
+			default: _ASSERTE(FALSE && "Wrong number of steps");
 			}
 			if (!pszValue || !*pszValue)
 				continue;
@@ -2006,7 +1971,8 @@ int DoDownload(LPCWSTR asCmdLine)
 		{
 			wchar_t szInfo[100];
 			iFiles++;
-			swprintf_c(szInfo, L"File #%u downloaded, size=%u, crc32=x%08X", (DWORD)iFiles, (DWORD)args[0].uintArg, (DWORD)args[1].uintArg);
+			swprintf_c(szInfo, L"File #%u downloaded, size=%u, crc32=x%08X",
+				static_cast<DWORD>(iFiles), static_cast<DWORD>(args[0].uintArg), static_cast<DWORD>(args[1].uintArg));
 			DownloadLog(dc_LogCallback, szInfo);
 		}
 	}
@@ -2023,7 +1989,7 @@ wrap:
 		iRc);
 	DownloadLog(dc_LogCallback, szResult);
 	// Finalize internet service
-	DownloadCommand(dc_Deinit, 0, NULL);
+	DownloadCommand(dc_Deinit, 0, nullptr);
 	for (size_t i = 0; KnownArgs[i].pszArgName; i++)
 	{
 		if (KnownArgs[i].ppszValue)

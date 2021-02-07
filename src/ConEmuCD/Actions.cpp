@@ -60,6 +60,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "InjectRemote.h"
 #include "MapDump.h"
 #include "UnicodeTest.h"
+#include "../common/MWnd.h"
 
 
 // ConEmuC -OsVerInfo
@@ -90,7 +91,7 @@ int OsVerInfo()
 		osv.dwMajorVersion, osv.dwMinorVersion, osv.dwBuildNumber, osv.wServicePackMajor, osv.wServicePackMinor, osv.wSuiteMask, osv.wProductType,
 		W5fam, WXPSP1, W6, W7, W10, Wx64, HWFS,
 		DBCS, WINE, WPE, TELNET);
-	_wprintf(szInfo);
+	PrintBuffer(szInfo);
 
 	return MAKEWORD(osv.dwMinorVersion, osv.dwMajorVersion);
 }
@@ -134,31 +135,30 @@ bool DoStateCheck(ConEmuStateCheck eStateCheck)
 	LogFunction(L"DoStateCheck");
 
 	bool bOn = false;
+	const char* checkName;
 
 	switch (eStateCheck)
 	{
 	case ConEmuStateCheck::IsConEmu:
 	case ConEmuStateCheck::IsAnsi:
+		checkName = (eStateCheck == ConEmuStateCheck::IsConEmu) ? "IsConEmu" : "IsAnsi";
 		if (gState.realConWnd_)
 		{
-			CESERVER_CONSOLE_MAPPING_HDR* pInfo = (CESERVER_CONSOLE_MAPPING_HDR*)malloc(sizeof(*pInfo));
+			CESERVER_CONSOLE_MAPPING_HDR* pInfo = static_cast<CESERVER_CONSOLE_MAPPING_HDR*>(malloc(sizeof(*pInfo)));
 			if (pInfo && LoadSrvMapping(gState.realConWnd_, *pInfo))
 			{
 				_ASSERTE(pInfo->ComSpec.ConEmuExeDir[0] && pInfo->ComSpec.ConEmuBaseDir[0]);
 
-				HWND hWnd = pInfo->hConEmuWndDc;
+				const MWnd hWnd = static_cast<HWND>(pInfo->hConEmuWndDc);
 				if (hWnd && IsWindow(hWnd))
 				{
-					switch (eStateCheck)
+					if (eStateCheck == ConEmuStateCheck::IsConEmu)
 					{
-					case ConEmuStateCheck::IsConEmu:
 						bOn = true;
-						break;
-					case ConEmuStateCheck::IsAnsi:
+					}
+					else if (eStateCheck == ConEmuStateCheck::IsAnsi)
+					{
 						bOn = ((pInfo->Flags & ConEmu::ConsoleFlags::ProcessAnsi) != 0);
-						break;
-					default:
-						;
 					}
 				}
 			}
@@ -166,16 +166,21 @@ bool DoStateCheck(ConEmuStateCheck eStateCheck)
 		}
 		break;
 	case ConEmuStateCheck::IsAdmin:
+		checkName = "IsAdmin";
 		bOn = IsUserAdmin();
 		break;
 	case ConEmuStateCheck::IsRedirect:
+		checkName = "IsRedirect";
 		bOn = IsOutputRedirected();
 		break;
 	case ConEmuStateCheck::IsTerm:
+		checkName = "IsTerm";
 		bOn = isTerminalMode();
 		break;
+	case ConEmuStateCheck::None:
 	default:
 		_ASSERTE(FALSE && "Unsupported StateCheck code");
+		checkName = "UnknownCheck";
 	}
 
 	return bOn;
@@ -412,13 +417,13 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 
 	//_ASSERTE(FALSE && "Continue with exporting environment");
 
-	#define ExpFailedPref WIN3264TEST("ConEmuC","ConEmuC64") ": can't export environment"
+	#define ExpFailedPref CE_CONEMUC_NAME_A ": can't export environment"
 
 	if (!gState.realConWnd_)
 	{
 		_ASSERTE(gState.realConWnd_);
 		if (!bSilent)
-			_printf(ExpFailedPref ", gState.realConWnd was not set\n");
+			PrintBuffer(ExpFailedPref ", gState.realConWnd was not set\n");
 		goto wrap;
 	}
 
@@ -429,7 +434,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	if (!pszAllVars || !*pszAllVars)
 	{
 		if (!bSilent)
-			_printf(ExpFailedPref ", GetEnvironmentStringsW failed, code=%u\n", GetLastError());
+			Printf(ExpFailedPref ", GetEnvironmentStringsW failed, code=%u\n", GetLastError());
 		goto wrap;
 	}
 
@@ -448,7 +453,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	if (!pIn)
 	{
 		if (!bSilent)
-			_printf(ExpFailedPref ", pIn allocation failed\n");
+			PrintBuffer(ExpFailedPref ", pIn allocation failed\n");
 		goto wrap;
 	}
 	pszBuffer = (wchar_t*)pIn->wData;
@@ -517,7 +522,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 			if (!*szTest || *szTest == L'*')
 			{
 				if (!bSilent)
-					_printf(ExpFailedPref ", name masks can't be quoted\n");
+					PrintBuffer(ExpFailedPref ", name masks can't be quoted\n");
 				goto wrap;
 			}
 
@@ -547,7 +552,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 					{
 						*pszEq = L'=';
 						if (!bSilent)
-							_printf(ExpFailedPref ", too many variables\n");
+							PrintBuffer(ExpFailedPref ", too many variables\n");
 						goto wrap;
 					}
 					wmemmove(pszBuffer, pszName, cchAdd);
@@ -596,7 +601,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	if (pszBuffer == (wchar_t*)pIn->wData)
 	{
 		if (!bSilent)
-			_printf(ExpFailedPref ", nothing to export\n");
+			PrintBuffer(ExpFailedPref ", nothing to export\n");
 		goto wrap;
 	}
 	_ASSERTE(*pszBuffer==0 && *(pszBuffer-1)==0); // Must be ASCIIZZ
@@ -619,7 +624,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	if (!List.reserve(4096))
 	{
 		if (!bSilent)
-			_printf(ExpFailedPref ", List allocation failed\n");
+			PrintBuffer(ExpFailedPref ", List allocation failed\n");
 		goto wrap;
 	}
 
@@ -707,7 +712,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 					WIN3264TEST(L"ConEmuC",L"ConEmuC64")
 					L": process %s PID=%u was skipped: noninteractive or lack of ConEmuHk\n",
 					szName, nTestPID);
-				_wprintf(szInfo);
+				PrintBuffer(szInfo);
 			}
 
 			ExecuteFreeResult(pOut);
@@ -726,7 +731,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 		if (!pOut)
 		{
 			if (!bSilent)
-				_printf(ExpFailedPref " to PID=%u, root server was terminated?\n", nSrvPID);
+				Printf(ExpFailedPref " to PID=%u, root server was terminated?\n", nSrvPID);
 		}
 		else
 		{
@@ -757,7 +762,7 @@ int DoExportEnv(LPCWSTR asCmdArg, ConEmuExecAction eExecAction, bool bSilent /*=
 	if (!bSilent)
 	{
 		wcscat_c(szInfo, L"\n");
-		_wprintf(szInfo);
+		PrintBuffer(szInfo);
 	}
 
 	iRc = 0;
@@ -777,34 +782,34 @@ wrap:
 // Version in "ConEmuCD/Actions.cpp" perhaps would not be ever called
 int DoParseArgs(LPCWSTR asCmdLine)
 {
-	_printf("Parsing command\n  `");
-	_wprintf(asCmdLine);
-	_printf("`\n");
+	PrintBuffer("Parsing command\n  `");
+	PrintBuffer(asCmdLine);
+	PrintBuffer("`\n");
 
 	int iShellCount = 0;
 	LPWSTR* ppszShl = CommandLineToArgvW(asCmdLine, &iShellCount);
 
 	int i = 0;
 	CmdArg szArg;
-	_printf("ConEmu `NextArg` splitter\n");
+	PrintBuffer("ConEmu `NextArg` splitter\n");
 	while ((asCmdLine = NextArg(asCmdLine, szArg)))
 	{
 		if (szArg.m_bQuoted)
 			DemangleArg(szArg, true);
-		_printf("  %u: `", ++i);
-		_wprintf(szArg);
-		_printf("`\n");
+		Printf("  %u: `", ++i);
+		PrintBuffer(szArg);
+		PrintBuffer("`\n");
 	}
-	_printf("  Total arguments parsed: %u\n", i);
+	Printf("  Total arguments parsed: %u\n", i);
 
-	_printf("Standard shell splitter\n");
+	PrintBuffer("Standard shell splitter\n");
 	for (int j = 0; j < iShellCount; j++)
 	{
-		_printf("  %u: `", j);
-		_wprintf(ppszShl[j]);
-		_printf("`\n");
+		Printf("  %u: `", j);
+		PrintBuffer(ppszShl[j]);
+		PrintBuffer("`\n");
 	}
-	_printf("  Total arguments parsed: %u\n", iShellCount);
+	Printf("  Total arguments parsed: %u\n", iShellCount);
 	LocalFree(ppszShl);
 
 	return i;

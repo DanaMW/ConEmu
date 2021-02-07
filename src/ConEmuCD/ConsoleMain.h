@@ -60,6 +60,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define CSECTION_NON_RAISE
 
+struct CEStr;
 void ShutdownSrvStep(LPCWSTR asInfo, int nParm1 = 0, int nParm2 = 0, int nParm3 = 0, int nParm4 = 0);
 
 enum SetTerminateEventPlace
@@ -84,7 +85,7 @@ bool isConEmuTerminated();
 extern DWORD   gnSelfPID;
 extern wchar_t gsModuleName[32];
 extern wchar_t gsVersion[20];
-extern wchar_t gsSelfExe[MAX_PATH];  // Full path+exe to our executable
+extern wchar_t gsExePathName[MAX_PATH];  // Full path+exe to our executable
 extern wchar_t gsSelfPath[MAX_PATH]; // Directory of our executable
 //HANDLE  ghConIn = nullptr, ghConOut = nullptr;
 extern DWORD   gnMainServerPID; // PID сервера (инициализируется на старте, при загрузке Dll)
@@ -183,14 +184,15 @@ void SendStarted();
 CESERVER_REQ* SendStopped(CONSOLE_SCREEN_BUFFER_INFO* psbi = nullptr);
 
 bool IsOutputRedirected();
-void _wprintf(LPCWSTR asBuffer);
-void _printf(LPCSTR asBuffer);
-void _printf(LPCSTR asFormat, DWORD dwErr);
-void _printf(LPCSTR asFormat, DWORD dwErr, LPCWSTR asAddLine);
-void _printf(LPCSTR asFormat, DWORD dw1, DWORD dw2, LPCWSTR asAddLine = nullptr);
-void print_error(DWORD dwErr = 0, LPCSTR asFormat = nullptr);
 
-int ParseCommandLine(LPCWSTR asCmdLine);
+#define CE_CONEMUC_NAME_W WIN3264TEST(L"ConEmuC",L"ConEmuC64")
+#define CE_CONEMUC_NAME_A WIN3264TEST("ConEmuC","ConEmuC64")
+
+void PrintBuffer(LPCWSTR asBuffer);
+void PrintBuffer(LPCSTR asBuffer);
+void Printf(LPCSTR asFormat, ...);
+void PrintError(const CEStr& message, DWORD dwErr);
+
 wchar_t* ParseConEmuSubst(LPCWSTR asCmd);
 void UpdateConsoleTitle();
 BOOL SetTitle(LPCWSTR lsTitle);

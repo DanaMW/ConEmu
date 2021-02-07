@@ -48,11 +48,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/WObjects.h"
 #include "../common/WThreads.h"
 #include "../ConEmu/version.h"
-#include "../ConEmuHk/hkWindow.h"
 
 #if !defined(__GNUC__) || defined(__MINGW32__)
 	#pragma warning(disable: 4091)
-	#include <dbghelp.h>
+	#include <DbgHelp.h>
 	#pragma warning(default: 4091)
 #else
 	#include "../common/DbgHlpGcc.h"
@@ -64,8 +63,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 
-#define CE_CONEMUC_NAME_W WIN3264TEST(L"ConEmuC[32]",L"ConEmuC[64]")
-#define CE_CONEMUC_NAME_A WIN3264TEST("ConEmuC[32]","ConEmuC[64]")
 #define CE_TREE_TEMPLATE CE_CONEMUC_NAME_W L": DebuggerPID=%u RootPID=%u Count=%i"
 
 DebuggerInfo::DebuggerInfo()
@@ -79,7 +76,7 @@ DebuggerInfo::~DebuggerInfo()
 
 void DebuggerInfo::PrintDebugInfo() const
 {
-	_printf("Debugger successfully attached to PID=%u\n", gpWorker->RootProcessId());
+	Printf(CE_CONEMUC_NAME_A ": Debugger successfully attached to PID=%u\n", gpWorker->RootProcessId());
 	TODO("Вывести информацию о загруженных модулях, потоках, и стеке потоков");
 }
 
@@ -182,7 +179,7 @@ int DebuggerInfo::RunDebugger()
 	gpszRunCmd = lstrdup(L"");
 	if (!gpszRunCmd)
 	{
-		_printf("Can't allocate 1 wchar!\n");
+		PrintBuffer("Can't allocate 1 wchar!\n");
 		return CERR_NOTENOUGHMEM1;
 	}
 
@@ -333,12 +330,12 @@ void DebuggerInfo::AttachConHost(DWORD nConHostPID) const
 
 	if (!hConHost)
 	{
-		_printf("Opening ConHost process handle failed, Code=%u\n", nErrCode);
+		Printf(CE_CONEMUC_NAME_A ": Opening ConHost process handle failed, Code=%u\n", nErrCode);
 	}
 	else if (!DebugActiveProcess(nConHostPID))
 	{
 		nErrCode = GetLastError();
-		_printf("Attaching to ConHost process handle failed, Code=%u\n", nErrCode);
+		Printf(CE_CONEMUC_NAME_A ": Attaching to ConHost process handle failed, Code=%u\n", nErrCode);
 	}
 
 	if (!nErrCode)
@@ -399,7 +396,7 @@ DWORD DebuggerInfo::DebugThread(LPVOID lpvParam)
 
 			swprintf_c(szInfo, L"Can't start debugging process. ErrCode=0x%08X\n", dwErr);
 			CEStr lsInfo(lstrmerge(szInfo, dbgInfo.szDebuggingCmdLine, L"\n"));
-			_wprintf(lsInfo);
+			PrintBuffer(lsInfo);
 			return CERR_CANTSTARTDEBUGGER;
 		}
 
@@ -456,7 +453,7 @@ DWORD DebuggerInfo::DebugThread(LPVOID lpvParam)
 				// If /DEBUGEXE or /DEBUGTREE was used
 				if (!dbgInfo.szDebuggingCmdLine.IsEmpty())
 				{
-					_printf("Bitness of ConEmuC and debugging program does not match\n");
+					PrintBuffer("Bitness of ConEmuC and debugging program does not match\n");
 					continue;
 				}
 
@@ -486,7 +483,7 @@ DWORD DebuggerInfo::DebugThread(LPVOID lpvParam)
 
 				swprintf_c(szInfo, L"Can't attach debugger to '%s' PID=%i. ErrCode=0x%08X\n",
 					szProc[0] ? szProc : L"not found", nDbgProcessID, dwErr);
-				_wprintf(szInfo);
+				PrintBuffer(szInfo);
 
 				// Может другие подцепить получится?
 				continue;
@@ -511,12 +508,12 @@ DWORD DebuggerInfo::DebugThread(LPVOID lpvParam)
 		if (!GetModuleFileName(nullptr, szExe, MAX_PATH))
 		{
 			swprintf_c(szInfo, L"GetModuleFileName(nullptr) failed. ErrCode=0x%08X\n", GetLastError());
-			_wprintf(szInfo);
+			PrintBuffer(szInfo);
 		}
 		else if (!((pszName = const_cast<wchar_t*>(PointToName(szExe)))))
 		{
 			swprintf_c(szInfo, L"GetModuleFileName(nullptr) returns invalid path\n%s\n", szExe);
-			_wprintf(szInfo);
+			PrintBuffer(szInfo);
 		}
 		else
 		{
@@ -545,7 +542,7 @@ DWORD DebuggerInfo::DebugThread(LPVOID lpvParam)
 				DWORD dwErr = GetLastError();
 				swprintf_c(szInfo, L"Can't start external debugger, ErrCode=0x%08X\n", dwErr);
 				CEStr lsInfo(lstrmerge(szInfo, szOtherDebugCmd, L"\n"));
-				_wprintf(lsInfo);
+				PrintBuffer(lsInfo);
 			}
 		}
 	}
@@ -678,7 +675,7 @@ bool DebuggerInfo::GetSaveDumpName(DWORD dwProcessId, bool bFull, wchar_t* dmpFi
 
 		if (FAILED(dwErr))
 		{
-			_printf("\nGetSaveDumpName called, get desktop folder failed, code=%u\n", DWORD(dwErr));
+			Printf("\n" CE_CONEMUC_NAME_A ": GetSaveDumpName called, get desktop folder failed, code=%u\n", DWORD(dwErr));
 		}
 		else
 		{
@@ -810,9 +807,9 @@ void DebuggerInfo::WriteMiniDump(DWORD dwProcessId, DWORD dwThreadId, EXCEPTION_
 			// ReSharper disable once IdentifierTypo
 			#endif
 			MINIDUMP_EXCEPTION_INFORMATION* pmei = nullptr; // #TODO use mei properly?
-			_printf("Creating minidump: ");
-			_wprintf(dmpFile);
-			_printf("...");
+			PrintBuffer("Creating minidump: ");
+			PrintBuffer(dmpFile);
+			PrintBuffer("...");
 
 			// ReSharper disable once CppLocalVariableMayBeConst
 			HANDLE hProcess = GetProcessHandleForDebug(dwProcessId);
@@ -828,7 +825,7 @@ void DebuggerInfo::WriteMiniDump(DWORD dwProcessId, DWORD dwThreadId, EXCEPTION_
 			{
 				const DWORD nErr = GetLastError();
 				swprintf_c(szErrInfo, L"MiniDumpWriteDump failed.\nErrorCode=0x%08X", nErr);
-				_printf("\nFailed, ErrorCode=0x%08X\n", nErr);
+				Printf("\n" CE_CONEMUC_NAME_A ": Failed, ErrorCode=0x%08X\n", nErr);
 				MessageBoxW(nullptr, szErrInfo, szTitle, MB_ICONSTOP|MB_SYSTEMMODAL);
 			}
 			else
@@ -903,13 +900,13 @@ void DebuggerInfo::ProcessDebugEvent()
 				}
 
 				sprintf_c(szDbgText, "{%i.%i} %s\n", evt.dwProcessId,evt.dwThreadId, pszName);
-				_printf(szDbgText);
+				PrintBuffer(szDbgText);
 				if (!bFirstExitThreadEvent && evt.dwDebugEventCode == EXIT_THREAD_DEBUG_EVENT)
 				{
 					bFirstExitThreadEvent = true;
 					if (this->debugDumpProcess == DumpProcessType::None)
 					{
-						_printf(CE_CONEMUC_NAME_A ": Press Ctrl+Break to create minidump of debugging process\n");
+						PrintBuffer(CE_CONEMUC_NAME_A ": Press Ctrl+Break to create minidump of debugging process\n");
 					}
 					//else // -- wrong way, HandlerRoutine will/may fail on first attach
 					//{
@@ -1022,7 +1019,7 @@ void DebuggerInfo::ProcessDebugEvent()
 				}
 
 				sprintf_c(szDbgText, "{%i.%i} %s%s%s\n", evt.dwProcessId,evt.dwThreadId, pszName, szBase, szFile);
-				_printf(szDbgText);
+				PrintBuffer(szDbgText);
 				break;
 			} // LOAD_DLL_DEBUG_EVENT, UNLOAD_DLL_DEBUG_EVENT
 
@@ -1059,7 +1056,7 @@ void DebuggerInfo::ProcessDebugEvent()
 							           evt.u.Exception.dwFirstChance);
 						}
 
-						_printf(szDbgText);
+						PrintBuffer(szDbgText);
 					} // EXCEPTION_ACCESS_VIOLATION
 					break;
 					case MS_VC_THREADNAME_EXCEPTION:
@@ -1073,7 +1070,7 @@ void DebuggerInfo::ProcessDebugEvent()
 							(evt.u.Exception.ExceptionRecord.ExceptionFlags&EXCEPTION_NONCONTINUABLE)
 							? "(EXCEPTION_NONCONTINUABLE)" : "",
 							evt.u.Exception.dwFirstChance);
-						_printf(szDbgText);
+						PrintBuffer(szDbgText);
 					} // MS_VC_THREADNAME_EXCEPTION
 					break;
 					default:
@@ -1116,7 +1113,7 @@ void DebuggerInfo::ProcessDebugEvent()
 							        (evt.u.Exception.ExceptionRecord.ExceptionFlags&EXCEPTION_NONCONTINUABLE)
 							        ? "(EXCEPTION_NONCONTINUABLE)" : "",
 							        evt.u.Exception.dwFirstChance);
-						_printf(szDbgText);
+						PrintBuffer(szDbgText);
 					}
 				}
 
@@ -1269,7 +1266,7 @@ void DebuggerInfo::ProcessDebugEvent()
 					pwszDbg[iWrite - 1] = L'\n'; pwszDbg[iWrite] = 0;
 				}
 
-				_wprintf(wszDbgText);
+				PrintBuffer(wszDbgText);
 
 				dwContinueStatus = DBG_CONTINUE;
 
@@ -1294,21 +1291,21 @@ void DebuggerInfo::GenerateMiniDumpFromCtrlBreak()
 	DebugBreakProcess_t debugBreakProcess = nullptr;
 	if (hKernel.GetProcAddress("DebugBreakProcess", debugBreakProcess))
 	{
-		_printf(CE_CONEMUC_NAME_A ": Sending DebugBreak event to process\n");
+		PrintBuffer(CE_CONEMUC_NAME_A ": Sending DebugBreak event to process\n");
 		this->bDebuggerRequestDump = TRUE;
 		_ASSERTE(gpWorker->RootProcessHandle()!=nullptr);
 		if (!debugBreakProcess(gpWorker->RootProcessHandle()))
 		{
 			dwErr = GetLastError();
 			//_ASSERTE(FALSE && dwErr==0);
-			_printf(CE_CONEMUC_NAME_A ": Sending DebugBreak event failed, Code=x%X, WriteMiniDump on the fly\n", dwErr);
+			Printf(CE_CONEMUC_NAME_A ": Sending DebugBreak event failed, Code=x%X, WriteMiniDump on the fly\n", dwErr);
 			this->bDebuggerRequestDump = FALSE;
 			WriteMiniDump(gpWorker->RootProcessId(), gpWorker->RootThreadId(), nullptr);
 		}
 	}
 	else
 	{
-		_printf(CE_CONEMUC_NAME_A ": DebugBreakProcess not found in kernel32.dll\n");
+		PrintBuffer(CE_CONEMUC_NAME_A ": DebugBreakProcess not found in kernel32.dll\n");
 	}
 }
 
@@ -1323,7 +1320,7 @@ void DebuggerInfo::GenerateTreeDebugBreak(DWORD nExcludePID)
 	DebugBreakProcess_t debugBreakProcess = nullptr;
 	if (hKernel.GetProcAddress("DebugBreakProcess", debugBreakProcess))
 	{
-		_printf(CE_CONEMUC_NAME_A ": Sending DebugBreak event to processes:");
+		PrintBuffer(CE_CONEMUC_NAME_A ": Sending DebugBreak event to processes:");
 
 		DWORD pid = 0;
 
@@ -1336,7 +1333,7 @@ void DebuggerInfo::GenerateTreeDebugBreak(DWORD nExcludePID)
 			{
 				if (pid != nExcludePID)
 				{
-					_printf(" %u", pid);
+					Printf(" %u", pid);
 
 					if (!pi.hProcess)
 					{
@@ -1350,18 +1347,18 @@ void DebuggerInfo::GenerateTreeDebugBreak(DWORD nExcludePID)
 					else
 					{
 						dwErr = GetLastError();
-						_printf("\nConEmuC: Sending DebugBreak event failed, Code=x%X\n", dwErr);
+						Printf("\n" CE_CONEMUC_NAME_A ": Sending DebugBreak event failed, Code=x%X\n", dwErr);
 					}
 				}
 
 				if (!pDebugTreeProcesses->GetNext(&pid, &pid, &pi))
 					break;
 			}
-			_printf("\n");
+			PrintBuffer("\n");
 		}
 	}
 	else
 	{
-		_printf(CE_CONEMUC_NAME_A ": DebugBreakProcess not found in kernel32.dll\n");
+		PrintBuffer(CE_CONEMUC_NAME_A ": DebugBreakProcess not found in kernel32.dll\n");
 	}
 }

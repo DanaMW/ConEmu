@@ -27,7 +27,9 @@ workspace "CE"
     architecture "x64"
     defines { "WIN64", "_WIN64" }
 
-  filter { "action:vs2019", "configurations:Release", "platforms:Win32" }
+  filter { "action:vs2019", "configurations:Release or Remote", "platforms:Win32" }
+    toolset "v141_xp"
+  filter { "action:vs2019", "configurations:Debug", "platforms:Win32" }
     toolset "v141_xp"
   filter "action:vs2017"
     toolset "v141_xp"
@@ -344,6 +346,15 @@ project "ConEmuC"
     { ["Resources"] = {"**.rc", "**.rc2", "**.manifest"} },
     { ["Exports"]   = {"**.def"} },
   }
+
+  filter { "configurations:Debug or Remote" }
+  postbuildcommands {
+    '{ECHO} Copying "%{wks.location}../Release/ConEmu/*.cmd" "%{cfg.targetdir}"',
+    '{COPY} "%{wks.location}/../Release/ConEmu/*.cmd" "%{cfg.targetdir}"',
+    '{ECHO} Copying "%{wks.location}../Release/ConEmu/ConEmu.l10n" "%{cfg.targetdir}"',
+    '{COPY} "%{wks.location}/../Release/ConEmu/ConEmu.l10n" "%{cfg.targetdir}"',
+  }
+  filter{}
 
   target_dir("ConEmu/")
   targetname "ConEmuC"

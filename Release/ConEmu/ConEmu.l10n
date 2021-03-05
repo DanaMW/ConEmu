@@ -116,7 +116,7 @@
       "pl": [ "Gdy ta opcja jest zaznaczona - określony sufiks zostanie dołączony do tytułów zakładek, rozpoczynając „Jako administrator”.\n"
             , "Możesz wybrać miejsce wstawiania z „%a” gdzie, w przeciwnym razie przyrostek będzie na końcu karty." ],
       "it_IT": [ "Quando questo è selezionato - il suffisso specificato verrà aggiunto al titolo della scheda, avviata 'Come amministratore'.\r\n"
-            , "Puoi specificare la posizione utilizzando la variabile '%a', altrimenti il suffisso verrà aggiunto alla fine." ],
+            , "Puoi specificare la posizione utilizzando la variabile ‘%a’, altrimenti il suffisso verrà aggiunto alla fine." ],
       "id": 2110 }
     ,
     "cbAlwaysOnTop": {
@@ -138,7 +138,7 @@
       "ja": "ConEmuアイコンをタスクバーステータスエリア（TSA）に常に表示する",
       "es": "Mostrar siempre el icono de ConEmu en el área de notificación",
       "pl": "Zawsze pokazuj ikonę ConEmu w obszarze stanu paska zadań (TSA)",
-      "it_IT": "Visualizzare sempre l'icona ConEmu nell'area di stato della barra delle applicazioni (TSA)",
+      "it_IT": "Visualizzare sempre l'icona ConEmu nell'area notifiche della barra applicazioni",
       "id": 1736 }
     ,
     "cbAnsiLog": {
@@ -258,7 +258,7 @@
       "ja": "メインフォントの太さ",
       "es": "Peso del tipo de letra principal",
       "pl": "Główna waga czcionki",
-      "it_IT": "Dimensione font principale",
+      "it_IT": "Spessore font principale",
       "id": 2278 }
     ,
     "cbClinkWebPage": {
@@ -324,6 +324,7 @@
       "ja": "タスクバーのジャンプリストにタスクを表示する(タスクのプロパティをチェック)",
       "es": "Mostrar en la lista de la Barra de Tareas las tareas correspondientes (comprobar las propiedades de las tareas)",
       "pl": "Pokaż na liście zadań Lista zadań spełniających kryteria (sprawdź właściwości zadania)",
+      "it_IT": "Mostra nella Jump List della barra applicazioni le Attività selezionate (controlla proprietà dell'Attività)",
       "id": 2132 }
     ,
     "cbCmdTaskbarUpdate": {
@@ -334,6 +335,7 @@
       "ja": "ジャンプリストを更新することを忘れないでください.特に, '自動更新' がチェックされていない場合",
       "es": "No olvides actualizar la Lista de Tareas, especialmente si no está activado 'Autoactualizar'",
       "pl": "Nie zapomnij zaktualizować list szybkiego dostępu, zwłaszcza jeśli „Autoupdate” nie jest zaznaczone",
+      "it_IT": "Non dimenticare di aggiornare le Jump List, soprattutto se 'Aggiornamento automatico' è deselezionato",
       "id": 2320 }
     ,
     "cbComspecTest": {
@@ -525,7 +527,7 @@
             , "wysyłając sekwencję Del / BS do konsoli\n"
             , "Zaimplementuj „zwykłe” skróty klawiszowe Ctrl + X, Shift + Del, BS i Del." ],
       "it_IT": [ "Prova a cancellare l'area selezionata, se possibile\r\n"
-            , "registrando la sequenza di Del/BS su console.\r\n"
+            , "registrando la sequenza di Canc/BS su console.\r\n"
             , "Implementare i tasti di scelta rapida 'usuali' Ctrl+X, Maiusc+Canc, BS e Canc." ],
       "id": 3030 }
     ,
@@ -700,7 +702,7 @@
       "zh": [ "停止 Windows 任务栏上所有来自 Far Manager 的闪烁。\r\n"
             , "第三种情况 - 允许较短闪烁" ],
       "de": [ "Deaktiviert Blinken (des Far-Managers) in der Windows-Taskleiste.\r\n"
-            , "3.-Zustand - Erlaubt kurzes Aufblinken." ],
+            , "Auswahlfeld im Zwischenzustand - kurzes Aufblinken erlauben." ],
       "ja": [ "Windowsタスクバーの(Far Managerからの)点滅を無効にします.\r\n"
             , "3番目 - 短期間の点滅は許可" ],
       "es": [ "Desactivar parpadeo (de Far Manager) en la barra de tareas de Windows.\r\n"
@@ -993,6 +995,8 @@
             , "Ej.: principal - \"Consolas\",  adicional - \"Segoe UI\"." ],
       "pl": [ "Możesz określić dodatkową czcionkę do rysowania pseudografii lub określony zakres symboli.\n"
             , "Na przykład. główny- „Consolas”, dodatkowe - „Segoe UI”." ],
+      "it_IT": [ "È possibile specificare un tipo di font aggiuntivo per disegnare pseudo-grafiche o un intervallo di simboli specificato.\r\n"
+            , "Ad esempio principale - \"Consolas\", aggiuntivo - \"Segoe UI\"." ],
       "id": 1207 }
     ,
     "cbFocusInChildWindows": {
@@ -1020,6 +1024,8 @@
             , "Se verán mejor los pseudo-gráficos." ],
       "pl": [ "Włącz lub wyłącz „Wyczyść typ” dla alternatywnej czcionki.\n"
             , "Dokładna pseudografia wygląda lepiej." ],
+      "it_IT": [ "Abilita o disabilita 'Clear Type' per il font alternativo.\r\n"
+            , "Le pseudo-grafiche avranno un aspetto migliore." ],
       "id": 2883 }
     ,
     "cbFontAuto": {
@@ -1030,6 +1036,7 @@
       "ja": "実際のコンソール幅で自動的にフォントをリサイズする",
       "es": "Redimensionar automáticamente el tipo de letra para la anchura fija del terminal real",
       "pl": "Automatyczna zmiana rozmiaru czcionki dla ustalonej rzeczywistej szerokości konsoli",
+      "it_IT": "Ridimensionamento automatico del font per la dimensione della console reale",
       "id": 1566 }
     ,
     "cbHandleFarDetach": {
@@ -1057,6 +1064,8 @@
             , " Puedes usar el símbolo '&' para elegir la tecla activa del elemento" ],
       "pl": [ "Co zobaczysz w menu podręcznym Eksploratora\n"
             , "Możesz użyć znaku `&`, aby ustawić skrót klawiszowy dla pozycji menu" ],
+      "it_IT": [ "Cosa verrà visualizzato nel menu di scelta rapida di Explorer\r\n"
+            , "È possibile utilizzare il segno '&' per impostare la combo per la voce di menu" ],
       "id": 2407 }
     ,
     "cbHideCaption": {
@@ -1067,6 +1076,7 @@
       "ja": "最大化するとメインウィンドウのキャプションを隠す(Alt-F9)",
       "es": "Ocultar la barra de título de la ventana principal, cuando está maximizada (Alt-F9)",
       "pl": "Ukryj podpis okna głównego po zmaksymalizowaniu (Alt-F9)",
+      "it_IT": "Nascondi la didascalia della finestra principale quando massimizzata (Alt+F9)",
       "id": 1565 }
     ,
     "cbHideCaptionAlways": {
@@ -1077,6 +1087,7 @@
       "ja": "ウィンドウ枠とキャプションを削除します.コンソール,タブ,ステータスバーのみが表示されます.",
       "es": "Eliminar el borde y barra de título de la ventana. Sólo se mostrarán el terminal, las pestañas y la barra de estado.",
       "pl": "Usuń obramowanie okna i podpis. Wyświetlana będzie tylko konsola, karty i pasek stanu.",
+      "it_IT": "Togli il bordo della finestra e la didascalia. Solo la console, la barra delle schede e di stato verranno mostrate.",
       "id": 1569 }
     ,
     "cbHideInactiveConTabs": {
@@ -1087,6 +1098,7 @@
       "ja": "アクティブなコンソールからのみタブを表示する",
       "es": "Mostrar sólo pestañas del terminal activo",
       "pl": "Pokaż karty tylko z aktywnej konsoli",
+      "it_IT": "Visualizzare schede solo dalla console attiva",
       "id": 1642 }
     ,
     "cbInjectConEmuHkFast": {
@@ -1097,6 +1109,7 @@
       "ja": "多くの機能(ConEmuタブのANSI X3.64, -new_console 引数, GUIアプリケーション,...)といくつかの問題(Windows8でのクラッシュ, Windows7での telnet, ConEmuウィンドウの後ろのダイアログとメニュー, chcp hungs , 等々...)",
       "es": "Se necesita para varias características (ANSI X3.64, parámentro -new_console, aplicaciones GUI en pestañas de ConEmu, ...) y para evitar varios problemas (casques en Windows 8, telnet en Windows 7, diálogos y menús que se quedan detrás de la ventana de ConEmu, cuelgues de chcp, ...)",
       "pl": "Wymagane dla wielu funkcji (ANSI X3.64, -new_console argument, GUI aplikacje na kartach ConEmu , ...) i wyeliminowanie kilku problemów (awaria w Windows 8, telnet w Windows 7, okna dialogowe i menu za oknem ConEmu, chcp hungs itd.)",
+      "it_IT": "Necessario per molteplici funzionalità (ANSI X3.64, argomento -new_console, applicazioni grafiche nelle schede di ConEmu, ...) e prevenzione di molti problemi (crash su Win8, telnet su Win7, finestre e menù non in primo piano rispetto alla finestra di ConEmu, blocco chcp, etc...)",
       "id": 2098 }
     ,
     "cbInsideName": {
@@ -1114,6 +1127,8 @@
             , "Puedes usar '&' para definir la tecla de activación del elemento de menú" ],
       "pl": [ "Co zobaczysz w menu podręcznym Eksploratora\n"
             , "Możesz użyć znaku `&`, aby ustawić skrót klawiszowy dla pozycji menu" ],
+      "it_IT": [ "Cosa verrà visualizzato nel menu di scelta rapida di Explorer\r\n"
+            , "È possibile utilizzare il segno '&' per impostare la combo per la voce di menu" ],
       "id": 2406 }
     ,
     "cbInsideSyncDir": {
@@ -1144,6 +1159,7 @@
       "ja": "メイン フォント 斜体",
       "es": "Tipo de letra itálica principal",
       "pl": "Główna czcionka kursywą",
+      "it_IT": "Corsivo per il font principale",
       "id": 2280 }
     ,
     "cbJumpListAutoUpdate": {
@@ -1164,6 +1180,7 @@
       "ja": "ConEmuの終了時にConEmuのコンソールから起動したすべての `ssh-agent.exe`プロセスを終了します.",
       "es": "Finalizar todos los procesos 'ssh-agent.exe' iniciados por terminales de ConEmu al salir de ConEmu.",
       "pl": "Zakończ wszystkie procesy `ssh-agent.exe` uruchomione z konsol ConEmu przy zakończeniu ConEmu.",
+      "it_IT": "Termina tutti i processi 'ssh-agent.exe' avviati dalle console di ConEmu alla terminazione di ConEmu.",
       "id": 3075 }
     ,
     "cbLongOutput": {
@@ -1241,8 +1258,8 @@
             , "(например, поддержка переключения Far Manager XLat)" ],
       "zh": [ "监视在控制台本体里输入语言的改变\r\n"
             , "（例如：Far Manager XLat 切换支持）" ],
-      "de": [ "Überwacht Wechsel der Eingabesprache in real\r\n"
-            , "console (z.B. Unterstützung für Far-Manager-XLat-Wechsel)" ],
+      "de": [ "Überwacht den Wechsel der Eingabesprache im Originalfenster\r\n"
+            , "der Konsole (Unterstützt z.B. XLat-Wechsel in Far-Manager)" ],
       "ja": [ "実際の入力言語の変化を監視する\r\n"
             , "コンソール(Far Manager XLatスイッチングサポートなど)" ],
       "es": [ "Monitorizar el cambio del idioma de entrada del terminal\r\n"
@@ -1259,6 +1276,7 @@
       "ja": "等幅(monospace)フォントを使用",
       "es": "Activarlo para tipos de letra no proporcionales (monoespaciados)",
       "pl": "Sprawdź, czy nie ma czcionek nieproporcjonalnych (o stałej szerokości)",
+      "it_IT": "Seleziona per font non proporzionali (monospazio)",
       "id": 2283 }
     ,
     "cbMouseDragWindow": {
@@ -1293,6 +1311,9 @@
       "pl": [ "Włącz MultiConsole\n"
             , "(Kilka konsol w jednym ConEmu)\n"
             , "Wymagany restart ConEmu" ],
+      "it_IT": [ "Attiva MultiConsole\r\n"
+            , "(diverse console in un'unica finestra di ConEmu)\r\n"
+            , "Riavvio ConEmu richiesto" ],
       "id": 1506 }
     ,
     "cbMultiIterate": {
@@ -1442,6 +1463,10 @@
             , "ON - EMenu wywołane zamiast RClick\n"
             , "3rd-state - Krótki RClick minął, Długi RClick -> EMenu\n"
             , "Ostrzeżenie! Może to powodować konflikt z RDrag" ],
+      "it_IT": [ "Off - ogni ClickDx è passato alla console\r\n"
+            , "On - EMenu viene chiamato anziché CLickDx\r\n"
+            , "3° stato - ClickDx rapido viene passato, ClickDx lungo -> EMenu\r\n"
+            , "Attenzione! Potrebbe confliggere con TrascinamentoDx" ],
       "id": 1696 }
     ,
     "cbRestore2ActiveMonitor": {
@@ -1509,6 +1534,7 @@
       "ja": "コンソール出力での最大スクロールバー位置の増加",
       "es": "Aumentar la posición máxima de la barra de desplazamiento cuando crece la salida del terminal",
       "pl": "Zwiększ maksymalną pozycję paska przewijania wraz z rosnącym wyjściem konsoli",
+      "it_IT": "Aumenta la posizione massima della barra di scorrimento con l'output della console che aumenta",
       "id": 3090 }
     ,
     "cbSendAltEsc": {
@@ -1634,6 +1660,8 @@
             , "Se puede desactivar con la opción '/nosingle' o forzarse con '/single'" ],
       "pl": [ "Użyj jednego okna ConEmu podczas uruchamiania nowej konsoli ze skrótu lub z innego miejsca\n"
             , "Może być wyłączony przez „/nosingle” lub wymuszony przez przełączniki „/single”" ],
+      "it_IT": [ "Usa una singola finestra di ConEmu quando si avvia una nuova console da scorciatoia o altro\r\n"
+            , "Può essere disattivato da '/nosingle' o forzato da '/single' se passato come argomento" ],
       "id": 2578 }
     ,
     "cbSkipActivation": {
@@ -1805,7 +1833,7 @@
             , "en la zona superior de la ventana de ConEmu" ],
       "pl": [ "Pokaż zakładki (wszystkie otwarte panele, edytory i przeglądarki)\n"
             , "w górnej części okna ConEmu" ],
-      "it_IT": [ "Mostra schede (tutti i pannelli aperti, gli editor e viewers)\r\n"
+      "it_IT": [ "Mostra schede (tutti i pannelli aperti, gli editor e visulizzatori)\r\n"
             , "sulla parte superiore della finestra di ConEmu" ],
       "id": 2288 }
     ,
@@ -1855,7 +1883,7 @@
             , "3er-estado - Windows 7 o superior" ],
       "pl": [ "Reprezentuj każdą konsolę na pasku zadań\n"
             , "3. stan - Windows 7 i wyższy" ],
-      "it_IT": [ "Rappresentare ogni console sulla barra delle applicazioni\r\n"
+      "it_IT": [ "Rappresentare ogni console sulla barra applicazioni\r\n"
             , "3° stato - Windows 7 e versione successiva" ],
       "id": 2048 }
     ,
@@ -1889,6 +1917,7 @@
       "ja": "Far起動時のパネルビューの復元",
       "es": "Recuperar vistas de panel al iniciar Far",
       "pl": "Przywróć widoki paneli przy FAR uruchomieniu",
+      "it_IT": "Ripristina pannelli all'avvio di Far",
       "id": 1720 }
     ,
     "cbThumbUsePicView2": {
@@ -1938,6 +1967,7 @@
       "ja": "手動で入力したUCS範囲を適用するなら結果をきちんと確認して下さい。",
       "es": "No olvides aplicar manualmente el rango UCS introducido para observar los resultados.",
       "pl": "Nie fałszuj zastosowania ręcznie wprowadzonego zakresu UCS, aby obserwować wynik.",
+      "it_IT": "Non dimenticare di applicare manualmente per abilitare il nuovo range Unicode e vederne il risultato.",
       "id": 2838 }
     ,
     "cbUseAltGrayPlus": {
@@ -1971,7 +2001,7 @@
             , "https://chrisant996.github.io/clink/" ],
       "zh": [ "使用 Clink 扩展 command prompt（cmd.exe）\r\n"
             , "https://chrisant996.github.io/clink/" ],
-      "de": [ "Verwende clink um Befehls-Prompt (cmd.exe) zu erweitern\r\n"
+      "de": [ "Clink verwenden, um Kommandointerpretor (cmd.exe) zu erweitern\r\n"
             , "https://chrisant996.github.io/clink/" ],
       "ja": [ "clinkを使用してコマンドプロンプトを拡張する(cmd.exe)\r\n"
             , "https://chrisant996.github.io/clink/" ],
@@ -2008,6 +2038,7 @@
       "ja": "いくつかのキーボードの組み合わせに必要、チェックするとConEmuがフォアグラウンドのときにキーボードをフックします。アンチウイルスソフト(例えばAVP)などで許可しておく必要があります",
       "es": "Se precisa para algunas combinaciones de teclado. Cuando está activa, ConEmu instalará un gancho de teclado cuando esté como ventana de fondo. Debes permitir esto en tu antivirus (p.ej.: AVP)",
       "pl": "Wymagane w przypadku niektórych kombinacji klawiatury. Po zaznaczeniu ConEmu zainstaluje zaczep klawiatury, gdy ConEmu jest oknem pierwszego planu. Musisz więc pozwolić na to w oprogramowaniu antywirusowym (na przykład AVP)",
+      "it_IT": "Necessario per alcune tastiere. Quando attivato, ConEmu installerà un hook per la tastiera quando la finestra di ConEmu è in primo piano. Potrebbe dar problemi con software antivirus (AVP ad esempio)",
       "id": 2086 }
     ,
     "cbUserScreenTransparent": {
@@ -2018,6 +2049,7 @@
       "ja": "パネルが持ち上げられたり,隠れたりした場合, 'ユーザースクリーン' の透明度をオンにします. Ctrl-Alt-Shiftを押して, 'ユーザーの画面' を一時的に表示することができます.",
       "es": "Activar transparencia de 'Pantalla de usuario', cuando el/los panel/es se desplazan o se ocultan. Puedes mostrar temporalmente la 'Pantalla de usuario' pulsando Ctrl-Alt-Shift.",
       "pl": "Włącz przezroczystość „Ekranu użytkownika”, gdy panel(e) są podniesione lub ukryte. Możesz tymczasowo odsłonić „Ekran użytkownika”, naciskając Ctrl-Alt-Shift.",
+      "it_IT": "Attiva la trasparenza 'User screen', quando i pannelli vengono attivati o nascosti. È possibile rivelare temporaneamente lo 'User screen' premendo Ctrl+Alt+Maiusc.",
       "id": 1573 }
     ,
     "cbUseWinArrows": {
@@ -2060,6 +2092,7 @@
       "ja": "起動時に実際のコンソールを表示する",
       "es": "Mostrar la terminal real al iniciar",
       "pl": "Pokaż prawdziwą konsolę podczas uruchamiania",
+      "it_IT": "Mostra console reale all'avvio",
       "id": 1545 }
     ,
     "cbVividColors": {
@@ -2315,6 +2348,7 @@
       "ja": "内部ConEmu(GUI < - >サーバ)コールのログ",
       "es": "Registrar llamadas internas de ConEmu (Servidor<-->GUI)",
       "pl": "Zaloguj się wewnętrznie ConEmu (GUI<-->Server) połączenia",
+      "it_IT": "Registra chiamate interne ConEmu (GUI<-->Server)",
       "id": 2069 }
     ,
     "rbActivityDisabled": {
@@ -2331,6 +2365,8 @@
             , "Se aplica al cerrar el diálogo de 'Opciones'." ],
       "pl": [ "Wyłącz rejestrowanie debugowania.\n"
             , "Oznacza to zamknięcie okna dialogowego \"Ustawienia\"." ],
+      "it_IT": [ "Disabilita registro di debug.\r\n"
+            , "Valido dalla chiusura della finestra 'Impostazioni'." ],
       "id": 1747 }
     ,
     "rbActivityInput": {
@@ -2341,6 +2377,7 @@
       "ja": "ログキーボードとマウスのアクティビティ",
       "es": "Registrar actividad de teclado y ratón",
       "pl": "Rejestruj działania klawiatury i myszy",
+      "it_IT": "Registra attività di tastiera e mouse",
       "id": 1762 }
     ,
     "rbActivityProcess": {
@@ -2358,6 +2395,8 @@
             , "Se necesitar ‘Inyectar ConEmuHk’ is required" ],
       "pl": [ "Zaloguj się do tworzenia postępów w konsoli.\n"
             , "Wymagane jest \"Inject ConEmuHk\"" ],
+      "it_IT": [ "Registra creazione processi nella console.\r\n"
+            , "'Inietta ConEmuHk' è richiesto" ],
       "id": 3057 }
     ,
     "rbActivityShell": {
@@ -2374,6 +2413,8 @@
             , "Se requiere 'Inyectar ConEmuHk'" ],
       "pl": [ "Rejestruj wywołania powłoki (tworzenie postępów, ładowanie bibliotek itp.)\n"
             , "Wymagane jest \"Inject ConEmuHk\"" ],
+      "it_IT": [ "Registra chiamate shell (progresso creazione, caricamento librerie, ecc.)\r\n"
+            , "‘Inietta ConEmuHk’ è richiesta" ],
       "id": 1748 }
     ,
     "rbComspec_AppBit": {
@@ -2457,6 +2498,7 @@
       "ja": "マウスオーバーまたはスクロール位置の変更時にスクロールバーを表示する",
       "es": "Mostrar barra de scroll al pasar el ratón por encima o cuando cambia la posición de scroll",
       "pl": "Pokaż pasek przewijania po najechaniu myszą lub zmianie pozycji przewijania",
+      "it_IT": "Mostra barra di scorrimento al passaggio del mouse o modifica della posizione di scorrimento",
       "id": 2489 }
     ,
     "rbScrollbarHide": {
@@ -2467,6 +2509,7 @@
       "ja": "スクロールバーを表示しない",
       "es": "No mostrar barra de scroll",
       "pl": "Nie pokazuj paska przewijania",
+      "it_IT": "Non mostrare la barra di scorrimento",
       "id": 2487 }
     ,
     "rbScrollbarShow": {
@@ -2498,6 +2541,7 @@
       "ja": "ConEmuを複数の(1つ以上の)タブで開始します.コマンドは,ConEmuの設定,タスクページにあります.",
       "es": "Inicia ConEmu con varias (una o más) pestañas, comandos en las opciones de ConEmu, páginas de tareas",
       "pl": "Uruchamia ConEmu z kilkoma (jedną lub więcej) kartami, poleceniami znajdującymi się w Ustawieniach ConEmu, strona Zadania",
+      "it_IT": "Avvia ConEmu con diverse (una o più) schede, comandi disponibili nella scheda Impostazioni > Avvio > Attività",
       "id": 2235 }
     ,
     "rbStartSingleApp": {
@@ -2508,6 +2552,7 @@
       "ja": "単一のタブを開いた状態でConEmuを開始",
       "es": "Iniciar ConEmu con un sola pestaña abierta",
       "pl": "Uruchamia ConEmu z otwartą pojedynczą kartą",
+      "it_IT": "Avvia ConEmu con una singola scheda aperta",
       "id": 2233 }
     ,
     "rbStartTasksFile": {
@@ -2538,6 +2583,7 @@
       "ja": "ネイティブコンソールのような水平方向のテキストカーソル",
       "es": "Cursor de texto horizontal, como en el terminal nativo",
       "pl": "Poziomy kursor tekstowy, jak natywna konsola",
+      "it_IT": "Cursore di testo orizzontale, come la console nativa",
       "id": 2530 }
     ,
     "rCursorV": {
@@ -2548,6 +2594,7 @@
       "ja": "標準的なグラフィック・テキスト・エディタのような垂直方向のテキスト・カーソル",
       "es": "Cursor de texto vertical, con en los editores de texto estándar",
       "pl": "Pionowy kursor tekstowy, podobnie jak standardowe graficzne edytory tekstu",
+      "it_IT": "Cursore di testo verticale, come gli editor di testo",
       "id": 2531 }
     ,
     "slTransparent": {
@@ -2558,6 +2605,7 @@
       "ja": "メインConEmuウィンドウの透過度",
       "es": "Transparencia de la ventana principal de ConEmu",
       "pl": "Przejrzystość głównego okna ConEmu",
+      "it_IT": "Trasparenza della finestra principale di ConEmu",
       "id": 1564 }
     ,
     "tAnsiLogPath": {
@@ -2614,6 +2662,10 @@
             , "który zostanie zastąpiony obrazem tła,\n"
             , "domyślnie jest to \"#0 #1\" czarno-niebieski.\n"
             , "Użyj \"*\" (gwiazdka) dla koloru tła paneli Far Managera." ],
+      "it_IT": [ "Scegliere gli indici dei colori di sfondo,\r\n"
+            , "che verrà sostituito con l'immagine di sfondo,\r\n"
+            , "il valore predefinito è '#0 #1' Nero e Blu.\r\n"
+            , "Usa \"*\" (asterisco) per il colore di sfondo dei pannelli di Far Manager." ],
       "id": 1575 }
     ,
     "tCloseTabMacro": {
@@ -2669,6 +2721,11 @@
             , "Każde polecenie tworzy zakładkę lub panel na początku grupy\n"
             , "Oznacz aktywną kartę konsoli znakiem \">\"\n"
             , "Uruchom konsolę „Jako administrator” ze znakiem \"*\"" ],
+      "it_IT": [ "Comandi (applicazione, argomenti, '-new_console')\r\n"
+            , "Delimita comandi con righe vuote\r\n"
+            , "Ogni comando crea la scheda o il riquadro all'avvio del gruppo\r\n"
+            , "Contrassegnare la scheda della console attiva con il segno '>'\r\n"
+            , "Avviare la console 'Come amministratore' con il segno '*'" ],
       "id": 2118 }
     ,
     "tCmdGroupGuiArg": {
@@ -2686,6 +2743,8 @@
             , "Ejemplo: /dir \"C:\\\" /icon \"cmd.exe\" /single" ],
       "pl": [ "Parametry zadania (\"/dir\", \"/icon\")\n"
             , "Przykład: / dir \"C:\\\" /icon \"cmd.exe\" /single" ],
+      "it_IT": [ "Parametri attività ('/dir', '/icon')\r\n"
+            , "Esempio: /dir \"C:\\\" /icon \"cmd.exe\" /single" ],
       "id": 2322 }
     ,
     "tCmdGroupKey": {
@@ -2696,6 +2755,7 @@
       "ja": "このタスクを作成するためのホットキーを選択します(グローバルではなく,ConEmuでのみ動作します)",
       "es": "Elegir combinación para crear esta tarea (no es global, sólo funciona en ConEmu)",
       "pl": "Wybierz skrót do utworzenia tego zadania (nie globalny, działa tylko w ConEmu)",
+      "it_IT": "Scegliere combo tasti per la creazione di questa attività (non globale, funziona solo in ConEmu)",
       "id": 2628 }
     ,
     "tCmdGroupName": {
@@ -2705,6 +2765,7 @@
       "de": "Aufgabenname (Alias), umgeben von {...}, verwendet im '[+]-Menü', in 'Dialog neu erstellen' oder mit '-run'-Parameter der ConEmu.exe",
       "es": "Nombre de la tarea (alias), entre corchetes {...}, usado en 'menú [+]', 'Recrear diálogo' o argumento '-run' de ConEmu.exe",
       "pl": "Nazwa zadania (alias), otoczona {...}, używana w \"[+] menu\", \"Odtwórz okno dialogowe\" lub \"-run\" argumentu ConEmu.exe",
+      "it_IT": "Nome attività (alias), circondato da {...}, utilizzato nel menù [+], finestra 'Crea nuova console' o argomento '-run' di ConEmu.exe",
       "id": 2117 }
     ,
     "tCursorFixedSize": {
@@ -2755,6 +2816,7 @@
       "ja": "メインフォントの文字セット",
       "es": "Juego de caracteres principal",
       "pl": "Główny zestaw czcionek",
+      "it_IT": "Mappa caratteri del font principale",
       "id": 1513 }
     ,
     "tFontFace": {
@@ -2765,6 +2827,7 @@
       "ja": "メインフォントのフェイス名",
       "es": "Nombre del tipo de letra principal",
       "pl": "Nazwa twarzy dla głównej czcionki",
+      "it_IT": "Nome del font da usare come font principale",
       "id": 1511 }
     ,
     "tFontFace2": {
@@ -2783,6 +2846,8 @@
             , "Ej.: principal - \"Consolas\", adicional - \"Segoe UI\"" ],
       "pl": [ "Czcionka używana do rysowania pseudografii lub określonego zakresu symboli.\n"
             , "Na przykład. główny - \"Consolas\", dodatkowe - \"Segoe UI\"." ],
+      "it_IT": [ "Carattere utilizzato per disegnare pseudo-grafiche o intervallo di simboli specificato.\r\n"
+            , "Ad esempio principale - \"Consolas\", aggiuntivo - \"Segoe UI\"." ],
       "id": 1514 }
     ,
     "tFontSizeX": {
@@ -2807,6 +2872,8 @@
       "pl": [ "Główna szerokość czcionki\n"
             , "0 - średnia domyślna szerokość\n"
             , "dla określonej wysokości" ],
+      "it_IT": [ "Altezza del font principale\r\n"
+            , "0 - altezza di default" ],
       "id": 2279 }
     ,
     "tFontSizeX2": {
@@ -2831,6 +2898,9 @@
       "pl": [ "WIDTH dla czcionki pseudograficznej.\n"
             , "Musi być szerszy niż główna czcionka\n"
             , "aby uniknąć pseudografii „przerywanej” (ramki)." ],
+      "it_IT": [ "Larghezza per caratteri pseudo-grafici.\r\n"
+            , "Deve essere maggiore della larghezza del font principale\r\n"
+            , "per evitare artefatti grafici." ],
       "id": 2284 }
     ,
     "tFontSizeX3": {
@@ -2841,6 +2911,7 @@
       "ja": "\"モノスペース\"モードのセル幅",
       "es": "Anchura de celda para modo \"Monoespaciado\"",
       "pl": "Szerokość komórki w trybie \"Monospace\"",
+      "it_IT": "Larghezza cella per la modalità \"Monospazio\"",
       "id": 2290 }
     ,
     "tFontSizeY": {
@@ -2851,6 +2922,7 @@
       "ja": "メインフォントの高さ",
       "es": "Altura del tipo de letra principal",
       "pl": "Wysokość głównej czcionki",
+      "it_IT": "Altezza del font principale",
       "id": 1512 }
     ,
     "tHereConfig": {
@@ -2936,6 +3008,8 @@
       "ja": "キャプションとフレームが隠されている間,ConEmuはコンソール部分の周りにフレームの小さな部分(ピクセル単位)を保持します.デフォルトは1ピクセルです.",
       "es": "Mientras la barra de título y el borde están ocultos, ConEmu puede mantener un pequeño margen alrededor de la zona del terminal. Por defecto es 1 pixel.",
       "pl": "Podczas gdy podpis i ramka są ukryte, ConEmu może utrzymywać małą część ramki (w pikselach) wokół części konsoli. Domyślnie jest to 1 piksel.",
+      "it_IT": [ "Quando didascalia e bordo sono nascosti, ConEmu può disegnare un contorno (in pixel) all'esterno della console.\r\n"
+            , "Default è -1." ],
       "id": 1589 }
     ,
     "tInsideConfig": {
@@ -3207,6 +3281,7 @@
       "ja": "'常にスクロールバーを表示する'が OFFまたは自動のときスクロールバーを遅らせて表示する",
       "es": "Retraso de aparición de la barra de scroll cuando 'Motrar siempre barra de scroll' está desactivada o en el 3er-estado",
       "pl": "Pasek przewijania pojawia się z opóźnieniem, gdy \"Zawsze pokazuj pasek przewijania\" jest wyłączony lub znajduje się w 3rd-stanie",
+      "it_IT": "Ritardo di visualizzazione della barra di scorrimento quando 'Auto' è selezionato",
       "id": 2354 }
     ,
     "tScrollDisappearDelay": {
@@ -3217,6 +3292,7 @@
       "ja": "'常にスクロールバーを表示する'が OFFまたは自動のときスクロールバーを遅らせて非表示にする",
       "es": "El retardo de desaparición de la barra de scroll cuando 'Mostrar siempre barra de scroll' está desactivado o en 3er-estado",
       "pl": "Pasek przewijania zniknie z opóźnieniem, gdy \"Zawsze pokazuj pasek przewijania\" jest wyłączony lub znajduje się w 3-rd stanie",
+      "it_IT": "Ritardo di nascondimento della barra di scorrimento quando 'Auto' è selezionato",
       "id": 2355 }
     ,
     "tsTopPID": {
@@ -3407,6 +3483,7 @@
       "ja": "プレビューよりも小さい画像の最大ズーム",
       "es": "Ampliación máxima para imágenes más pequeñas que la previsualización",
       "pl": "Maksymalne powiększenie dla zdjęć mniejszych niż podgląd",
+      "it_IT": "Zoom massimo per immagini più piccole della miniatura",
       "id": 1662 }
     ,
     "tThumbsFontName": {
@@ -3417,6 +3494,7 @@
       "ja": "サムネイルモードのテキストラベルのフォント名",
       "es": "Tipo de letra de las etiquetas de texto en modo Miniaturas",
       "pl": "Nazwa czcionki etykiet tekstowych w trybie miniatur",
+      "it_IT": "Tipo di font delle etichette in Modalità anteprime",
       "id": 1659 }
     ,
     "tThumbsFontSize": {
@@ -3427,6 +3505,7 @@
       "ja": "サムネイルモードでのテキストラベルフォントの高さ",
       "es": "Altura de las etiquetas de texto en modo de Miniaturas",
       "pl": "Wysokość czcionki etykiet tekstowych w trybie miniatur",
+      "it_IT": "Altezza font delle etichette in Modalità anteprime",
       "id": 1660 }
     ,
     "tThumbsImgSize": {
@@ -3444,6 +3523,8 @@
             , "Por defecto es 96" ],
       "pl": [ "Rozmiar kwadratu podglądu w trybie miniatur\n"
             , "Domyślnie jest to 96" ],
+      "it_IT": [ "Dimensione in pixel del riquadro in Modalità miniature\r\n"
+            , "Default è 96" ],
       "id": 1682 }
     ,
     "tThumbsPadding": {
@@ -3520,6 +3601,7 @@
       "ja": "タイルモードでのテキストラベルのフォント名",
       "es": "Tipo de letra para etiquetas en modo Tiles",
       "pl": "Nazwa czcionki etykiet tekstowych w trybie kafelków",
+      "it_IT": "Tipo di font delle etichette in Modalità Titoli",
       "id": 1661 }
     ,
     "tTilesFontSize": {
@@ -3530,6 +3612,7 @@
       "ja": "タイルモードでのテキストラベルフォントの高さ",
       "es": "Altura de las etiquetas de texto en modo Tiles",
       "pl": "Wysokość czcionki etykiet tekstowych w trybie kafelków",
+      "it_IT": "Altezza del font delle etichette in modalità Titoli",
       "id": 1666 }
     ,
     "tTilesImgSize": {
@@ -3547,6 +3630,8 @@
             , "Por defecto es 48" ],
       "pl": [ "Rozmiar kwadratu podglądu w trybie kafelków\n"
             , "Domyślnie to 48" ],
+      "it_IT": [ "Dimensione in pixel del riquadro anteprima in modalità Titoli\r\n"
+            , "Default è 48" ],
       "id": 1681 }
     ,
     "tTilesPadding": {
@@ -3630,6 +3715,8 @@
             , "elige uno de la lista." ],
       "pl": [ "Zdefiniuj własny zakres UCS lub\n"
             , "wybierz predefiniowany z listy." ],
+      "it_IT": [ "Definisci il Range Unicode che ti serve o\r\n"
+            , "scegli tra uno di quelli predefiniti." ],
       "id": 2835 }
     ,
     "tUpdateVerLocation": {
@@ -3654,6 +3741,9 @@
       "pl": [ "URL do pobierania informacji o najnowszej wersji,\n"
             , "domyślnie jest to: https://conemu.github.io/version.ini\n"
             , "Usuń pole tekstowe, aby przywrócić domyślny adres URL." ],
+      "it_IT": [ "Indirizzo dove reperire le informazioni sull'ultima versione,\r\n"
+            , "default: https://conemu.github.io/version.ini\r\n"
+            , "Cancella la casella di testo per ripristinare l'indirizzo di default." ],
       "id": 2052 }
     ,
     "tWndHeight": {
@@ -4756,6 +4846,7 @@
       "ja": "新しいコンソールまたは新しいウィンドウを作成する( '1つのConEmuウィンドウで複数のコンソールをチェックする' )",
       "es": "Crear un nuevo terminal o nueva ventana (comprobar 'Varios terminales en una ventana de ConEmu')",
       "pl": "Utwórz nową konsolę lub nowe okno (zaznacz \"Wiele konsol w jednym oknie ConEmu\")",
+      "it_IT": "Crea nuova console o nuova finestra (seleziona 'Più console in una finestra ConEmu')",
       "id": 2001 }
     ,
     "vkMultiNewAttach": {
@@ -5048,6 +5139,7 @@
       "ja": "タブバーを表示",
       "es": "Mostrar barra de pestañas",
       "pl": "Pokaż pasek kart",
+      "it_IT": "Mostra barra schede",
       "id": 2326 }
     ,
     "vkShowTabsList": {
@@ -5390,6 +5482,7 @@
       "ja": "メニューを表示する",
       "es": "Mostrar menú de ConEmu",
       "pl": "Pokaż menu ConEmu",
+      "it_IT": "Mostra menu ConEmu",
       "id": 2014 }
     ,
     "vkWinAltT": {
@@ -5540,7 +5633,7 @@
             , "Mantener Shift para mostrar diálogo de Reinicio" ],
       "pl": [ "Uruchom ponownie bieżącą konsolę jako Administrator (Vista +) lub użytkownik (WinXP)\n"
             , "Przytrzymaj Shift, aby wyskoczyć okno dialogowe Uruchom ponownie" ],
-      "it_IT": [ "Riavvia console corrente come Amministratore (Vista+) o utenete (WinXp)\r\n"
+      "it_IT": [ "Riavvia console corrente come Amministratore (Vista+) o utente (WinXp)\r\n"
             , "Premi Maiusc per aprire la finestra Riavvia" ],
       "id": 43987 }
     ,
@@ -5563,7 +5656,7 @@
       "ja": "現在のタブの右側にあるすべてのタブを閉じる",
       "es": "Cerrar todas las pestañas a la derecha de la actual",
       "pl": "Zamknij wszystkie zakładki po prawej stronie bieżącego",
-      "it_IT": "Chiudi tutte le schede a destra dell''attuale",
+      "it_IT": "Chiudi tutte le schede a destra dell'attuale",
       "id": 44008 }
     ,
     "IDM_TERMINATEALLCON": {
@@ -5607,7 +5700,7 @@
       "ja": "アクティブなコンソール/ペインを除くすべてのタブとペインを閉じる",
       "es": "Cierra todas las pestañas y paneles excepto los activos",
       "pl": "Zamknij wszystkie karty i panele z wyjątkiem aktywnej konsoli / panelu",
-      "it_IT": "Chiudi tuttle le schede e pannelli tranne quelle attive",
+      "it_IT": "Chiudi tutte le schede e pannelli tranne quelle attive",
       "id": 44002 }
     ,
     "IDM_TERMINATEGROUP": {
@@ -5759,6 +5852,7 @@
       "ja": "<Cancel>を押して作業を続行します.",
       "es": "Pulsar <Cancel> para continuar tu trabajo.",
       "pl": "Naciśnij <Cancel> aby kontynuować pracę.",
+      "it_IT": "Premi <Annulla> per continuare il tuo lavoro.",
       "id": 69 }
     ,
     "lng_AssertRetryDescr": {
@@ -5776,6 +5870,8 @@
             , "y notificar el error (abrir página web del proyecto)." ],
       "pl": [ "Naciśnij <Retry> aby skopiować informacje tekstowe do schowka\n"
             , "i zgłoś błąd (otwórz stronę internetową projektu)." ],
+      "it_IT": [ "Premi <Riprova> per copiare il testo nella clipboard\r\n"
+            , "e segnalare un bug (apre pagina web del progetto)." ],
       "id": 71 }
     ,
     "lng_BasicSettings": {
@@ -5786,6 +5882,7 @@
       "ja": "基本設定",
       "es": "Configuración básica",
       "pl": "Podstawowe ustawienia",
+      "it_IT": "Impostazioni di base",
       "id": 21 }
     ,
     "lng_BufferHeightOffHint": {
@@ -5793,6 +5890,7 @@
       "ru": "Режим BufferHeight выключен",
       "zh": "缓存高度模式 关闭",
       "pl": "Tryb BufferHeight jest wyłączony",
+      "it_IT": "AltezzaDinamica disattiva",
       "id": 197 }
     ,
     "lng_BufferHeightOnHint": {
@@ -5800,6 +5898,7 @@
       "ru": "Режим BufferHeight включен (прокрутка включена)",
       "zh": "缓存高度模式 开启（滚动已启动）",
       "pl": "Tryb BufferHeight jest włączony (przewijanie włączone)",
+      "it_IT": "AltezzaDinamica attiva (scorrimento abilitato)",
       "id": 196 }
     ,
     "lng_CloseAllConsolesHint": {
@@ -5976,7 +6075,7 @@
       "ja": "<現在の配色>",
       "es": "<Esquema de color actual>",
       "pl": "<Current color scheme>",
-      "it_IT": "<Current color scheme>",
+      "it_IT": "<Schema colori corrente>",
       "id": 22 }
     ,
     "lng_DetachConConfirm": {
@@ -6129,7 +6228,7 @@
       "ja": "ホットキー<%s>は一意ではありません",
       "es": "Combinación <%s> no es única",
       "pl": "Klawisz skrótu <%s> nie jest wyjątkowy",
-      "it_IT": "Combinazione <%s> non è unica",
+      "it_IT": "Combo <%s> non è unica",
       "id": 79 }
     ,
     "lng_HotkeysAll": {
@@ -6217,7 +6316,7 @@
       "ja": "<なし>",
       "es": "<Ninguno>",
       "pl": "<None>",
-      "it_IT": "<None>",
+      "it_IT": "<Nessuna>",
       "id": 77 }
     ,
     "lng_MaximizeWindowHint": {
@@ -6319,6 +6418,7 @@
       "zh": "关闭控制台（&c）...",
       "de": "Konsole s&chließen",
       "pl": "&Zamknij konsolę",
+      "it_IT": "&Chiudi console",
       "id": 107 }
     ,
     "lng_MenuCloseGroup": {
@@ -6327,6 +6427,7 @@
       "zh": "关闭标签组（&c）",
       "de": "Reiter-Gruppe s&chließen",
       "pl": "&Zamknij grupę kart",
+      "it_IT": "&Chiudi gruppo di schede",
       "id": 108 }
     ,
     "lng_MenuCloseTab": {
@@ -6344,6 +6445,7 @@
       "zh": "复制（&y）",
       "de": "&Kopieren",
       "pl": "Kopiu&j",
+      "it_IT": "Cop&ia",
       "id": 119 }
     ,
     "lng_MenuConCopyAll": {
@@ -6359,7 +6461,7 @@
       "en": "Plain &text only",
       "ru": "Только обычный текст",
       "zh": "纯文字（&t）",
-      "de": "Nur &Text",
+      "de": "Nur &Text kopieren",
       "pl": "Zwykły &tylko tekst",
       "it_IT": "Solo &testo semplice",
       "id": 123 }
@@ -6386,7 +6488,7 @@
       "en": "A&NSI sequences",
       "ru": "Последовательности ANSI",
       "zh": "A&NSI 序列",
-      "de": "Text mit A&NSI-Sequenzen",
+      "de": "Text mit A&NSI-Sequenzen kopieren",
       "pl": "A&NSI sekwencje",
       "it_IT": "Sequenze A&NSI",
       "id": 126 }
@@ -6397,6 +6499,7 @@
       "zh": "搜索（&f）",
       "de": "Text s&uchen...",
       "pl": "&Znajdź tekst...",
+      "it_IT": "&Trova testo...",
       "id": 127 }
     ,
     "lng_MenuConMarkBlock": {
@@ -6457,6 +6560,7 @@
       "zh": "显示断言",
       "de": "Fehlermeldung anzeigen",
       "pl": "Pokaż potwierdzenie",
+      "it_IT": "Mostra asserzione",
       "id": 168 }
     ,
     "lng_MenuDebugGui": {
@@ -6465,6 +6569,7 @@
       "zh": "调试日志（GUI）",
       "de": "Protokoll für Feh&lersuche (GUI)",
       "pl": "Debug &log (GUI)",
+      "it_IT": "&Log debug (GUI)",
       "id": 164 }
     ,
     "lng_MenuDebugShowRects": {
@@ -6473,6 +6578,7 @@
       "zh": "显示调试纠正",
       "de": "Rech&tecke für Fehlersuche anzeigen",
       "pl": "Pokaż debugowanie rect&s",
+      "it_IT": "Mostra riquadri di debug",
       "id": 165 }
     ,
     "lng_MenuDebugTrap": {
@@ -6481,6 +6587,7 @@
       "zh": "引起异常（主要线程）",
       "de": "Ausnahmefehler auslösen (Main thread)",
       "pl": "Zgłoś wyjątek (Główny wątek)",
+      "it_IT": "Eleva eccezione (Thread principale)",
       "id": 166 }
     ,
     "lng_MenuDebugTrap2": {
@@ -6489,6 +6596,7 @@
       "zh": "引起异常（监控线程）",
       "de": "Ausnahmefehler auslösen (Monitor thread)",
       "pl": "Podnieś wyjątek (wątek monitora)",
+      "it_IT": "Eleva eccezione (Thread monitor)",
       "id": 167 }
     ,
     "lng_MenuDetach": {
@@ -6527,9 +6635,9 @@
     "lng_MenuDuplicate": {
       "en": "Duplica&te root...",
       "zh": "复制根进程(&T)...",
-      "de": "Reiter duplizieren...",
+      "de": "Duplizieren...",
       "pl": "Duplikuj & root...",
-      "it_IT": "Radice duplica&te...",
+      "it_IT": "Duplica &radice...",
       "id": 101 }
     ,
     "lng_MenuHelp": {
@@ -6565,7 +6673,7 @@
       "zh": "热键",
       "de": "Tasten&kürzel",
       "pl": "Klawisze skrótu",
-      "it_IT": "Combinazione &tasti",
+      "it_IT": "Combo &tasti",
       "id": 136 }
     ,
     "lng_MenuLoadDumpConsole": {
@@ -6658,6 +6766,7 @@
       "en": "Hel&p",
       "ru": "Помощь",
       "zh": "帮助",
+      "de": "&Hilfe",
       "pl": "Wsparcie",
       "it_IT": "Aiu&to",
       "id": 146 }
@@ -6703,6 +6812,7 @@
       "zh": "关闭或杀掉",
       "de": "Schließen und &beenden",
       "pl": "Zamknij lub zabij",
+      "it_IT": "Chiudi o &forza chiusura",
       "id": 113 }
     ,
     "lng_MenuRenameTab": {
@@ -6729,6 +6839,7 @@
       "zh": "重置终端",
       "de": "Terminal zurücksetzen",
       "pl": "Zresetuj terminal",
+      "it_IT": "&Ripristina terminale",
       "id": 122 }
     ,
     "lng_MenuRestart": {
@@ -6764,6 +6875,7 @@
       "zh": "从 TSA 恢复",
       "de": "Aus dem &Infobereich wiederherstellen",
       "pl": "Przywróć z TSA",
+      "it_IT": "Ripristina dalla &TSA",
       "id": 150 }
     ,
     "lng_MenuScreenshot": {
@@ -6790,6 +6902,7 @@
       "zh": "设置任务",
       "de": "Aufgaben einrichten...",
       "pl": "Zadania konfiguracyjne...",
+      "it_IT": "Imposta attività...",
       "id": 140 }
     ,
     "lng_MenuSplit2Bottom": {
@@ -6816,13 +6929,14 @@
       "zh": "停止检查更新",
       "de": "Prüfung auf neue Ver&sion beenden",
       "pl": "Zatrzymaj sprawdzanie aktualizacji",
+      "it_IT": "&Stop controllo aggiornamenti",
       "id": 128 }
     ,
     "lng_MenuSysAttachTo": {
       "en": "Attach t&o...",
       "ru": "Прикрепить к...",
       "zh": "附上...",
-      "de": "Ank&oppeln an...",
+      "de": "Fenster ank&oppeln...",
       "pl": "Dołączyć do",
       "it_IT": "C&ollegati a...",
       "id": 156 }
@@ -6849,6 +6963,7 @@
       "zh": "关闭所有控制台",
       "de": "&Alle Konsolen schließen",
       "pl": "Zamknij wszystkie konsole",
+      "it_IT": "Chiudi &tutte le console",
       "id": 95 }
     ,
     "lng_MenuTerminateButShell": {
@@ -6909,6 +7024,7 @@
       "zh": "关闭所有 zombies",
       "de": "Alle '&Zombies' schließen",
       "pl": "Zamknij wszystkie zombie",
+      "it_IT": "Chiudi tutti i processi &zombie",
       "id": 96 }
     ,
     "lng_MenuUnfasten": {
@@ -6917,6 +7033,7 @@
       "zh": "松开",
       "de": "Abkoppeln (neues ConEmu-Fenster)",
       "pl": "Odpiąć",
+      "it_IT": "Sganciare",
       "id": 100 }
     ,
     "lng_MenuWhatsNewFile": {
@@ -7064,6 +7181,7 @@
       "ja": "手動でアップデートを確認してください",
       "es": "Por favor comprueba las actualizaciones manualmente",
       "pl": "Sprawdź ręcznie aktualizacje",
+      "it_IT": "Controlla aggiornamenti manualmente",
       "id": 68 }
     ,
     "lng_RasterAutoError": {
@@ -7564,6 +7682,7 @@
       "ja": "タスクバー",
       "es": "Barra de tareas",
       "pl": "Pasek zadań",
+      "it_IT": "Barra applicazioni",
       "id": 31 }
     ,
     "lng_SpgTasks": {
@@ -7574,6 +7693,7 @@
       "ja": "タスク",
       "es": "Tareas",
       "pl": "Zadania",
+      "it_IT": "Attività",
       "id": 34 }
     ,
     "lng_SpgTransparent": {
@@ -7718,7 +7838,7 @@
       "ja": "'... \\Console\\TrueTypeFont'にフォントを追加",
       "es": "Añadir tipo de letra a '...\\Console\\TrueTypeFont'",
       "pl": "Dodaj czcionkę do \"... \\ Console \\ TrueTypeFont\"",
-      "it_IT": "Aggiungi font a '...\\Console\\TrueTypeFont’",
+      "it_IT": "Aggiungi font a ‘...\\Console\\TrueTypeFont’",
       "id": 1730 }
     ,
     "bConFontCancel": {
@@ -7894,6 +8014,7 @@
       "ja": "デフォルトタスクの追加/更新...",
       "es": "Añadir/recargar tareas por defecto...",
       "pl": "Dodaj / odśwież domyślne zadania ...",
+      "it_IT": "Aggiungi/aggiorna attività predefinite...",
       "id": 2632 }
     ,
     "cbAdminShield": {
@@ -7911,7 +8032,7 @@
       "en": "suffix",
       "ru": "суффикс",
       "zh": "后缀",
-      "de": "Anhang",
+      "de": "Anhängen:",
       "ja": "接尾辞",
       "es": "sufijo",
       "pl": "przyrostek",
@@ -8098,6 +8219,7 @@
       "ja": "クリップボード(コピー/ペースト)オーバーライド",
       "es": "Anular portapapeles (Copiar/Pegar)",
       "pl": "Zastąpienie Schowka (Kopiuj/Wklej)",
+      "it_IT": "Sovrascrittura gestione Copia/Incolla",
       "id": 2172 }
     ,
     "cbClipConfirmEnter": {
@@ -8215,6 +8337,7 @@
       "ja": "新しいコンソールのデフォルトタスク",
       "es": "Tarea por defecto para nuevo terminal",
       "pl": "Domyślne zadanie dla nowej konsoli",
+      "it_IT": "Attività predefinita nuova console",
       "id": 2750 }
     ,
     "cbCmdGrpTaskbar": {
@@ -8225,6 +8348,7 @@
       "ja": "タスクバーのジャンプリスト",
       "es": "Lista de tareas de la barra de tareas",
       "pl": "Listy przeskoków paska zadań",
+      "it_IT": "Jump List della barra applicazioni",
       "id": 2752 }
     ,
     "cbCmdGrpToolbar": {
@@ -8355,6 +8479,7 @@
       "ja": "'カラーキー' 透明度",
       "es": "'Color' para transparencia",
       "pl": "\"klucza koloru\"",
+      "it_IT": "'Colore' della trasparenza",
       "id": 2312 }
     ,
     "cbColorSchemeDelete": {
@@ -8387,7 +8512,7 @@
       "ja": "カラーパレットオーバーライド",
       "es": "Sustituir color de paleta",
       "pl": "Zastąpienie palety kolorów",
-      "it_IT": "Sovrascrivi palette dei colori",
+      "it_IT": "Sovrascrittura palette dei colori",
       "id": 2146 }
     ,
     "cbCompressLongStrings": {
@@ -8458,13 +8583,14 @@
       "ru": "Подтвердите сброс терминала",
       "de": "Zurücksetzen des Terminals bestätigen",
       "pl": "Potwierdź resetowanie terminala",
+      "it_IT": "Conferma ripristino terminale",
       "id": 2690 }
     ,
     "cbConsoleExceptionHandler": {
       "en": "Exception handler (debug)",
       "ru": "Обработчик исключений (отладка)",
       "zh": "移除处理程序（调试）",
-      "de": "Behandlung von Ausnahmen (Fehlersuche)",
+      "de": "Behandlung von Ausnahmen",
       "ja": "例外ハンドラ(デバッグ)",
       "es": "Manejador de excepciones (depuración)",
       "pl": "Moduł obsługi wyjątków (debug)",
@@ -8488,6 +8614,7 @@
       "ja": "Bashマージン",
       "es": "Margen para bash",
       "pl": "Margines Bash",
+      "it_IT": "Margine bash",
       "id": 2359 }
     ,
     "cbCTSBlockSelection": {
@@ -8529,6 +8656,7 @@
       "ja": "行末を検出",
       "es": "Detectar fin de línea",
       "pl": "Wykryj końce linii",
+      "it_IT": "Rileva fine linea",
       "id": 2358 }
     ,
     "cbCTSEndCopyBefore": {
@@ -8683,6 +8811,7 @@
       "ja": "カーソルオーバーライド",
       "es": "Invalidar cursor",
       "pl": "Przesunięcie kursora",
+      "it_IT": "Sovrascrittura cursore",
       "id": 2145 }
     ,
     "cbDebugLog": {
@@ -8699,7 +8828,7 @@
       "en": "Debug steps in caption",
       "ru": "Шаги отладки в заголовке",
       "zh": "标题里显示调试步骤",
-      "de": "Untersuchungsschritte in Titelleiste",
+      "de": "Untersuchungsschritte im Titel",
       "ja": "キャプション内のデバッグステップ",
       "es": "Depurar pasos en título",
       "pl": "Kroki debugowania w podpisie",
@@ -8780,7 +8909,7 @@
       "en": "Disable all flashing",
       "ru": "Отключить все мигания",
       "zh": "禁用所有闪烁",
-      "de": "Jegliches Blinken deaktivieren",
+      "de": "Blinken in Taskleiste verhindern",
       "ja": "すべての点滅を無効にする",
       "es": "Desactivar parpadeo",
       "pl": "Wyłącz wszystkie flashowanie",
@@ -8968,6 +9097,7 @@
       "ja": "フォントスタイルを拡張する",
       "es": "Extender estilos de texto",
       "pl": "Rozszerz style czcionek",
+      "it_IT": "Estendi stile font",
       "id": 1576 }
     ,
     "cbExtendFontsOverride": {
@@ -8978,6 +9108,7 @@
       "ja": "フォントスタイルを拡張する",
       "es": "Invalidar extender estilos de texto",
       "pl": "Rozszerz styl nadpisania czcio..",
+      "it_IT": "Sovrascrittura estensione stile font",
       "id": 2144 }
     ,
     "cbExtendUCharMap": {
@@ -9127,7 +9258,7 @@
       "ja": "代替フォント (pseudographics, CJK, etc.)",
       "es": "Tipo de letra alternativo (pseudográficos, CJK, etc...)",
       "pl": "Alternatywna czcionka (pseudografia, CJK itp.)",
-      "it_IT": "Tipo di carattere alternativo (pseudografica, CJK, ecc.)",
+      "it_IT": "Font alternativo (pseudo-grafica, CJK, ecc.)",
       "id": 1207 }
     ,
     "cbFocusInChildWindows": {
@@ -9159,6 +9290,7 @@
       "ja": "フォントの高さをデバイス単位として扱う",
       "es": "Tratar altura de letra como unidades de dispositivo",
       "pl": "Traktuj wysokość czcionki jako jednostki urządzenia",
+      "it_IT": "Usa l'altezza del font come unità di dispositivo",
       "id": 2692 }
     ,
     "cbFontAuto": {
@@ -9169,7 +9301,7 @@
       "ja": "自動サイズ(セル内の固定コンソールサイズ)",
       "es": "Tamaño automático (tamaño de terminal en celdas)",
       "pl": "Rozmiar automat (naprawiono rozmiar w komórkach)",
-      "it_IT": "Dimensione automatica (dimensione console fissa in celle)",
+      "it_IT": "Dim. automatica (dimensione console fissa in celle)",
       "id": 1566 }
     ,
     "cbFontMonitorDpi": {
@@ -9211,6 +9343,7 @@
       "ja": "最大化時にキャプションを隠す",
       "es": "Ocultar título al maximizar",
       "pl": "Ukryj podpis po zmaksymalizowaniu",
+      "it_IT": "Nascondi didascalia quando massimizzato",
       "id": 1565 }
     ,
     "cbHideCaptionAlways": {
@@ -9221,6 +9354,7 @@
       "ja": "キャプションを常に隠す",
       "es": "Ocultar título siempre",
       "pl": "Zawsze ukryj podpis",
+      "it_IT": "Nascondi didascalia sempre",
       "id": 1569 }
     ,
     "cbHideChildCaption": {
@@ -9389,7 +9523,7 @@
       "ja": "斜体(&I)",
       "es": "&Cursiva",
       "pl": "&Italic",
-      "it_IT": "Corsivo",
+      "it_IT": "Cors&ivo",
       "id": 2280 }
     ,
     "cbJumpListAutoUpdate": {
@@ -9415,10 +9549,11 @@
     "cbKillSshAgent": {
       "en": "Kill ssh-agent with ConEmu",
       "ru": "Убить ssh агент с ConEmu",
-      "de": "Beende SSH-Agenten durch ConEmu",
+      "de": "ssh-agent mit ConEmu beenden",
       "ja": "ConEmuでssh-agentを終了させる",
       "es": "Finalizar ssh-agent con ConEmu",
       "pl": "Zabij ssh-agent za pomocą ConEmu",
+      "it_IT": "Termina ssh-agent con ConEMu",
       "id": 3075 }
     ,
     "cbLongOutput": {
@@ -9439,6 +9574,7 @@
       "ja": "Shift+Esc を Escにマップする",
       "es": "Mapear Shift+Esc a Esc",
       "pl": "Shift map + Esc do Esc",
+      "it_IT": "Assegna Maiusc+Esc a Esc",
       "id": 2563 }
     ,
     "cbMinimizeOnLastTabClose": {
@@ -9449,6 +9585,7 @@
       "ja": "最後のタブを閉じる時に最小化",
       "es": "Minimizar al cerrar última pestaña",
       "pl": "Minimalizuj przy zamykaniu ostatniej karty",
+      "it_IT": "Minimizza su chiusura ultima scheda",
       "id": 2586 }
     ,
     "cbMinimizeOnLoseFocus": {
@@ -9476,7 +9613,7 @@
       "en": "Monitor console lang",
       "ru": "Отслеживание языка консоли",
       "zh": "监视控制台（console）语言",
-      "de": "Überwache Konsolensprache",
+      "de": "Eingabesprache überwachen",
       "ja": "コンソールの言語をモニターする",
       "es": "Comprobar idioma de terminal",
       "pl": "Monitoruj tylko konsolę",
@@ -9510,13 +9647,14 @@
       "ja": "1つのConEmuウィンドウに複数のコンソール",
       "es": "Múltiples terminales en una ventana ConEmu",
       "pl": "Wiele konsol w jednym oknie ConEmu",
+      "it_IT": "Più console in una finestra ConEmu",
       "id": 1506 }
     ,
     "cbMultiIterate": {
       "en": "‘Host-key’+Number iterates Far windows",
       "ru": "‘Host-key’+Number повторяет окна Far",
       "zh": "‘Host-key’+数字迭代Far窗口",
-      "de": "'Host-Taste'+Zahl wechselt durch die Far-Fenster",
+      "de": "'Host'+Ziffer wechselt durch Far-Fenster",
       "ja": "‘Host-key’+Numキー で Farウィンドウを循環",
       "es": "'Tecla-Host'+Número itera ventanas Far",
       "pl": "\"Klucz hosta\" + liczba iteruje Dalekie okna",
@@ -9530,6 +9668,7 @@
       "ja": "タブバーにボタン (ツールバー) を表示する",
       "es": "Mostrar botones en barra de pestañas",
       "pl": "Pokaż przyciski (pasek narzędzi) na pasku kart",
+      "it_IT": "Mostra pulsanti (barra strumenti) nella barra delle schede",
       "id": 2549 }
     ,
     "cbMultiShowSearch": {
@@ -9540,6 +9679,7 @@
       "ja": "タブバーに検索フィールドを表示する",
       "es": "Mostrar campo de búsqueda en barra de pestañas                                                                                                                                                                                                                                                               ",
       "pl": "Pokaż pole wyszukiwania na pasku kart",
+      "it_IT": "Mostra campo di ricerca nella barra delle schede",
       "id": 2715 }
     ,
     "cbNewConfirm": {
@@ -9567,7 +9707,7 @@
       "en": "Only active pane of group",
       "ru": "Только активная панель группы",
       "zh": "仅每组活动的窗格",
-      "de": "Nur aktive Fläche der Gruppe",
+      "de": "Nur ein Reiter pro Gruppen",
       "ja": "グループのアクティブペインのみ",
       "es": "Sólo panel activo del grupo",
       "pl": "Tylko aktywny panel grupy",
@@ -9608,7 +9748,7 @@
       "en": "Process 'start'",
       "ru": "Процесс 'start'",
       "zh": "处理 'start'",
-      "de": "Verarbeite 'start'",
+      "de": "'start' verarbeiten",
       "ja": "プロセス '開始'",
       "es": "Procesar 'inicio'",
       "pl": "Rozpocznij proces",
@@ -9618,7 +9758,7 @@
       "en": "Process Ctrl-Z in ReadConsole",
       "ru": "Обработка Ctrl-Z в ReadConsole",
       "zh": "在ReadConsole里处理 Ctrl-Z",
-      "de": "Verarbeite Strg+Z in RealConsole",
+      "de": "Strg+Z an Konsole senden",
       "ja": "ReadConsoleでCtrl+Zを処理する",
       "es": "Procesar Ctrl-Z en ReadConsole",
       "pl": "Przetwarzaj Ctrl-Z w ReadConsole",
@@ -9628,7 +9768,7 @@
       "en": "Process '-new_console' and '-cur_console' switches",
       "ru": "Обработка переключателей '-new_console' и '-cur_console'",
       "zh": "进行 '-new_console' 和 '-cur_console' 切换",
-      "de": "Verarbeite '-new_console'- und '-cur_console'-Parameter",
+      "de": "\"-new_console\" und \"-cur_console\"-Parameter verarbeiten",
       "ja": "'-new_console'と '-cur_console'スイッチを処理する",
       "es": "Procesar opciones '-new_console' y '-cur_console'",
       "pl": "Przetwarzaj przełączniki \"-new_console\" i \"-cur_console\"",
@@ -9699,7 +9839,7 @@
       "en": "Retard inactive panes",
       "ru": "Задержка неактивных панелей",
       "zh": "延缓不活动的窗格",
-      "de": "Verzögere inaktive Bereiche",
+      "de": "Inaktive Konsolen verlangsamen",
       "ja": "非アクティブなペインを遅らせる",
       "es": "Retrasar paneles inactivos",
       "pl": "Opóźnij nieaktywne szyby",
@@ -9923,7 +10063,7 @@
       "en": "Skip focus events (don't send to console FOCUS_EVENT, useful with Far Manager)",
       "ru": "Пропустить события фокуса (не отправлять в консоль FOCUS_EVENT, полезно с Far Manager)",
       "zh": "跳过焦点事件（FOCUS_EVENT不发送到控制台，对于Far Manager有用）",
-      "de": "Ignoriere Fokusereignisse (Sendet kein FOCUS_EVENT an die Konsole, nützlich bei Verwendung von Far-Manager)",
+      "de": "Fokus-Ereignisse ignorieren (FOCUS_EVENT nicht an Konsole senden, nützlich bei Far-Manager)",
       "ja": "フォーカスイベントをスキップします(コンソールFOCUS_EVENTには送信しないでください,Far Managerで便利です)",
       "es": "Saltar eventos de foco (no enviar FOCUS_EVENT al terminal, útil con Far Manager)",
       "pl": "Pomiń zdarzenia skupienia (nie wysyłaj do konsoli FOCUS_EVENT, przydatne w Far Managerze)",
@@ -9943,7 +10083,7 @@
       "en": "Sleep in background",
       "ru": "Сон в фоновом режиме",
       "zh": "在后端Sleep",
-      "de": "Im Hintergrund schlafen",
+      "de": "Im Hintergrund verlangsamen",
       "ja": "バックグラウンドでスリープ",
       "es": "Dormir en el fondo",
       "pl": "Spać w tle",
@@ -10027,17 +10167,18 @@
       "en": "Suppress bells (beeps)",
       "ru": "Подавить звонки (гудки)",
       "_zh": "抑制bell声",
-      "de": "Unterdrücke Beeps",
+      "de": "Töne unterdrücken",
       "ja": "鐘を鳴らさない(ビープ音)",
       "es": "Eliminar timbres (beeps)",
       "pl": "Pomiń dzwonki (sygnały dźwiękowe)",
+      "it_IT": "Sopprimi suoni (cicalino)",
       "id": 2598 }
     ,
     "cbTabLazy": {
       "en": "Lazy tab switch",
       "ru": "Lazy Переключатель вкладки",
       "zh": "懒人标签开关",
-      "de": "Bequem. Reiterwechsel",
+      "de": "Verzögerter Wechsel",
       "ja": "Lazyタブスイッチ",
       "es": "Cambio de pestaña 'lazy'",
       "pl": "Leniwy przełącznik kart",
@@ -10047,7 +10188,7 @@
       "en": "Recent mode",
       "ru": "Недавний режим",
       "zh": "最近模式",
-      "de": "'Kürzlich'-Modus",
+      "de": "Zuletzt verwendet",
       "ja": "最近使った モード",
       "es": "Modo reciente",
       "pl": "Ostatni tryb",
@@ -10057,10 +10198,11 @@
       "en": "Internal Ctrl+Tab",
       "ru": "Внутренний Ctrl+Tab",
       "zh": "内部Ctrl+Tab",
-      "de": "Internes Strg+Tag",
+      "de": "Strg+Tab wechselt Reiter",
       "ja": "内部Ctrl+Tab",
       "es": "Ctrl+Tab interno",
       "pl": "Wewnętrzne Ctrl + Tab",
+      "it_IT": "Ctrl+Tab interno",
       "id": 1531 }
     ,
     "cbTabsLocationBottom": {
@@ -10092,6 +10234,7 @@
       "ja": "進行状況インジケータを表示(Win7以上)",
       "es": "Mostrar indicador de progreso (Win7 o posterior)",
       "pl": "Pokaż wskaźnik postępu (Win7 i wyższy)",
+      "it_IT": "Mostra indicatore di progresso (Win7 e successivi)",
       "id": 2656 }
     ,
     "cbThumbCacheFolder": {
@@ -10113,7 +10256,7 @@
       "ja": "ファイルのプレビューを読み込む",
       "es": "Cargar previsualización de archivos",
       "pl": "Załaduj podgląd plików",
-      "it_IT": "Carica anteprime per i file",
+      "it_IT": "Carica anteprime file",
       "id": 1664 }
     ,
     "cbThumbLoadFolders": {
@@ -10135,6 +10278,7 @@
       "ja": "プレビューフレーム",
       "es": "Marco de previsualización",
       "pl": "Podgląd ramki",
+      "it_IT": "Riquadro anteprima",
       "id": 1667 }
     ,
     "cbThumbRestoreOnStartup": {
@@ -10156,6 +10300,7 @@
       "ja": "現在のアイテムフレーム",
       "es": "Marco del elemento actual",
       "pl": "Bieżąca ramka produktu",
+      "it_IT": "Riquadro corrente",
       "id": 1668 }
     ,
     "cbThumbUsePicView2": {
@@ -10177,7 +10322,7 @@
       "ja": "アクティブウィンドウの透明度",
       "es": "Activar transparencia de ventanas",
       "pl": "Aktywna przezroczystość okna",
-      "it_IT": "Trasparenza finestra attivata",
+      "it_IT": "Trasparenza finestra attiva",
       "id": 1574 }
     ,
     "cbTransparentSeparate": {
@@ -10188,6 +10333,7 @@
       "ja": "非アクティブウィンドウに別の透明度値を使用する",
       "es": "Usar otro valor de transparencia para ventana inactiva",
       "pl": "Użyj osobnej wartości przezroczystości dla nieaktywnego okna",
+      "it_IT": "Usa trasparenza differente per finestra inattiva",
       "id": 2381 }
     ,
     "cbTrueColorer": {
@@ -10230,6 +10376,7 @@
       "ja": "適用 && 確認",
       "es": "Aplicar && Comprobar",
       "pl": "Zastosuj && sprawdź",
+      "it_IT": "Applica && Controlla",
       "id": 2877 }
     ,
     "cbUpdateCheckHourly": {
@@ -10251,7 +10398,7 @@
       "ja": "起動",
       "es": "Inicio",
       "pl": "PrzyStarcie",
-      "it_IT": "Avvio",
+      "it_IT": "All'avvio",
       "id": 2058 }
     ,
     "cbUpdateConfirmDownload": {
@@ -10305,14 +10452,14 @@
       "ja": "Alt+NumpadAdd - unicode 16進コードベース",
       "es": "Alt+TeclNúmSuma - código unicode hexadecimal",
       "pl": "Alt+NumpadAdd - baza kodu Unicode",
-      "it_IT": "ALT+NumpadPiù - codebase esadecimale Unicode",
+      "it_IT": "Alt+NumpadPiù - codebase esadecimale Unicode",
       "id": 3061 }
     ,
     "cbUseClink": {
       "en": "Use Clink in prompt",
       "ru": "Использовать Clink в подсказке",
       "zh": "命令行提示符里使用Clink",
-      "de": "Verwende Clink in der Eingabeaufforderung",
+      "de": "Clink in CMD laden",
       "ja": "プロンプトでClinkを使う",
       "es": "Usar Clink en símbolo de sistema",
       "pl": "Użyj Clink w odpowiedzi",
@@ -10333,7 +10480,7 @@
       "en": "Inject ConEmuHk",
       "ru": "Внедрить ConEmuHk",
       "zh": "注入ConEmuHk",
-      "de": "Einschleusen von ConEmuHk",
+      "de": "ConEmuHk laden",
       "ja": "ConEmuHk を注入する",
       "es": "Inyectar ConEmuHk",
       "pl": "wstrzyknąć CONEmuHk",
@@ -10359,6 +10506,7 @@
       "ja": "'ユーザー画面'の透過性(Far Manager 機能)",
       "es": "Transparencia 'pantalla de usuario' (opción de Far Manager)",
       "pl": "\"ekranu użytkownika\" (funkcja Far Managera)",
+      "it_IT": "Trasparenza 'User screen' (funzionalità di Far Manager)",
       "id": 1573 }
     ,
     "cbUseWinArrows": {
@@ -10369,7 +10517,7 @@
       "ja": "Win+矢印 - ウィンドウのリサイズ",
       "es": "Win+Cursores - redimensionar ventana",
       "pl": "Win + Strzałki - okno zmiany rozmiaru",
-      "it_IT": "Wiin+Frecce - ridimensiona finestra",
+      "it_IT": "Win+Frecce - ridimensiona finestra",
       "id": 1768 }
     ,
     "cbUseWinNumber": {
@@ -10391,7 +10539,7 @@
       "ja": "Win+Tab - コンソール(タブ)の切り替え",
       "es": "Win+Tab - cambiar terminal (pestañas)",
       "pl": "Win + Tab - przełącz konsole (Tabs)",
-      "it_IT": "Win+Tab - combia console (Schede)",
+      "it_IT": "Win+Tab - cambia console (Schede)",
       "id": 1764 }
     ,
     "cbVisible": {
@@ -10433,7 +10581,7 @@
       "ja": "アルファ透明度",
       "es": "Transparencia alfa",
       "pl": "Przezroczystość alfa",
-      "it_IT": "Trasparenza alfa",
+      "it_IT": "Impostazioni trasparenza",
       "id": 2936 }
     ,
     "gbAnsiSecureExec": {
@@ -10504,6 +10652,7 @@
       "ja": "定義済みのタスク(コマンドグループ)(&P)",
       "es": "Tareas &predefinidas (grupos de comandos)",
       "pl": "&predefiniowane zadania (grupy poleceń)",
+      "it_IT": "Attività &predefinite (gruppi di comandi)",
       "id": 2115 }
     ,
     "gbCmdTasks7": {
@@ -10514,6 +10663,7 @@
       "ja": "Windows 7のタスクバー(ジャンプリスト)",
       "es": "Barra de tareas de Windows 7",
       "pl": "Pasek zadań Windows 7 (lista przeskoków)",
+      "it_IT": "Barra applicazioni Win7 (Jump list)",
       "id": 2134 }
     ,
     "gbColorEnhancement": {
@@ -10524,6 +10674,7 @@
       "ja": "グラフィックの強化",
       "es": "Mejoras gráficas",
       "pl": "Ulepszenie grafiki",
+      "it_IT": "Migliorie grafiche",
       "id": 2928 }
     ,
     "gbComspec": {
@@ -10554,6 +10705,7 @@
       "ja": "アクションを確認する",
       "es": "Confirmar acciones",
       "pl": "Potwierdź działania",
+      "it_IT": "Conferma azioni",
       "id": 2686 }
     ,
     "gbConfirmClose": {
@@ -10564,6 +10716,7 @@
       "ja": "確認を閉じる",
       "es": "Confirmación de cerrado",
       "pl": "Zamknij potwierdzenia",
+      "it_IT": "Conferma chiusure",
       "id": 2756 }
     ,
     "gbConfirmCloseFar": {
@@ -10581,7 +10734,7 @@
       "en": "Miscellaneous",
       "ru": "Прочее",
       "zh": "其他",
-      "de": "Verschiedenes",
+      "de": "Verschiedene ",
       "ja": "雑",
       "es": "Miscelánea",
       "pl": "Różne",
@@ -10606,6 +10759,7 @@
       "ja": "テキストの上書きのコピー",
       "es": "Invalidar copiado de texto",
       "pl": "Kopiowanie tekstu zastępuje",
+      "it_IT": "Sovrascrittura copia testo",
       "id": 2348 }
     ,
     "gbCtrlIntercept": {
@@ -10616,14 +10770,14 @@
       "ja": "ホットキー処理",
       "es": "Procesado de combinaciones de teclas",
       "pl": "Przetwarzanie skrótów klawiszowych",
-      "it_IT": "Processazione combinazione tasti",
+      "it_IT": "Elaborazione combo tasti",
       "id": 3017 }
     ,
     "gbCtrlMisc": {
       "en": "Miscellaneous",
       "ru": "Разное",
       "zh": "其他",
-      "de": "Verschiedenes",
+      "de": "Verschiedene ",
       "ja": "雑",
       "es": "Miscelánea",
       "pl": "Różne",
@@ -10638,6 +10792,7 @@
       "ja": "マウスオプション",
       "es": "Opciones del ratón",
       "pl": "Opcje myszy",
+      "it_IT": "Opzioni del mouse",
       "id": 3016 }
     ,
     "gbCtrlMouseBtns": {
@@ -10648,6 +10803,7 @@
       "ja": "マウスボタンの操作",
       "es": "Acciones de botones del ratón",
       "pl": "Działania przycisku myszy",
+      "it_IT": "Azioni dei tasti del mouse",
       "id": 3021 }
     ,
     "gbCtrlPrompt": {
@@ -10699,6 +10855,7 @@
       "ja": "警告！！！このオプションを有効にすると,ウイルス対策プログラムで誤ったアラームが発生する可能性があります.",
       "es": "¡¡¡AVISO!!! ¡Activar esta opción puede causar falsas alarmas en los antivirus!",
       "pl": "OSTRZEŻENIE!!! Włączenie tej opcji może powodować fałszywe alarmy w programach antywirusowych !!!",
+      "it_IT": "ATTENZIONE!!! Abilitare questa opzione potrebbe generare dei falsi positivi nei programmi antivirus!",
       "id": 2926 }
     ,
     "gbFarDragDrop": {
@@ -10719,6 +10876,7 @@
       "ja": "Far Manager マクロ",
       "es": "Macros de Far Manager",
       "pl": "Makra Far Managera",
+      "it_IT": "Macro di Far Manager",
       "id": 2965 }
     ,
     "gbFarOptions": {
@@ -10729,6 +10887,7 @@
       "ja": "Far Manager オプション",
       "es": "Opciones de Far Manager",
       "pl": "Opcje Far Managera",
+      "it_IT": "Opzioni Far Manager",
       "id": 2958 }
     ,
     "gbFarPanelViews": {
@@ -10739,6 +10898,7 @@
       "ja": "Farパネルビュー",
       "es": "Vistar del panel de Far",
       "pl": "Widoki na dalekim panelu",
+      "it_IT": "Viste Pannelli di Far",
       "id": 2992 }
     ,
     "gbFarPreviewBg": {
@@ -10749,6 +10909,7 @@
       "ja": "プレビューの背景",
       "es": "Previsualizar fondo",
       "pl": "Podgląd tła",
+      "it_IT": "Sfondo anteprima",
       "id": 3005 }
     ,
     "gbFarTabTemplates": {
@@ -10769,6 +10930,7 @@
       "ja": "サムネイルモード",
       "es": "Modo miniaturas",
       "pl": "Tryb miniatur",
+      "it_IT": "Modalità miniature",
       "id": 2993 }
     ,
     "gbFarTiles": {
@@ -10779,6 +10941,7 @@
       "ja": "タイルモード",
       "es": "Modo baldosas",
       "pl": "Tryb kafelków",
+      "it_IT": "Modalità Titoli",
       "id": 2994 }
     ,
     "gbFeatureAppear": {
@@ -10800,6 +10963,7 @@
       "ja": "タイトルバー (キャプション) と境界オプション",
       "es": "Opciones de barra de título y borde",
       "pl": "Pasek tytułu (podpis) i opcje obramowania",
+      "it_IT": "Barra del titolo (Didascalia) e opzioni del bordo",
       "id": 2165 }
     ,
     "gbFeatureClipboard": {
@@ -10820,13 +10984,14 @@
       "ja": "デバッグオプション",
       "es": "Opciones de depuración",
       "pl": "Opcje debugowania",
+      "it_IT": "Opzioni debug",
       "id": 2747 }
     ,
     "gbFeatureInConsole": {
       "en": "In-console options",
       "ru": "Параметры в консоли",
       "zh": "控制台内设置",
-      "de": "Einstellungen für innerhalb der Konsole",
+      "de": "Konsoleneinstellungen",
       "ja": "コンソール内のオプション",
       "es": "Opciones en-terminal",
       "pl": "Opcje w konsoli",
@@ -10840,16 +11005,18 @@
       "ja": "その他のオプション",
       "es": "Otras opciones",
       "pl": "Różne opcje",
+      "it_IT": "Opzioni varie",
       "id": 2163 }
     ,
     "gbFeatureRetard": {
       "en": "CPU consuming",
       "ru": "Загрузка процессора",
       "zh": "CPU消耗",
-      "de": "CPU-Last",
+      "de": "CPU-Nutzung",
       "ja": "CPU消費",
       "es": "Consumo de CPU",
       "pl": "Zużycie procesora",
+      "it_IT": "Consumo della CPU",
       "id": 2748 }
     ,
     "gbFindText": {
@@ -10880,7 +11047,7 @@
       "ja": "ホットキー, モデファイヤ, マクロ",
       "es": "Combinaciones, modificadores, macros",
       "pl": "Skróty klawiszowe, modyfikatory, makra",
-      "it_IT": "Combinazione tasti, modificatori, macro",
+      "it_IT": "Combo tasti, modificatori, macro",
       "id": 3014 }
     ,
     "gbHyperlinks": {
@@ -11291,7 +11458,7 @@
       "ja": "設定を更新",
       "es": "Opciones de actualización",
       "pl": "Ustawienia aktualizacji",
-      "it_IT": "Aggiorna impostazioni",
+      "it_IT": "Impostazioni aggiornamento",
       "id": 2864 }
     ,
     "gbVConAlignment": {
@@ -11429,7 +11596,7 @@
       "ja": "再起動(&s)",
       "es": "Re&iniciar",
       "pl": "Restart",
-      "it_IT": "Riavvia",
+      "it_IT": "Ria&vvia",
       "id": 1524 }
     ,
     "IDC_TERMINATE": {
@@ -11534,6 +11701,7 @@
       "ja": "Comm",
       "es": "Comm",
       "pl": "Comm",
+      "it_IT": "Comm",
       "id": 2069 }
     ,
     "rbActivityDisabled": {
@@ -11566,7 +11734,7 @@
       "ja": "実行(&E)",
       "es": "&Ejecutar",
       "pl": "&Exec",
-      "it_IT": "&Esegui",
+      "it_IT": "&Esecuzione",
       "id": 3057 }
     ,
     "rbActivityShell": {
@@ -11665,7 +11833,7 @@
       "ja": " ' Alpha ' ビルド",
       "es": "Builds 'alfa'",
       "pl": "Aplha \"testowa\"",
-      "it_IT": "Build 'Alpha'",
+      "it_IT": "Build ‘Alpha’",
       "id": 2591 }
     ,
     "rbAutoUpdatePreviewFast": {
@@ -11676,7 +11844,7 @@
       "ja": "' Preview '",
       "es": "'Preview'",
       "pl": "Zapowiedź",
-      "it_IT": "'Preview'",
+      "it_IT": "‘Preview’",
       "id": 2590 }
     ,
     "rbAutoUpdateStableFast": {
@@ -11742,7 +11910,7 @@
       "ja": "OSと同じ",
       "es": "Igual que el SO",
       "pl": "Taki sam jak system operacyjny",
-      "it_IT": "Come il sistema operativo",
+      "it_IT": "Come il SO",
       "id": 2157 }
     ,
     "rbComspec_x32": {
@@ -11862,6 +12030,7 @@
       "ja": "すべてのコンソールが閉じた場合",
       "es": "Si todos los terminales cerrados",
       "pl": "Jeśli konsole są zamknięte",
+      "it_IT": "Se tutte le console sono chiuse",
       "id": 2560 }
     ,
     "rbMinByEscNever": {
@@ -11982,7 +12151,7 @@
       "ja": "自動",
       "es": "Auto",
       "pl": "Auto",
-      "it_IT": "Automatico",
+      "it_IT": "Auto",
       "id": 2489 }
     ,
     "rbScrollbarHide": {
@@ -12015,6 +12184,7 @@
       "ja": "開いたタブの自動保存/復元",
       "es": "Auto guardar/recuperar pestañas abiertas",
       "pl": "Automatyczne zapisywanie / przywracanie otwartych kart",
+      "it_IT": "Salvataggio/ripristino automatico delle schede aperte",
       "id": 2236 }
     ,
     "rbStartNamedTask": {
@@ -12025,6 +12195,7 @@
       "ja": "名前付きタスクの指定",
       "es": "Tarea específica",
       "pl": "Określone nazwane zadanie",
+      "it_IT": "Attività specifica",
       "id": 2235 }
     ,
     "rbStartSingleApp": {
@@ -12046,6 +12217,7 @@
       "ja": "タスクファイル",
       "es": "Archivo de tareas",
       "pl": "Plik zadań",
+      "it_IT": "File attività",
       "id": 2234 }
     ,
     "rbTabsAlways": {
@@ -12063,20 +12235,22 @@
       "en": "Auto show",
       "ru": "Авто-показ",
       "zh": "自动显示",
-      "de": "Automatisch zeigen",
+      "de": "Automatisch anzeigen",
       "ja": "自動的に表示",
       "es": "Auto mostrar",
       "pl": "Auto-Pokaż",
+      "it_IT": "Mostra in automatico",
       "id": 2477 }
     ,
     "rbTabsNone": {
       "en": "Don't show",
       "ru": "Не показывать",
       "zh": "不显示",
-      "de": "Nicht zeigen",
+      "de": "Nicht anzeigen",
       "ja": "表示しない",
       "es": "No mostrar",
       "pl": "Nie pokazuj ",
+      "it_IT": "Non mostrare",
       "id": 2478 }
     ,
     "rbTaskbarBtnActive": {
@@ -12097,6 +12271,7 @@
       "ja": "すべてのコンソールを表示(すべてのOS)",
       "es": "Mostrar todos los terminales (todo SO)",
       "pl": "Pokaż wszystkie konsole (wszystkie systemy operacyjne)",
+      "it_IT": "Mostra tutte le console (qualsiasi SO)",
       "id": 2473 }
     ,
     "rbTaskbarBtnHidden": {
@@ -12117,6 +12292,7 @@
       "ja": "すべてのコンソールを表示(Win7以上)",
       "es": "Mostrar todos los terminales (Win7 o posterior)",
       "pl": "Pokaż wszystkie konsole (Win7 i wyższe)",
+      "it_IT": "Mostra tutte le console (Win7 e successivi)",
       "id": 2474 }
     ,
     "rbThumbBackColorIdx": {
@@ -12236,7 +12412,7 @@
       "ja": "最新",
       "es": "Último",
       "pl": "Alpha \"testowa\"",
-      "it_IT": "Ultima",
+      "it_IT": "Latest",
       "id": 2056 }
     ,
     "rbUpdatePreview": {
@@ -12258,7 +12434,7 @@
       "ja": "Stable",
       "es": "Estable",
       "pl": "Stabilna",
-      "it_IT": "Stabile",
+      "it_IT": "Stable",
       "id": 2054 }
     ,
     "rbUpdateUseArc": {
@@ -12280,6 +12456,7 @@
       "ja": "インストーラ(ConEmuSetup.exe /p:%s)",
       "es": "Instalador (ConEmuSetup.exe /p:%s)",
       "pl": "Zainstalować (ConEmuSetup.exe /p:%s)",
+      "it_IT": "Installer (ConEmuSetup.exe /p:%s)",
       "id": 2070 }
     ,
     "rCascade": {
@@ -12432,7 +12609,7 @@
       "ja": "なし(&N)",
       "es": "&Ninguno",
       "pl": "&Żaden",
-      "it_IT": "&Nessuno",
+      "it_IT": "&No",
       "id": 1202 }
     ,
     "rNormal": {
@@ -12564,6 +12741,7 @@
       "ja": "GuiMacroの実行には `^]] 9; 6;\" * macro * \"^] \\`を使います",
       "es": "Usar '^]]9;6;\"*macro*\"^]\\' para ejecutar GuiMacro",
       "pl": "Użyj `^]]9;6;\"*macro*\"^]\\` do wykonania GuiMacro",
+      "it_IT": "Use `^]]9;6;\"*macro*\"^]\\` per esecuzione GuiMacro",
       "id": 3064 }
     ,
     "stAnsiSecureExec2": {
@@ -12574,6 +12752,7 @@
       "ja": "プロセス作成のために `^]] 9; 7;\" * cmd * \"^] \\`を使用する(GitShowBranch.cmdに必要)",
       "es": "Usar '^]]9;7;\"*cmd*\"^]\\' para creación de procesos (p.ej. para GitShowBranch.cmd)",
       "pl": "Użyj `^]]9;7;\"*cmd*\"^]\\`  do tworzenia procesów (wymagane dla GitShowBranch.cmd)",
+      "it_IT": "Usa `^]]9;7;\"*cmd*\"^]\\` per creazione processo (richiesto da GitShowBranch.cmd)",
       "id": 3065 }
     ,
     "stAnsiSecureExec3": {
@@ -12584,6 +12763,7 @@
       "ja": "許可されたコマンドのリスト( `*`を使うかもしれない)",
       "es": "Mostrar comandos permitidos (puedes usar '*')",
       "pl": "Lista dozwolonych poleceń (możesz użyć `*`)",
+      "it_IT": "Lista comandi consentiti (puoi usare `*`)",
       "id": 3071 }
     ,
     "stAppDistinctBottom": {
@@ -12604,6 +12784,7 @@
       "ja": "\"|\"で区切られた実行可能ファイル. \"tcc.exe | cmd.exe\":",
       "es": "Ejecutables, delimitados por\"|\", ej. \"tcc.exe|cmd.exe\":",
       "pl": "Pliki wykonywalne, rozdzielane znakiem \"|\", np. \"tcc.exe | cmd.exe\":",
+      "it_IT": "Eseguibili, delimitati da \"|\", es. \"tcc.exe|cmd.exe\":",
       "id": 2319 }
     ,
     "stBgImage": {
@@ -12625,6 +12806,7 @@
       "ja": "配置:",
       "es": "Localización:",
       "pl": "Umieszczenie:",
+      "it_IT": "Posizionamento:",
       "id": 2338 }
     ,
     "stBgReplaceIndexes": {
@@ -12715,6 +12897,11 @@
             , "Każde polecenie tworzy zakładkę w ConEmu po uruchomieniu grupy\n"
             , "Oznacz aktywną kartę konsoli znakiem \">\"\n"
             , "Uruchom konsolę \"Jako administrator\" ze znakiem \"*\"" ],
+      "it_IT": [ "&Comandi (applicazione, argomenti, '-new_console')\n"
+            , "Delimita comandi con righe vuote\n"
+            , "Ogni comando crea la scheda o il riquadro all'avvio del gruppo\n"
+            , "Contrassegnare la scheda della console attiva con il segno '>'\n"
+            , "Avviare la console 'Come amministratore' con il segno '*'" ],
       "id": 2121 }
     ,
     "stCmdGroupGuiArg": {
@@ -12725,6 +12912,7 @@
       "ja": "タスクパラメータ 例:/ dir \"C:\\\" / icon \"cmd.exe\" / single",
       "es": "Parámetros de la tarea. Ej.: /dir \"C:\\\" /icon \"cmd.exe\" /single",
       "pl": "Parametry zadania Przykład: /dir \"C:\\\" /icon \"cmd.exe\" /single",
+      "it_IT": "Parametri dell'attività. Esempio: /dir \"C:\\\" /icon \"cmd.exe\" /single",
       "id": 2323 }
     ,
     "stCmdGroupKey": {
@@ -12745,6 +12933,7 @@
       "ja": "追加:",
       "es": "Añadir:",
       "pl": "Dodaj:",
+      "it_IT": "Aggiungi:",
       "id": 2884 }
     ,
     "stColorBack": {
@@ -12755,7 +12944,7 @@
       "ja": "背景:",
       "es": "Atrás:",
       "pl": "Powrót:",
-      "it_IT": "Indietro:",
+      "it_IT": "Sfondo:",
       "id": 2933 }
     ,
     "stColorFadeHigh": {
@@ -12766,6 +12955,7 @@
       "ja": "高い:",
       "es": "Alto:",
       "pl": "Wysoki:",
+      "it_IT": "Alto:",
       "id": 2930 }
     ,
     "stColorFadeLow": {
@@ -12776,6 +12966,7 @@
       "ja": "低い:",
       "es": "Bajo:",
       "pl": "Nisko:",
+      "it_IT": "Basso:",
       "id": 2929 }
     ,
     "stColorPopupBack": {
@@ -12786,7 +12977,7 @@
       "ja": "背景:",
       "es": "Atrás:",
       "pl": "Powrót:",
-      "it_IT": "Indietro:",
+      "it_IT": "Sfondo:",
       "id": 2935 }
     ,
     "stColorPopupText": {
@@ -12797,6 +12988,7 @@
       "ja": "ポップアップ:",
       "es": "Popup:",
       "pl": "Wyskakujące okienko:",
+      "it_IT": "Popup:",
       "id": 2934 }
     ,
     "stColorSchemeFast": {
@@ -12818,6 +13010,7 @@
       "ja": "スキーム:",
       "es": "Esquemas:",
       "pl": "Schematy:",
+      "it_IT": "Schemi:",
       "id": 2931 }
     ,
     "stColorText": {
@@ -12828,6 +13021,7 @@
       "ja": "テキスト:",
       "es": "Texto:",
       "pl": "Tekst:",
+      "it_IT": "Testo:",
       "id": 2932 }
     ,
     "stConEmuVersion": {
@@ -12838,6 +13032,7 @@
       "ja": "バージョンステータス:",
       "es": "Estado de la versión:",
       "pl": "Status wersji:",
+      "it_IT": "Stato versione:",
       "id": 2683 }
     ,
     "stConsoleBufferChars": {
@@ -12896,6 +13091,7 @@
       "ja": "EOL:",
       "es": "EOL:",
       "pl": "EOL:",
+      "it_IT": "Fine Linea:",
       "id": 2366 }
     ,
     "stCTSIntelligentExceptions": {
@@ -12906,6 +13102,7 @@
       "ja": "例外( \"|\" - 分離):",
       "es": "Excepciones (separadas por \"|\"):",
       "pl": "Wyjątki (oddzielone \"|\"):",
+      "it_IT": "Eccezioni (separati da \"|\"):",
       "id": 2659 }
     ,
     "stCTSMBtnAction": {
@@ -12916,6 +13113,7 @@
       "ja": "中間:",
       "es": "Medio:",
       "pl": "Środkowy:",
+      "it_IT": "Centro:",
       "id": 3023 }
     ,
     "stCTSRBtnAction": {
@@ -12926,7 +13124,7 @@
       "ja": "右:",
       "es": "Derecha:",
       "pl": "Prawy:",
-      "it_IT": "Destra:",
+      "it_IT": "Destro:",
       "id": 3022 }
     ,
     "stCTSRMCondition": {
@@ -12937,6 +13135,7 @@
       "ja": "コンディション:",
       "es": "Condición:",
       "pl": "Kondycja:",
+      "it_IT": "Condizione:",
       "id": 3062 }
     ,
     "stCTSTextColor": {
@@ -12969,7 +13168,7 @@
       "ja": "暗くなる:",
       "es": "Oscurecer:",
       "pl": "Ściemnianie:",
-      "it_IT": "Oscuramento:",
+      "it_IT": "Scurimento:",
       "id": 2672 }
     ,
     "stDarkerPlugin": {
@@ -12980,7 +13179,7 @@
       "ja": "暗くなる:",
       "es": "Oscurecer:",
       "pl": "Ściemnianie:",
-      "it_IT": "Oscuramento:",
+      "it_IT": "Scurimento:",
       "id": 2673 }
     ,
     "stDcWndSize": {
@@ -12991,6 +13190,7 @@
       "ja": "DCウィンドウ:",
       "es": "Ventana DC:",
       "pl": "Okno DC:",
+      "it_IT": "Finestra DC:",
       "id": 2947 }
     ,
     "stDefaultTerminal": {
@@ -13045,6 +13245,7 @@
       "ja": "高いコンソール:",
       "es": "Terminales modo admin.:",
       "pl": "Podwyższone konsole:",
+      "it_IT": "Console privilegiate:",
       "id": 3054 }
     ,
     "stEnableAutoUpdateFast": {
@@ -13098,6 +13299,7 @@
       "ja": "背景色のコストでフォントを太字または斜体に変更",
       "es": "Al coste de los colores de fondo podrá cambiar la letra a negrita o cursiva",
       "pl": "Kosztem kolorów tła możesz zmienić używaną czcionkę na pogrubioną lub kursywą",
+      "it_IT": "A discapito del colore di sfondo puoi modificare il font utilizzato in grassetto o corsivo",
       "id": 2836 }
     ,
     "stFarPanelLeft": {
@@ -13165,6 +13367,7 @@
       "ja": "フォントの文字セット:",
       "es": "Tipo de letra:",
       "pl": "Zestaw czcionek:",
+      "it_IT": "Charset font:",
       "id": 2666 }
     ,
     "stFontSizeX": {
@@ -13241,6 +13444,7 @@
       "ja": "フレーム幅:",
       "es": "Ancho borde:",
       "pl": "Szerokość ramy:",
+      "it_IT": "Dimensione bordo:",
       "id": 2904 }
     ,
     "stGotoEditorCmd": {
@@ -13251,6 +13455,7 @@
       "ja": "Farが起動していないときの外部エディタ:",
       "es": "Editor externo, cuando Far no se ha iniciado:",
       "pl": "Zewnętrzny edytor, gdy Far się nie uruchomił:",
+      "it_IT": "Editor esterno, quando Far non è avviato:",
       "id": 2256 }
     ,
     "stGotoEditorCmdHelp": {
@@ -13324,7 +13529,7 @@
       "en": "Interface language:",
       "ru": "Язык интерфейса:",
       "zh": "界面语言：",
-      "de": "Sprache der Oberfläche:",
+      "de": "Sprache:",
       "ja": "インターフェイス言語:",
       "es": "Idioma del interface:",
       "pl": "Język interfejsu:",
@@ -13481,6 +13686,7 @@
       "ja": "フォントはUnicodeで,メインフォントより小さくする必要があります.",
       "es": "¡El tipo de letra debe ser Unicode y debe ser más pequeño que el principal!",
       "pl": "Czcionka musi być Unicode i musi być mniejsza niż czcionka główna !!!",
+      "it_IT": "Il font deve essere Unicode e più piccolo del font principale!!!",
       "id": 3008 }
     ,
     "stMoreConfont4": {
@@ -13491,6 +13697,7 @@
       "ja": "例:True Typeフォント 'Lucida Console' 5x3",
       "es": "Por ejemplo: tipo de letra True Type 'Lucida Console' 5x3",
       "pl": "Na przykład: czcionka True Type „Lucida Console” 5x3",
+      "it_IT": "Per esempio: True Type font ‘Lucida Console’ 5x3",
       "id": 3009 }
     ,
     "stMoreConfont5": {
@@ -13501,6 +13708,7 @@
       "ja": "フォントはHKLM\\Software\\Microsoft\\で宣言する必要があります.",
       "es": "El tipo de letra debe estar registrado en: HKLM\\Software\\Microsoft\\",
       "pl": "Czcionkę należy zadeklarować w: HKLM\\Software\\Microsoft\\",
+      "it_IT": "Il font deve essere in: HKLM\\Software\\Microsoft\\",
       "id": 3010 }
     ,
     "stMoreConfont6": {
@@ -13566,6 +13774,7 @@
       "ja": "優先",
       "es": "Prioridad",
       "pl": "Priorytet",
+      "it_IT": "Priorità",
       "id": 2762 }
     ,
     "stQuakeAnimation": {
@@ -13587,7 +13796,7 @@
       "ja": "最小化 / 復元 ホットキー:",
       "es": "Combinación para Minimizar/Restaurar:",
       "pl": "Skrót minimalizuj / przywróć:",
-      "it_IT": "Combinazione tasti Minimizza/Ripristina:",
+      "it_IT": "Combo tasti Minimizza/Ripristina:",
       "id": 3096 }
     ,
     "stRConCursorInfo": {
@@ -13620,6 +13829,7 @@
       "ja": "起動コマンドまたは{タスク}名; -new_console スイッチ:",
       "es": "Comando de inicio o nombre de {Tarea}; opciones de -new_console:",
       "pl": "Komenda uruchamiania lub nazwa {Zadanie}; -new_console przełączniki:",
+      "it_IT": "Comando o nome {Attività}; argomento -new_console:",
       "id": 3086 }
     ,
     "stRunAsPassword": {
@@ -13691,6 +13901,8 @@
             , "¡Un comando en cada línea! Puedes usar # para comentar las líneas." ],
       "pl": [ "Tutaj możesz skonfigurować zmienne środowiskowe, domyślną stronę kodową i tak dalej ...\n"
             , "Jedna linia może mieć tylko jedno polecenie! Możesz komentować linie ze znakiem #." ],
+      "it_IT": [ "Qui è possibile impostare le variabili di ambiente, la codifica predefinita e così via...\r\n"
+            , "Una riga può avere un solo comando! È possibile commentare le righe con il carattere #." ],
       "id": 2852 }
     ,
     "stSingleInstance": {
@@ -13711,6 +13923,7 @@
       "ja": "コンソール間の遅延初期化(ミリ秒):",
       "es": "Retraso entre inicialización de terminales (ms):",
       "pl": "Opóźnienie między inicjalizacją konsoli (ms):",
+      "it_IT": "Ritardo nell'attivazione delle console (ms):",
       "id": 2870 }
     ,
     "stStartupDir": {
@@ -13751,6 +13964,7 @@
       "ja": "使用可能な列:",
       "es": "Columnas disponibles:",
       "pl": "Dostępne kolumny:",
+      "it_IT": "Colonne disponibili:",
       "id": 2990 }
     ,
     "stStatusColorBack": {
@@ -13761,7 +13975,7 @@
       "ja": "バック:",
       "es": "Atrás:",
       "pl": "Powrót:",
-      "it_IT": "Indietro:",
+      "it_IT": "Sfondo:",
       "id": 2497 }
     ,
     "stStatusColorDark": {
@@ -13772,6 +13986,7 @@
       "ja": "ダーク:",
       "es": "Oscuro:",
       "pl": "Ciemny:",
+      "it_IT": "Scuro:",
       "id": 2499 }
     ,
     "stStatusColorLight": {
@@ -13782,6 +13997,7 @@
       "ja": "光:",
       "es": "Claro:",
       "pl": "Jasny:",
+      "it_IT": "Chiaro:",
       "id": 2498 }
     ,
     "stStatusFontCharset": {
@@ -13792,7 +14008,7 @@
       "ja": "Charset:",
       "es": "Juego de caracteres:",
       "pl": "Zestaw znaków:",
-      "it_IT": "Mappa caratteri:",
+      "it_IT": "Charset:",
       "id": 2988 }
     ,
     "stStatusFontFace": {
@@ -13803,6 +14019,7 @@
       "ja": "名:",
       "es": "Nombre:",
       "pl": "Nazwa:",
+      "it_IT": "Nome:",
       "id": 2987 }
     ,
     "stStatusLines": {
@@ -13813,6 +14030,7 @@
       "ja": "ライン:",
       "es": "Lineas:",
       "pl": "Linie:",
+      "it_IT": "Linee:",
       "id": 2989 }
     ,
     "stStatusSelCol": {
@@ -13823,6 +14041,7 @@
       "ja": "選択した列:",
       "es": "Columnas seleccionadas:",
       "pl": "Wybrane kolumny:",
+      "it_IT": "Colonne selezionate:",
       "id": 2991 }
     ,
     "stStorage": {
@@ -13850,17 +14069,18 @@
       "en": "Tab bar:",
       "ru": "Панель вкладок:",
       "zh": "标签栏：",
-      "de": "Taskleiste:",
+      "de": "Reiterleiste:",
       "ja": "タブバー:",
       "es": "Barra de pestañas:",
       "pl": "Pasek kart:",
+      "it_IT": "Barra schede:",
       "id": 2733 }
     ,
     "stTabBtnDblClickAction": {
       "en": "Tab button (labels):",
       "ru": "Вкладка (заголовок):",
       "zh": "标签页按钮（标签）：",
-      "de": "Reiterschaltfläche (Beschriftungen):",
+      "de": "Reiter:",
       "ja": "タブボタン(ラベル):",
       "es": "Etiquetas de pestañas:",
       "pl": "Przycisk Tab (etykiety):",
@@ -13870,10 +14090,11 @@
       "en": "Console:",
       "ru": "Консоль:",
       "zh": "控制台：",
-      "de": "Konsole:",
+      "de": "Reiter:",
       "ja": "コンソール:",
       "es": "Terminal:",
       "pl": "Konsola:",
+      "it_IT": "Console:",
       "id": 2735 }
     ,
     "stTabEditor": {
@@ -13884,6 +14105,7 @@
       "ja": "エディタ:",
       "es": "Editor:",
       "pl": "Editor:",
+      "it_IT": "Editor:",
       "id": 2962 }
     ,
     "stTabEditorMod": {
@@ -13894,13 +14116,14 @@
       "ja": "変更された:",
       "es": "Modificado:",
       "pl": "Zmodyfikowano:",
+      "it_IT": "Modificato:",
       "id": 2964 }
     ,
     "stTabFlashCounter": {
       "en": "Invisible tab activity flash count:",
       "ru": "Количество вспышок активности для невидимой вкладки:",
       "zh": "隐形标签页的活动的闪光计数：",
-      "de": "Aktivitäts-Blinkzähler unsichtbarer Reiter:",
+      "de": "Aufblinken von inaktiven Reitern bei Aktivität:",
       "ja": "見えないタブアクティビティのフラッシュカウント:",
       "es": "Número de parpadeos de actividad de pestaña:",
       "pl": "Liczba błysków niewidocznej aktywności karty:",
@@ -13921,10 +14144,11 @@
       "en": "Tab font:",
       "ru": "Шрифт:",
       "zh": "标签字体:",
-      "de": "Reiterschriftart:",
+      "de": "Schriftart:",
       "ja": "タブフォント:",
       "es": "Tipo de letra pestaña:",
       "pl": "Czcionka karty:",
+      "it_IT": "Font scheda:",
       "id": 2730 }
     ,
     "stTabLenMax": {
@@ -13935,16 +14159,18 @@
       "ja": "最大タブ幅(文字数):",
       "es": "Tamaño máx. pestaña (caracteres):",
       "pl": "Maksymalna szerokość tabulatora (w znakach):",
+      "it_IT": "Larghezza massima scheda (caratteri):",
       "id": 2985 }
     ,
     "stTabModifiedSuffix": {
       "en": "Modified suffix:",
       "ru": "Суфикс изменений:",
       "zh": "修改后的后缀：",
-      "de": "Modifizierungs-Anhang:",
+      "de": "Anhängen bei Ereignis:",
       "ja": "変更された接尾辞:",
       "es": "Sufijo de modificada:",
       "pl": "Zmodyfikowany sufiks:",
+      "it_IT": "Suffisso modificato:",
       "id": 2982 }
     ,
     "stTabPanels": {
@@ -13955,13 +14181,14 @@
       "ja": "パネル:",
       "es": "Paneles:",
       "pl": "Panele:",
+      "it_IT": "Pannelli:",
       "id": 2961 }
     ,
     "stTabSkipWords": {
       "en": "Skip words from title:",
       "ru": "Пропускать слова в заголовке:",
       "zh": "从标题跳过单词：",
-      "de": "Ignoriere Worte des Titels:",
+      "de": "Worte im Titel ignorieren:",
       "ja": "タイトルからの単語をスキップ:",
       "es": "Saltar palabras del título:",
       "pl": "Pomiń słowa z tytułu:",
@@ -14151,7 +14378,7 @@
       "ja": "Unicode範囲 デフォルトは \"2013-25C4;\"",
       "es": "Rangos Unicode, por defecto \"2013-25C4;\":",
       "pl": "Zakresy Unicode, domyślnie \"2013-25C4;\":",
-      "it_IT": "Range Unicode, di defualt è \"2013-25C4;\":",
+      "it_IT": "Range Unicode, di default è \"2013-25C4;\":",
       "id": 2837 }
     ,
     "stUpdateCheck": {
@@ -14162,6 +14389,7 @@
       "ja": "自動チェックを行う",
       "es": "Hacer control automático",
       "pl": "Wykonaj automatyczne sprawdzanie",
+      "it_IT": "Controlla aggiornamento",
       "id": 2863 }
     ,
     "stUpdateCommand": {
@@ -14172,6 +14400,7 @@
       "ja": "アップデートコマンド(%1 - パッケージ, %2 - ConEmu.exeフォルダ, %3 - x86/x64, %4 - PID)",
       "es": "Comando de actualización (%1 - paquete, %2 - carpeta de ConEmu.exe, %3 - x86/x64, %4 - PID)",
       "pl": "Zaktualizuj polecenie (%1 - package, %2 - ConEmu.exe folder, %3 - x86/x64, %4 - PID)",
+      "it_IT": "Comando aggiornamento (%1 - pacchetto, %2 - cartella ConEmu.exe, %3 - x86/x64, %4 - PID)",
       "id": 2859 }
     ,
     "stUpdatePostCommand": {
@@ -14182,6 +14411,7 @@
       "ja": "更新後のコマンド,バッチの 'call' を忘れないでください",
       "es": "Comando post-actualización, no olvides 'invocar' los procesos batch",
       "pl": "Polecenie po aktualizacji, nie zapomnij \"zadzwoń\" w przypadku partii",
+      "it_IT": "Comando post-aggiornamento, non dimenticare 'call' per script batch",
       "id": 2860 }
     ,
     "stUpdateProxy": {
@@ -14225,6 +14455,7 @@
       "ja": "好ましいリリースタイプ",
       "es": "Tipo de versión",
       "pl": "Preferowany typ wydania",
+      "it_IT": "Canale di aggiornamento",
       "id": 2862 }
     ,
     "stUpdateVerLocation": {
@@ -14235,6 +14466,7 @@
       "ja": "ConEmu最新バージョンの位置情報",
       "es": "Información sobre localización de última versión de ConEmu",
       "pl": "Informacje o lokalizacji najnowszej wersji ConEmu",
+      "it_IT": "Indirizzo informazioni versione di ConEmu",
       "id": 2861 }
     ,
     "stUseKeyboardHooksFast": {
@@ -14309,6 +14541,7 @@
       "ja": "コンソールの再起動が必要な場合があります",
       "es": "Se requiere reinicio del terminal",
       "pl": "Może być konieczne ponowne włączenie konsoli",
+      "it_IT": "Riavvio console consigliato",
       "id": 1732 }
     ,
     "tConsoleFontHklmNote": {
@@ -14319,6 +14552,7 @@
       "ja": "注意！！！レジストリの変更を適用するにはコンピュータの再起動が必要な場合があります",
       "es": "¡¡¡AVISO!!! puede que sea necesario reiniciar el PC para aplicar los cambios en el registro",
       "pl": "UWAGA!!! W celu zastosowania zmian rejestru może być konieczne ponowne uruchomienie komputera",
+      "it_IT": "ATTENZIONE!!! Riavvio del computer consigliato",
       "id": 1731 }
   }
 }

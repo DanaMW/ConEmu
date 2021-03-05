@@ -582,6 +582,9 @@
     <ClInclude Include="common\MAssert.h">
       <Filter>common</Filter>
     </ClInclude>
+    <ClInclude Include="common\MAtomic.h">
+      <Filter>common</Filter>
+    </ClInclude>
     <ClInclude Include="common\MBSTR.h">
       <Filter>common</Filter>
     </ClInclude>
@@ -1230,6 +1233,9 @@
       <Filter>ConEmuHk</Filter>
     </ClCompile>
     <ClCompile Include="ConEmuHk\ShellProcessor_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitTests\ansi_test.cpp">
       <Filter>tests</Filter>
     </ClCompile>
     <ClCompile Include="UnitTests\main_test.cpp">

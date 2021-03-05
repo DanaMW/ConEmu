@@ -315,6 +315,7 @@ BOOL CGuiServer::GuiServerCommand(LPVOID pInst, CESERVER_REQ* pIn, CESERVER_REQ*
 						}
 					}
 
+					_ASSERTE(pIn->NewCmd.ShowHide != sih_StartDetached); // cannot be as pszCommand was filled
 					args.Detached = (pIn->NewCmd.ShowHide == sih_StartDetached) ? crb_On : crb_Off;
 					args.pszSpecialCmd = lstrdup(pszCommand);
 					if (pIn->NewCmd.szCurDir[0] == 0)
@@ -338,9 +339,33 @@ BOOL CGuiServer::GuiServerCommand(LPVOID pInst, CESERVER_REQ* pIn, CESERVER_REQ*
 						}
 					}
 
-					if (gpSetCls->IsMulti() || CVConGroup::isDetached())
+					if (args.pszSpecialCmd && args.pszSpecialCmd[0] && (gpSetCls->IsMulti() || CVConGroup::isDetached()))
 					{
-						gpConEmu->PostCreateCon(args);
+						auto* delimiter = wcsstr(args.pszSpecialCmd, L"|||");
+						if (delimiter == nullptr)
+						{
+							gpConEmu->PostCreateCon(args);
+						}
+						else
+						{
+							while (delimiter != nullptr)
+							{
+								*(delimiter++) = L' ';
+								*(delimiter++) = L'\r';
+								*(delimiter++) = L'\n';
+								delimiter = wcsstr(delimiter, L"|||");
+							}
+							CEStr script(std::move(args.pszSpecialCmd));
+							args.pszSpecialCmd = nullptr;
+
+							//callmainthread!
+							gpConEmu->CallMainThread(false, [script = std::move(script), pArgs = new RConStartArgsEx(args)](LPARAM)
+							{
+								gpConEmu->CreateConGroup(script.data(), pArgs);
+								delete pArgs;
+								return 0;
+							}, 0);
+						}
 					}
 					else
 					{
@@ -508,7 +533,7 @@ BOOL CGuiServer::GuiServerCommand(LPVOID pInst, CESERVER_REQ* pIn, CESERVER_REQ*
 				CRealConsole* pRCon = nullptr;
 				CVConGuard VCon;
 
-				for (size_t i = 0;; i++)
+				for (int i = 0;; i++)
 				{
 					if (!CVConGroup::GetVCon(i, &VCon))
 						break;
@@ -689,9 +714,9 @@ BOOL CGuiServer::GuiServerCommand(LPVOID pInst, CESERVER_REQ* pIn, CESERVER_REQ*
 			DWORD nFarPluginPID = pRCon ? pRCon->GetFarPID(true) : 0;
 			LPWSTR pszResult = ConEmuMacro::ExecuteMacro(pIn->GuiMacro.sMacro, pRCon, (nFarPluginPID==pIn->hdr.nSrcPID), &pIn->GuiMacro);
 
-			int nLen = pszResult ? _tcslen(pszResult) : 0;
+			const auto nLen = pszResult ? _tcslen(pszResult) : 0;
 
-			pcbReplySize = sizeof(CESERVER_REQ_HDR)+sizeof(CESERVER_REQ_GUIMACRO)+nLen*sizeof(wchar_t);
+			pcbReplySize = sizeof(CESERVER_REQ_HDR) + sizeof(CESERVER_REQ_GUIMACRO) + nLen * sizeof(wchar_t);
 			if (!ExecuteNewCmd(ppReply, pcbMaxReplySize, pIn->hdr.nCmd, pcbReplySize))
 			{
 				SafeFree(pszResult);

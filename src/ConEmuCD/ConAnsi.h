@@ -108,7 +108,7 @@ protected:
 	};
 	struct CpConv gCpConv = {};
 
-	bool gbWasXTermOutput = false;
+	bool gbIsXTermOutput = false;
 	struct TermModeSet {
 		DWORD value, pid;
 	} gWasXTermModeSet[tmc_Last] = {};
@@ -167,7 +167,7 @@ protected:
 		BOOL  WrapWasSet = FALSE;
 		SHORT WrapAt = 0; // Rightmost X coord (1-based)
 		// #condata implement set (automatically on startup?)
-		BOOL  AutoLfNl = FALSE; // LF/NL (default on): Automatically follow echo of LF, VT or FF with CR.
+		BOOL  AutoLfNl = FALSE; // LF/NL (default on for Windows, off for XTerm): Automatically follow echo of LF, VT or FF with CR.
 		//
 		BOOL  ShowRawAnsi = FALSE; // \e[3h display ANSI control characters (TRUE), \e[3l process ANSI (FALSE, normal mode)
 	}; // gDisplayOpt;

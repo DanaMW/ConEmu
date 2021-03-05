@@ -29,8 +29,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // #ANSI This file is expected to be moved almost completely to ConEmuCD
 
 #include "../common/defines.h"
-#include <winerror.h>
-#include <winnt.h>
+#include <WinError.h>
+#include <WinNT.h>
 #include <tchar.h>
 #include <limits>
 #include <chrono>
@@ -47,7 +47,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../common/UnicodeChars.h"
 #include "../common/WConsole.h"
 #include "../common/WErrGuard.h"
-#include "../ConEmu/version.h"
+#include "../common/MAtomic.h"
 
 #include "Connector.h"
 #include "ExtConsole.h"
@@ -62,6 +62,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ///* ***************** */
 #include "Ansi.h"
 
+#include "../common/MHandle.h"
+static DWORD gAnsiTlsIndex = 0;
+
 #include "DllOptions.h"
 #include "../common/WObjects.h"
 ///* ***************** */
@@ -73,7 +76,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #undef isPressed
 #define isPressed(inp) ((GetKeyState(inp) & 0x8000) == 0x8000)
 
-#define ANSI_MAP_CHECK_TIMEOUT std::chrono::seconds(1)
+#define ANSI_MAP_CHECK_TIMEOUT 1000 // 1sec
 
 #ifdef _DEBUG
 #define DebugString(x) OutputDebugString(x)
@@ -125,7 +128,9 @@ bool CEAnsi::gbAnsiWasNewLine = false;
 MSectionSimple* CEAnsi::gcsAnsiLogFile = nullptr;
 
 // VIM, etc. Some programs waiting control keys as xterm sequences. Need to inform ConEmu GUI.
-bool CEAnsi::gbWasXTermOutput = false;
+bool CEAnsi::gbIsXTermOutput = false;
+// On Windows 10 we have ENABLE_VIRTUAL_TERMINAL_PROCESSING which implies XTerm mode
+DWORD CEAnsi::gPrevConOutMode = 0;
 // Let RefreshXTermModes() know what to restore
 CEAnsi::TermModeSet CEAnsi::gWasXTermModeSet[tmc_Last] = {};
 
@@ -487,19 +492,16 @@ void CEAnsi::AnsiLogEnterPressed()
 
 bool CEAnsi::GetFeatures(ConEmu::ConsoleFlags& features)
 {
-	static std::chrono::steady_clock::time_point nLastCheck{};
-	union FeaturesCache
+	struct FeaturesCache
 	{
-		uint64_t raw = 0;
-		struct
-		{
-			ConEmu::ConsoleFlags features;
-			bool result;
-		};
+		ConEmu::ConsoleFlags features;
+		BOOL result;
 	};
-	static std::atomic_uint64_t featuresCache{};
+	static FeaturesCache featuresCache{};
+	// Don't use system_clock here, it fails in some cases during DllLoad (segment is not ready somehow)
+	static DWORD nLastCheck{ 0 };
 
-	if ((std::chrono::steady_clock::now() - nLastCheck) > ANSI_MAP_CHECK_TIMEOUT)
+	if (!nLastCheck || (GetTickCount() - nLastCheck) > ANSI_MAP_CHECK_TIMEOUT)
 	{
 		CESERVER_CONSOLE_MAPPING_HDR* pMap = GetConMap();
 		//	(CESERVER_CONSOLE_MAPPING_HDR*)malloc(sizeof(CESERVER_CONSOLE_MAPPING_HDR));
@@ -507,22 +509,22 @@ bool CEAnsi::GetFeatures(ConEmu::ConsoleFlags& features)
 		{
 			// bAnsiAllowed = ((pMap != nullptr) && (pMap->Flags & ConEmu::ConsoleFlags::ProcessAnsi));
 			// bSuppressBells = ((pMap != nullptr) && (pMap->Flags & ConEmu::ConsoleFlags::SuppressBells));
-			FeaturesCache rc{};
-			rc.features = pMap->Flags;
-			rc.result = true;
-			featuresCache.store(rc.raw);
+			// Well, it's not so atomic as could be, but here we care only on proper features value
+			// and we can't use std::atomic here because function is called during DllLoad
+			InterlockedExchange(reinterpret_cast<LONG*>(&featuresCache.features), static_cast<LONG>(pMap->Flags));
+			InterlockedExchange(reinterpret_cast<LONG*>(&featuresCache.result), static_cast<LONG>(true));
 		}
 		else
 		{
-			featuresCache.store(0);
+			InterlockedExchange(reinterpret_cast<LONG*>(&featuresCache.features), 0);
+			InterlockedExchange(reinterpret_cast<LONG*>(&featuresCache.result), 0);
 		}
-		nLastCheck = std::chrono::steady_clock::now();
+		nLastCheck = GetTickCount();
 	}
 
-	FeaturesCache rc{};
-	rc.raw = featuresCache.load();
-	features = rc.features;
-	return rc.result;
+	features = static_cast<ConEmu::ConsoleFlags>(InterlockedCompareExchange(reinterpret_cast<LONG*>(&featuresCache.features), 0, 0));
+	const bool result = InterlockedCompareExchange(reinterpret_cast<LONG*>(&featuresCache.result), 0, 0);
+	return result;
 }
 
 void CEAnsi::ReloadFeatures()
@@ -829,6 +831,10 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 }
 
 
+#if defined(DUMP_UNKNOWN_ESCAPES) || defined(DUMP_WRITECONSOLE_LINES)
+static MAtomic<int32_t> nWriteCallNo{ 0 };
+#endif
+
 int CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 {
 	int result = 0;
@@ -842,7 +848,6 @@ int CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 
 	wchar_t szDbg[200];
 	size_t nLen = cchLen;
-	static std::atomic_int32_t nWriteCallNo{ 0 };
 
 	switch (iUnknown)  // NOLINT(clang-diagnostic-switch-enum)
 	{
@@ -868,7 +873,7 @@ int CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 		msprintf(szDbg, countof(szDbg), L"[%u] ###Internal comment: ", GetCurrentThreadId());
 		break;
 	default:
-		result = nWriteCallNo.fetch_add(1) + 1;
+		result = nWriteCallNo.inc();
 		msprintf(szDbg, countof(szDbg), L"[%u] AnsiDump #%u: ", GetCurrentThreadId(), result);
 	}
 
@@ -965,7 +970,7 @@ int CEAnsi::DumpEscape(LPCWSTR buf, size_t cchLen, DumpEscapeCodes iUnknown)
 #define DumpKnownEscape(buf, cchLen, eType) (0)
 #endif
 
-static std::atomic_uint32_t gnLastReadId{ 0 };
+static MAtomic<uint32_t> gnLastReadId{ 0 };
 
 // When user type something in the prompt, screen buffer may be scrolled
 // It would be nice to do the same in "ConEmuC -StoreCWD"
@@ -976,7 +981,7 @@ void CEAnsi::OnReadConsoleBefore(HANDLE hConOut, const CONSOLE_SCREEN_BUFFER_INF
 		return;
 
 	if (!gnLastReadId.load())
-		gnLastReadId.exchange(GetCurrentProcessId());
+		gnLastReadId.store(GetCurrentProcessId());
 
 	WORD newRowId = 0;
 	CEConsoleMark Test = {};
@@ -1002,9 +1007,9 @@ void CEAnsi::OnReadConsoleBefore(HANDLE hConOut, const CONSOLE_SCREEN_BUFFER_INF
 		else
 		{
 			// ReSharper disable once CppJoinDeclarationAndAssignment
-			newRowId = LOWORD(gnLastReadId.fetch_add(1) + 1);
+			newRowId = LOWORD(gnLastReadId.inc());
 			if (!newRowId)
-				newRowId = LOWORD(gnLastReadId.fetch_add(1) + 1);
+				newRowId = LOWORD(gnLastReadId.inc());
 
 			if (WriteConsoleRowId(hConOut, crPos[i].Y, newRowId))
 			{
@@ -1209,17 +1214,17 @@ BOOL CEAnsi::WriteText(OnWriteConsoleW_t writeConsoleW, HANDLE hConsoleOutput, L
 		bool curFishLineFeed = false;
 		if (count_chars(ucLineFeed) > 0)
 		{
-			if (!gbWasXTermOutput)
+			if (!gbIsXTermOutput)
 			{
 				_ASSERTE(FALSE && "XTerm mode was not enabled!");
-				gbWasXTermOutput = true;
+				gbIsXTermOutput = true;
 			}
 			curFishLineFeed = true;
 		}
 		#endif
 
 		// for debug purposes insert "\x1B]9;10\x1B\" at the beginning of connector-*-out.log
-		if (gbWasXTermOutput)
+		if (gbIsXTermOutput)
 		{
 			// On Win10 we may utilize DISABLE_NEWLINE_AUTO_RETURN flag, but it would
 			// complicate our code, because ConEmu support older Windows versions
@@ -3879,7 +3884,7 @@ void CEAnsi::WriteAnsiCode_OSC(OnWriteConsoleW_t writeConsoleW, HANDLE hConsoleO
 				{
 					// ESC ] 9 ; 10 ST
 					// ESC ] 9 ; 10 ; 1 ST
-					if (!gbWasXTermOutput && (Code.ArgC == 2 || Code.ArgV[2] == 1))
+					if (!gbIsXTermOutput && (Code.ArgC == 2 || Code.ArgV[2] == 1))
 						CEAnsi::StartXTermMode(true);
 					// ESC ] 9 ; 10 ; 0 ST
 					else if (Code.ArgC >= 3 || Code.ArgV[2] == 0)
@@ -4025,7 +4030,7 @@ void CEAnsi::WriteAnsiCode_OSC(OnWriteConsoleW_t writeConsoleW, HANDLE hConsoleO
 
 void CEAnsi::WriteAnsiCode_VIM(OnWriteConsoleW_t writeConsoleW, HANDLE hConsoleOutput, AnsiEscCode& Code, BOOL& lbApply)
 {
-	if (!gbWasXTermOutput && !gnWriteProcessed)
+	if (!gbIsXTermOutput && !gnWriteProcessed)
 	{
 		CEAnsi::StartXTermMode(true);
 	}
@@ -4393,12 +4398,68 @@ HANDLE CEAnsi::StartVimTerm(bool bFromDllStart)
 
 HANDLE CEAnsi::StopVimTerm()
 {
-	if (gbWasXTermOutput)
+	if (gbIsXTermOutput)
 	{
 		CEAnsi::StartXTermMode(false);
 	}
 
 	return XTermAltBuffer(false);
+}
+
+void CEAnsi::InitTermMode()
+{
+	bool needSetXterm = false;
+
+	if (IsWin10())
+	{
+		const MHandle hOut{ GetStdHandle(STD_OUTPUT_HANDLE) };
+		gPrevConOutMode = 0;
+		if (GetConsoleMode(hOut, &gPrevConOutMode))
+		{
+			if (gPrevConOutMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+			{
+				needSetXterm = true;
+			}
+		}
+	}
+	
+	if (gbIsVimProcess)
+	{
+		StartVimTerm(true);
+		_ASSERTE(CEAnsi::gbIsXTermOutput == true);
+	}
+
+	if (needSetXterm)
+	{
+		StartXTermMode(true);
+	}
+
+	if (CEAnsi::gbIsXTermOutput && gPrevConOutMode)
+	{
+		const bool autoLfNl = (gPrevConOutMode & DISABLE_NEWLINE_AUTO_RETURN) == 0;
+		if (CEAnsi::IsAutoLfNl() != autoLfNl)
+		{
+			CEAnsi::SetAutoLfNl(autoLfNl);
+		}
+	}
+}
+
+void CEAnsi::DoneTermMode()
+{
+	if (gbIsXTermOutput && (gPrevConOutMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING))
+	{
+		// If XTerm was enabled already before process start, no need to disable it
+		gbIsXTermOutput = false; // just reset
+	}
+	
+	if (gbIsVimProcess)
+	{
+		StopVimTerm();
+	}
+	else if (CEAnsi::gbIsXTermOutput)
+	{
+		StartXTermMode(false);
+	}
 }
 
 void CEAnsi::ChangeTermMode(TermModeCommand mode, DWORD value, DWORD nPID /*= 0*/)
@@ -4421,7 +4482,7 @@ void CEAnsi::ChangeTermMode(TermModeCommand mode, DWORD value, DWORD nPID /*= 0*
 void CEAnsi::StartXTermMode(const bool bStart)
 {
 	// May be triggered by connector, official Vim builds, ENABLE_VIRTUAL_TERMINAL_INPUT, "ESC ] 9 ; 10 ; 1 ST"
-	_ASSERTEX(gbWasXTermOutput != bStart);
+	_ASSERTEX(gbIsXTermOutput != bStart);
 
 	StartXTermOutput(bStart);
 
@@ -4432,12 +4493,14 @@ void CEAnsi::StartXTermMode(const bool bStart)
 void CEAnsi::StartXTermOutput(const bool bStart)
 {
 	// Remember last mode
-	gbWasXTermOutput = bStart;
+	gbIsXTermOutput = bStart;
+	// Set AutoLfNl according to mode
+	gDisplayOpt.AutoLfNl = bStart ? FALSE : TRUE;
 }
 
 void CEAnsi::RefreshXTermModes()
 {
-	if (!gbWasXTermOutput)
+	if (!gbIsXTermOutput)
 		return;
 	for (int i = 0; i < static_cast<int>(countof(gWasXTermModeSet)); ++i)
 	{
@@ -4455,7 +4518,7 @@ void CEAnsi::SetAutoLfNl(const bool autoLfNl)
 
 bool CEAnsi::IsAutoLfNl()
 {
-	// #TODO check for gbWasXTermOutput?
+	// #TODO check for gbIsXTermOutput?
 	return gDisplayOpt.AutoLfNl;
 }
 
@@ -4487,13 +4550,43 @@ CEAnsi* CEAnsi::Object()
 {
 	CLastErrorGuard errGuard;
 
-	thread_local CEAnsi object{};
-
-	if (!object.initialized_)
+	if (!gAnsiTlsIndex)
 	{
-		object.GetDefaultTextAttr(); // Initialize "default attributes";
-		object.initialized_ = true;
+		gAnsiTlsIndex = TlsAlloc();
 	}
 
-	return &object;
+	if ((!gAnsiTlsIndex) || (gAnsiTlsIndex == TLS_OUT_OF_INDEXES))
+	{
+		_ASSERTEX(gAnsiTlsIndex && gAnsiTlsIndex != TLS_OUT_OF_INDEXES);
+		return nullptr;
+	}
+
+	// Don't use thread_local, it doesn't work in WinXP in dynamically loaded dlls
+	CEAnsi* obj = static_cast<CEAnsi*>(TlsGetValue(gAnsiTlsIndex));
+	if (!obj)
+	{
+		obj = new CEAnsi;
+		if (obj)
+			obj->GetDefaultTextAttr(); // Initialize "default attributes"
+		TlsSetValue(gAnsiTlsIndex, obj);
+	}
+
+	return obj;
+}
+
+//static
+void CEAnsi::Release()
+{
+	if (gAnsiTlsIndex && (gAnsiTlsIndex != TLS_OUT_OF_INDEXES))
+	{
+		CEAnsi* p = static_cast<CEAnsi*>(TlsGetValue(gAnsiTlsIndex));
+		if (p)
+		{
+			if (IsHeapInitialized())
+			{
+				delete p;
+			}
+			TlsSetValue(gAnsiTlsIndex, nullptr);
+		}
+	}
 }

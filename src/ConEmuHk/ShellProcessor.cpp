@@ -483,22 +483,22 @@ BOOL CShellProc::ChangeExecuteParams(enum CmdOnCreateType aCmd,
 		return FALSE;
 
 	bool lbRc = false;
-	CEStr szComspec;
 	CEStr pszOurExe; // ConEmuC64.exe or ConEmu64.exe (for DefTerm)
 	bool ourGuiExe = false; // ConEmu64.exe
 	BOOL lbUseDosBox = FALSE;
 	CEStr szDosBoxExe, szDosBoxCfg;
-	BOOL lbComSpec = FALSE; // TRUE - если %COMSPEC% отбрасывается
 	size_t nCchSize = 0;
 	BOOL addDoubleQuote = FALSE;
 #if 0
 	bool lbNewGuiConsole = false;
 #endif
 	bool lbNewConsoleFromGui = false;
-	BOOL lbComSpecK = FALSE; // TRUE - если нужно запустить /K, а не /C
 	CEStr szDefTermArg, szDefTermArg2;
 	CEStr fileUnquote;
 	CEStr bufferReplacedExe;
+	CEStr szComspec;
+	BOOL lbComSpec = FALSE; // TRUE - если %COMSPEC% отбрасывается
+	BOOL lbComSpecK = FALSE; // TRUE - если нужно запустить /K, а не /C
 
 	_ASSERTEX(m_SrvMapping.sConEmuExe[0] != 0 && m_SrvMapping.ComSpec.ConEmuBaseDir[0] != 0);
 	if (gbPrepareDefaultTerminal)
@@ -956,7 +956,7 @@ BOOL CShellProc::ChangeExecuteParams(enum CmdOnCreateType aCmd,
 	{
 		(*psParam)[0] = L'"';
 		_wcscpy_c((*psParam)+1, nCchSize-1, pszOurExe);
-		_wcscat_c((*psParam), nCchSize, L"\"");
+		_wcscat_c((*psParam), nCchSize, L"\" ");
 	}
 
 	// as_Param: "C:\test.cmd" "c:\my documents\test.txt"
@@ -965,44 +965,51 @@ BOOL CShellProc::ChangeExecuteParams(enum CmdOnCreateType aCmd,
 	// C:\1 @\check.cmd
 	if (asFile && *asFile)
 	{
-		addDoubleQuote = true;
+		const CEStr tempCommand(*asFile == L'"' ? nullptr : L"\"", asFile, * asFile == L'"' ? L" " : L"\" ", asParam);
+		CEStr tempExe;
+		NeedCmdOptions opt{};
+		const auto needCmd = IsNeedCmd(false, tempCommand, tempExe, &opt);
+		addDoubleQuote = needCmd && (opt.startEndQuot == StartEndQuot::NeedAdd);
 	}
 
 	if (lbUseDosBox)
-		_wcscat_c((*psParam), nCchSize, L" /DOSBOX");
+		_wcscat_c((*psParam), nCchSize, L"/DOSBOX ");
 
 	if (m_SrvMapping.nLogLevel)
-		_wcscat_c((*psParam), nCchSize, L" /LOG");
+		_wcscat_c((*psParam), nCchSize, L"/LOG ");
 
 	if (gFarMode.cbSize && gFarMode.bFarHookMode)
 	{
 		_ASSERTEX(!gbPrepareDefaultTerminal);
 		// Добавить /PARENTFAR=%u
 		wchar_t szParentFar[64];
-		msprintf(szParentFar, countof(szParentFar), L" /PARENTFARPID=%u", GetCurrentProcessId());
+		msprintf(szParentFar, countof(szParentFar), L"/PARENTFARPID=%u ", GetCurrentProcessId());
 		_wcscat_c((*psParam), nCchSize, szParentFar);
 	}
 
 	if (gbPrepareDefaultTerminal)
 	{
+		_ASSERTE(!lbComSpec);
+
 		if (!szDefTermArg.IsEmpty())
 		{
 			_wcscat_c((*psParam), nCchSize, szDefTermArg);
 		}
 
+		_ASSERTE(((*psParam)[0] == L'\0') || (*((*psParam) + wcslen(*psParam) - 1) == L' '));
 		if ((workOptions_ & ShellWorkOptions::InheritDefTerm) && (workOptions_ & ShellWorkOptions::ExeReplacedConsole) && deftermConEmuInsidePid_)
 		{
-			_wcscat_c((*psParam), nCchSize, L" /InheritDefTerm");
+			_wcscat_c((*psParam), nCchSize, L"/InheritDefTerm ");
 		}
 
 		if ((workOptions_ & ShellWorkOptions::ConsoleMode))
 		{
-			_wcscat_c((*psParam), nCchSize, L" /AttachDefTerm /ROOT ");
+			_wcscat_c((*psParam), nCchSize, L"/AttachDefTerm /ROOT ");
 		}
 		else
 		{
 			// Starting GUI
-			_wcscat_c((*psParam), nCchSize, L" -run ");
+			_wcscat_c((*psParam), nCchSize, L"-run ");
 		}
 
 		if (!szDefTermArg2.IsEmpty())
@@ -1014,26 +1021,27 @@ BOOL CShellProc::ChangeExecuteParams(enum CmdOnCreateType aCmd,
 	{
 		if (args.InjectsDisable == crb_On)
 		{
-			_wcscat_c((*psParam), nCchSize, L" /NOINJECT");
+			_wcscat_c((*psParam), nCchSize, L"/NOINJECT");
 		}
 
+		_ASSERTE(((*psParam)[0] == L'\0') || (*((*psParam) + wcslen(*psParam) - 1) == L' '));
 		if (lbNewConsoleFromGui)
 		{
 			int nCurLen = lstrlen(*psParam);
-			msprintf((*psParam) + nCurLen, nCchSize - nCurLen, L" /ATTACH /GID=%u /GHWND=%08X /ROOT ",
+			msprintf((*psParam) + nCurLen, nCchSize - nCurLen, L"/ATTACH /GID=%u /GHWND=%08X /ROOT ",
 				m_SrvMapping.nGuiPID, m_SrvMapping.hConEmuRoot.GetPortableHandle());
 			TODO("Наверное, хорошо бы обработать /K|/C? Если консольное запускается из GUI");
 		}
 		else
 		{
-			_wcscat_c((*psParam), nCchSize, lbComSpecK ? L" /K " : L" /C ");
+			_wcscat_c((*psParam), nCchSize, lbComSpecK ? L"/K " : L"/C ");
 			// If was used "start" from cmd prompt or batch
 			if (Flags & CEF_NEWCON_PREPEND)
 				_wcscat_c((*psParam), nCchSize, L"-new_console ");
 		}
 	}
-	if (asParam && *asParam == L' ')
-		asParam++;
+
+	asParam = SkipNonPrintable(asParam);
 
 	WARNING("###: Перенести обработку параметров DosBox в ConEmuC!");
 	if (lbUseDosBox)
@@ -1744,7 +1752,8 @@ CShellProc::PrepareExecuteResult CShellProc::PrepareExecuteParams(
 	CheckIsCurrentGuiClient();
 
 	ChangeExecFlags NewConsoleFlags = CEF_DEFAULT;
-	bool bForceNewConsole = false, bCurConsoleArg = false;
+	bool bForceNewConsole = false; // if ChildGui starts console app - let's attach it to new tab
+	bool bCurConsoleArg = false; // "-cur_console" was specified (user wants to set some options in the *current* tab)
 
 	// Service object (moved to members: RConStartArgs m_Args)
 	_ASSERTEX(m_Args.pszSpecialCmd == nullptr); // Must not be touched yet!
@@ -1766,6 +1775,7 @@ CShellProc::PrepareExecuteResult CShellProc::PrepareExecuteParams(
 			{
 				*lphStdOut = nullptr;
 				*anStartFlags &= ~0x400;
+				LogShellString(L"PrepareExecuteParams set null on StdOut and sFlag 0x400");
 			}
 		}
 	}
@@ -1998,7 +2008,7 @@ CShellProc::PrepareExecuteResult CShellProc::PrepareExecuteParams(
 				}
 				else
 				{
-					_ASSERTE(anShellFlags!=nullptr);
+					// _ASSERTE(anShellFlags!=nullptr); -- is null for ShellExecute
 				}
 			}
 			else if ((nFlags != nFlagsMask) && !bLongConsoleOutput)
@@ -2858,9 +2868,22 @@ BOOL CShellProc::OnCreateProcessW(LPCWSTR* asFile, LPCWSTR* asCmdLine, LPCWSTR* 
 
 	auto* lpSi = m_lpStartupInfoW.get();
 	if ((*ppStartupInfo)->cb)
+	{
 		memmove_s(lpSi, cbLocalStartupInfoSize, *ppStartupInfo, (*ppStartupInfo)->cb);
+
+		#ifdef DEBUG_SHELL_LOG_OUTPUT
+		wchar_t dbgBuf[200];
+		msprintf(dbgBuf, countof(dbgBuf), L"OnCreateProcessW cFlags=x%X sFlags=x%X sw=x%X in=x%X out=x%X err=x%X",
+			anCreationFlags ? *anCreationFlags : 0, (*ppStartupInfo)->dwFlags, (*ppStartupInfo)->wShowWindow,
+			LODWORD((*ppStartupInfo)->hStdInput), LODWORD((*ppStartupInfo)->hStdOutput), LODWORD((*ppStartupInfo)->hStdError));
+		LogShellString(dbgBuf);
+		#endif
+	}
 	else
+	{
 		lpSi->cb = sizeof(*lpSi); // VS 2019 passes cb==0 while starting console applications (run & debug)
+		LogShellString(L"OnCreateProcessW creating new default STARTUPINFOW");
+	}
 
 	// Preprocess flags and options
 	auto state = OnCreateProcessPrepare(anCreationFlags, lpSi->dwFlags, lpSi->wShowWindow, lpSi->dwX, lpSi->dwY);
@@ -2882,9 +2905,23 @@ BOOL CShellProc::OnCreateProcessW(LPCWSTR* asFile, LPCWSTR* asCmdLine, LPCWSTR* 
 	const bool changed = (prepareResult == PrepareExecuteResult::Modified);
 
 	// patch flags and variables based on decision
-	if (OnCreateProcessResult(prepareResult, state, anCreationFlags, lpSi->wShowWindow, lpSi->dwFlags))
+	const bool needChangeSi = OnCreateProcessResult(prepareResult, state, anCreationFlags, lpSi->wShowWindow, lpSi->dwFlags)
+		|| (lpSi->hStdOutput != (*ppStartupInfo)->hStdOutput || lpSi->dwFlags != (*ppStartupInfo)->dwFlags);
+	if (needChangeSi)
+	{
 		*ppStartupInfo = lpSi;
+	}
 
+	// Some debug info (exec problem on WinXP from Far 3)
+	{
+		#ifdef DEBUG_SHELL_LOG_OUTPUT
+		wchar_t dbgBuf[200];
+		msprintf(dbgBuf, countof(dbgBuf), L"OnCreateProcessW (post) rc=%i cFlags=x%X sFlags=x%X sw=x%X in=x%X out=x%X err=x%X",
+			static_cast<int>(prepareResult), anCreationFlags ? *anCreationFlags : 0, (*ppStartupInfo)->dwFlags, (*ppStartupInfo)->wShowWindow,
+			LODWORD((*ppStartupInfo)->hStdInput), LODWORD((*ppStartupInfo)->hStdOutput), LODWORD((*ppStartupInfo)->hStdError));
+		LogShellString(dbgBuf);
+		#endif
+	}
 
 	// Patch modified strings (wide to ansi/oem)
 

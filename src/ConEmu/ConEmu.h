@@ -90,6 +90,7 @@ struct ConsoleInfoArg
 
 #include <memory>
 #include <mutex>
+#include <functional>
 
 #include "DwmHelper.h"
 #include "TaskBar.h"
@@ -510,7 +511,7 @@ class CConEmuMain
 		void CtrlWinAltSpace();
 		void DeleteVConMainThread(CVirtualConsole* apVCon);
 		UINT GetRegisteredMessage(LPCSTR asLocal, LPCWSTR asGlobal = nullptr);
-		LRESULT CallMainThread(bool bSync, CallMainThreadFn fn, LPARAM lParam);
+		LRESULT CallMainThread(bool bSync, std::function<LRESULT(LPARAM)>&& fn, LPARAM lParam);
 	private:
 		UINT RegisterMessage(LPCSTR asLocal, LPCWSTR asGlobal = nullptr);
 		void RegisterMessages();
@@ -781,6 +782,7 @@ class CConEmuMain
 		void OnTimer_FrameAppearDisappear(WPARAM wParam);
 		void OnTimer_RClickPaint();
 		void OnTimer_AdmShield();
+		void OnTimer_Selection();
 		int mn_TBOverlayTimerCounter = 0;
 		void OnTimer_QuakeFocus();
 		void OnActivateSplitChanged();

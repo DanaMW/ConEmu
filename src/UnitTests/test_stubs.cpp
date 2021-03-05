@@ -36,11 +36,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../ConEmu/HotkeyList.h"
 #include "../ConEmu/Options.h"
 #include "../ConEmu/OptionsClass.h"
+#include "../ConEmuHk/Ansi.h"
 
 #include <iostream>
 
-#include "../ConEmuHk/Ansi.h"
-
+#include "../UnitTests/gtest.h"
 
 bool gbVerifyFailed = false;
 bool gbVerifyStepFailed = false;
@@ -151,5 +151,41 @@ void PrepareGoogleTests()
 	gVConBkMap.Init(MAX_CONSOLE_COUNT, true);
 	gpLocalSecurity = LocalSecurity();
 }
+
+void InitConEmuPathVars()
+{
+	CEStr testExe;
+	GetModulePathName(nullptr, testExe);
+	auto* namePtr = const_cast<wchar_t*>(PointToName(testExe.c_str()));
+	if (namePtr && namePtr > testExe.c_str())
+	{
+		*(namePtr - 1) = 0;
+		SetEnvironmentVariableW(ENV_CONEMUDIR_VAR_W, testExe);
+		const CEStr baseDir(testExe, L"\\ConEmu");
+		SetEnvironmentVariableW(ENV_CONEMUBASEDIR_VAR_W, baseDir);
+	}
+	else
+	{
+		cdbg() << "GetModulePathName failed, name is null" << std::endl;
+	}
+
+}
+
+void WaitDebugger(const std::string& label, const DWORD milliseconds)
+{
+	if (::IsDebuggerPresent())
+		return;
+	const auto started = GetTickCount();
+	cdbg() << label << " (waiting for debugger)";
+	while (true)
+	{
+		Sleep(1000);
+		if (::IsDebuggerPresent() || (GetTickCount() - started) > milliseconds)
+			break;
+		cdbg("", false) << ".";
+	}
+	cdbg("", false) << std::endl;
+}
+
 }  // namespace tests
 }  // namespace conemu

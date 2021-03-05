@@ -101,8 +101,7 @@ struct ConProcess
 	bool  IsTelnet;  // может быть включен ВМЕСТЕ с IsFar, если удалось подцепиться к фару через сетевой пайп
 	bool  IsNtvdm;   // 16bit приложения
 	bool  IsCmd;     // значит фар выполняет команду
-	bool  NameChecked, RetryName;
-	bool  Alive, inConsole;
+	bool  inConsole;
 	int   Bits;
 	wchar_t Name[64]; // чтобы полная инфа об ошибке влезала
 };
@@ -406,11 +405,15 @@ class CRealConsole
 
 		void StopSignal();
 		void StopThread(bool abRecreating = false);
+
+		bool StartStopTermMode(DWORD pid, TermModeCommand mode, DWORD value);
 		bool StartStopTermMode(TermModeCommand mode, ChangeTermAction action);
 		void StartStopXTerm(DWORD nPID, bool xTerm);
 		void StartStopXMouse(DWORD nPID, TermMouseMode MouseMode);
 		void StartStopBracketedPaste(DWORD nPID, bool bUseBracketedPaste);
 		void StartStopAppCursorKeys(DWORD nPID, bool bAppCursorKeys);
+		void SetCursorShape(TermCursorShapes xtermShape);
+
 		void PortableStarted(CESERVER_REQ_PORTABLESTARTED* pStarted);
 		bool InScroll();
 		bool isBufferHeight();
@@ -609,7 +612,6 @@ class CRealConsole
 		bool IsConsoleThread();
 		void SetForceRead();
 		void UpdateCursorInfo();
-		void SetCursorShape(TermCursorShapes xtermShape);
 		TermCursorShapes GetCursorShape();
 		bool isNeedCursorDraw();
 		bool DetachRCon(bool bPosted = false, bool bSendCloseConsole = false, bool bDontConfirm = false);
@@ -624,6 +626,7 @@ class CRealConsole
 
 		void OnStartProcessAllowed();
 		void OnTimerCheck();
+		void OnSelectionTimerCheck();
 
 		static bool RefreshAfterRestore(CVirtualConsole* pVCon, LPARAM lParam);
 

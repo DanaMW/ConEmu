@@ -669,6 +669,7 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* o
 	wchar_t *pwszEndSpace;
 
 	size_t leadingQuotes = 0;
+	bool exeIsQuoted = false;
 	bool firstObtained = false;
 	LPCWSTR pwszCopy;
 	int nLastChar;
@@ -746,6 +747,7 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* o
 			goto wrap;
 		}
 		szExe.Set(arg);
+		exeIsQuoted = arg.m_bQuoted;
 
 		if (lstrcmpiW(szExe, L"start") == 0)
 		{
@@ -803,7 +805,12 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* o
 		}
 
 		// will return true if we found a real existing file path
-		if (!GetFilePathFromSpaceDelimitedString(pwszCopy, szExe, argumentsPtr))
+		if (GetFilePathFromSpaceDelimitedString(pwszCopy, szExe, argumentsPtr))
+		{
+			// e.g. "C:\1\d.cmd 2 test", now szExe=="C:\1\d.cmd" and it's not quoted.
+			exeIsQuoted = false;
+		}
+		else
 		{
 			CmdArg arg;
 			if (!((pwszCopy = NextArg(pwszCopy, arg))))
@@ -817,6 +824,7 @@ bool IsNeedCmd(bool bRootCmd, LPCWSTR asCmdLine, CEStr &szExe, NeedCmdOptions* o
 				goto wrap;
 			}
 			szExe.Set(arg);
+			exeIsQuoted = arg.m_bQuoted;
 
 			_ASSERTE(lstrcmpiW(szExe, L"start") != 0);
 
@@ -998,18 +1006,27 @@ wrap:
 	if (options)
 	{
 		// validate cmd quotation rules
-		if (isNeedCmd && !szExe.IsEmpty())
+		if (!szExe.IsEmpty())
 		{
-			if (leadingQuotes == 1)
+			if (isNeedCmd)
 			{
-				if (IsQuotationNeeded(szExe) || (argumentsPtr && wcschr(argumentsPtr, L'"') != nullptr))
-					startEndQuot = StartEndQuot::NeedAdd;
-				else
+				if (leadingQuotes == 1)
+				{
+					if (IsQuotationNeeded(szExe) || (exeIsQuoted && argumentsPtr && wcschr(argumentsPtr, L'"') != nullptr))
+						startEndQuot = StartEndQuot::NeedAdd;
+					else if (!exeIsQuoted)
+						startEndQuot = StartEndQuot::NeedCut;
+					else
+						startEndQuot = StartEndQuot::DontChange;
+				}
+				else if (leadingQuotes >= 2)
+				{
 					startEndQuot = StartEndQuot::DontChange;
+				}
 			}
-			else if (leadingQuotes >= 2)
+			else if (leadingQuotes == 1 && !exeIsQuoted)
 			{
-				startEndQuot = StartEndQuot::DontChange;
+				startEndQuot = StartEndQuot::NeedCut;
 			}
 		}
 		// result

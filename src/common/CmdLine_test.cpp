@@ -165,10 +165,14 @@ TEST(CmdLine, IsNeedCmd)
 	fileMock.MockFile(LR"(C:\msys\bin\make.EXE)");
 	fileMock.MockFile(LR"(C:\1 &\check.cmd)", 128, IMAGE_SUBSYSTEM_BATCH_FILE, 32);
 	fileMock.MockFile(LR"(C:\1 @\check.cmd)", 128, IMAGE_SUBSYSTEM_BATCH_FILE, 32);
+	fileMock.MockFile(LR"(C:\1\d,2.cmd)", 128, IMAGE_SUBSYSTEM_BATCH_FILE, 32);
+	fileMock.MockFile(LR"(C:\1\d.cmd)", 128, IMAGE_SUBSYSTEM_BATCH_FILE, 32);
+	fileMock.MockFile(LR"(C:\Windows\notepad.exe)", 128, IMAGE_SUBSYSTEM_WINDOWS_GUI, WIN3264TEST(32,64));
 	fileMock.MockPathFile(L"7z.exe", LR"(C:\Tools\Arch\7z.exe)");
 	fileMock.MockPathFile(L"cmd.exe", LR"(C:\Windows\System32\cmd.exe)");
 	fileMock.MockPathFile(L"cacls.exe", LR"(C:\Windows\System32\cacls.exe)");
 	fileMock.MockPathFile(L"chkdsk.exe", LR"(C:\Windows\System32\chkdsk.exe)");
+	fileMock.MockPathFile(L"notepad.exe", LR"(C:\Windows\notepad.exe)");
 	fileMock.MockPathFile(L"far.exe", LR"(c:\far\far.exe)");
 
 	TestIsNeedCmd(false, nullptr,
@@ -220,6 +224,12 @@ TEST(CmdLine, IsNeedCmd)
 	TestIsNeedCmd(false, L"\"dir > test.log\"",
 		L"",
 		true, StartEndQuot::DontChange, true, false);
+	TestIsNeedCmd(true, L"\"cmd /k Hello world\"",
+		L"%windir%\\system32\\cmd.exe",
+		false, StartEndQuot::NeedCut, true, true);
+	TestIsNeedCmd(true, L"\"notepad C:\\path\\file.txt\"",
+		L"%windir%\\notepad.exe",
+		false, StartEndQuot::NeedCut, false, false);
 
 	TestIsNeedCmd(false, L"drive::path arg1 arg2",
 		L"drive::path",
@@ -320,6 +330,15 @@ TEST(CmdLine, IsNeedCmd)
 	TestIsNeedCmd(false, L"\"\"C:\\1 @\\check.cmd\" arg1 arg2\"",
 		L"C:\\1 @\\check.cmd",
 		true, StartEndQuot::DontChange, true, false);
+	TestIsNeedCmd(false, L"\"C:\\1\\d,2.cmd\"",
+		L"C:\\1\\d,2.cmd",
+		true, StartEndQuot::NeedAdd, true, false);
+	TestIsNeedCmd(false, L"\"C:\\1\\d.cmd 2 test\"",
+		L"C:\\1\\d.cmd",
+		true, StartEndQuot::NeedCut, true, false);
+	TestIsNeedCmd(false, L"\"C:\\1\\d.cmd\" 2 \"test\"",
+		L"C:\\1\\d.cmd",
+		true, StartEndQuot::NeedAdd, true, false);
 
 	gbVerifyIgnoreAsserts = false; // restore default
 }

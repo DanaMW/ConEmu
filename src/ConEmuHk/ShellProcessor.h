@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../common/Common.h"
 #include "../common/CmdLine.h"
+#include "../common/MModule.h"
 #include "../common/RConStartArgs.h"
 #include <memory>
 
@@ -218,8 +219,8 @@ private:
 	};
 
 private:
-	wchar_t* str2wcs(const char* psz, UINT anCP);
-	char* wcs2str(const wchar_t* pwsz, UINT anCP);
+	static wchar_t* str2wcs(const char* psz, UINT anCP);
+	static char* wcs2str(const wchar_t* pwsz, UINT anCP);
 	bool IsAnsiConLoader(LPCWSTR asFile, LPCWSTR asParam);
 	static bool PrepareNewConsoleInFile(
 				CmdOnCreateType aCmd, LPCWSTR& asFile, LPCWSTR& asParam,
@@ -236,7 +237,6 @@ private:
 	BOOL ChangeExecuteParams(enum CmdOnCreateType aCmd,
 				LPCWSTR asFile, LPCWSTR asParam,
 				ChangeExecFlags Flags, const RConStartArgs& args,
-				DWORD& ImageBits, DWORD& ImageSubsystem,
 				LPWSTR* psFile, LPWSTR* psParam);
 	BOOL FixShellArgs(DWORD afMask, HWND ahWnd, DWORD* pfMask, HWND* phWnd) const;
 	HWND FindCheckConEmuWindow();
@@ -245,6 +245,7 @@ private:
 	void RunInjectHooks(LPCWSTR asFrom, PROCESS_INFORMATION *lpPI) const;
 	CreatePrepareData OnCreateProcessPrepare(const DWORD* anCreationFlags, DWORD dwFlags, WORD wShowWindow, DWORD dwX, DWORD dwY);
 	bool OnCreateProcessResult(PrepareExecuteResult prepareResult, const CreatePrepareData& state, DWORD* anCreationFlags, WORD& siShowWindow, DWORD& siFlags);
+	DWORD GetComspecBitness() const;
 
 	// Validates either ghConEmuWndDC or IsDefTermEnabled
 	static bool IsInterceptionEnabled();
@@ -257,8 +258,8 @@ public:
 				HANDLE hStdIn, HANDLE hStdOut, HANDLE hStdErr
 				/*wchar_t (&szBaseDir)[MAX_PATH+2], BOOL& bDosBoxAllowed*/);
 	BOOL LoadSrvMapping(BOOL bLightCheck = FALSE);
-	BOOL GetLogLibraries();
-	const RConStartArgs* GetArgs();
+	BOOL GetLogLibraries() const;
+	const RConStartArgs* GetArgs() const;
 public:
 	CShellProc();
 	~CShellProc();
@@ -289,7 +290,7 @@ public:
 	bool GetLinkProperties(LPCWSTR asLnkFile, CEStr& rsExe, CEStr& rsArgs, CEStr& rsWorkDir);
 	bool InitOle32();
 protected:
-	HMODULE hOle32 = nullptr;
+	MModule hOle32{};
 	typedef HRESULT (WINAPI* CoInitializeEx_t)(LPVOID pvReserved, DWORD dwCoInit);
 	typedef HRESULT (WINAPI* CoCreateInstance_t)(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv);
 	CoInitializeEx_t CoInitializeEx_f = nullptr;

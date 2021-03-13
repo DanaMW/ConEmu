@@ -126,7 +126,7 @@ CRealBuffer::CRealBuffer(CRealConsole* apRCon, RealBufferType aType /*= rbt_Prim
 	con.TopLeft.Reset();
 	mp_Match = nullptr;
 
-	mb_BuferModeChangeLocked = FALSE;
+	bufferModeChangeLocked_ = FALSE;
 	mcr_LastMousePos = MakeCoord(-1,-1);
 
 	mb_LeftPanel = mb_RightPanel = FALSE;
@@ -1305,7 +1305,7 @@ void CRealBuffer::InitSBI(const CONSOLE_SCREEN_BUFFER_INFO& sbi)
 	con.bBufferHeight = bCurBufHeight;
 
 	// Check real console scrollers - if they were changed
-	_ASSERTEX(!mb_BuferModeChangeLocked);
+	_ASSERTEX(!bufferModeChangeLocked_);
 	CheckBufferSize();
 
 	_ASSERTE(mp_RCon->isBufferHeight() == bCurBufHeight);
@@ -1957,7 +1957,7 @@ bool CRealBuffer::GetConWindowSize(const CONSOLE_SCREEN_BUFFER_INFO& sbi, int* p
 // Изменение значений переменной (флаг включенного скролла)
 void CRealBuffer::SetBufferHeightMode(bool abBufferHeight, bool abIgnoreLock /*= false*/)
 {
-	if (mb_BuferModeChangeLocked)
+	if (bufferModeChangeLocked_)
 	{
 		if (!abIgnoreLock)
 		{
@@ -1985,8 +1985,8 @@ void CRealBuffer::ChangeBufferHeightMode(bool abBufferHeight)
 		//	nNewBufHeightSize = nMaxBuf;
 	}
 
-	_ASSERTE(!mb_BuferModeChangeLocked);
-	MSetter lSetter(&mb_BuferModeChangeLocked);
+	_ASSERTE(!bufferModeChangeLocked_);
+	MSetter lSetter(&bufferModeChangeLocked_);
 	con.bBufferHeight = abBufferHeight;
 
 	// Если при запуске было "conemu.exe /bufferheight 0 ..."
@@ -2023,21 +2023,21 @@ void CRealBuffer::SetChange2Size(int anChange2TextWidth, int anChange2TextHeight
 
 bool CRealBuffer::isBuferModeChangeLocked()
 {
-	return mb_BuferModeChangeLocked;
+	return bufferModeChangeLocked_;
 }
 
 // Utilized in CRealServer::cmdStartStop
 bool CRealBuffer::BuferModeChangeLock()
 {
-	bool lbNeedUnlock = !mb_BuferModeChangeLocked;
-	mb_BuferModeChangeLocked = true;
+	bool lbNeedUnlock = !bufferModeChangeLocked_;
+	bufferModeChangeLocked_ = true;
 	return lbNeedUnlock;
 }
 
 // Utilized in CRealServer::cmdStartStop
 void CRealBuffer::BuferModeChangeUnlock()
 {
-	mb_BuferModeChangeLocked = false;
+	bufferModeChangeLocked_ = false;
 }
 
 // По con.m_sbi проверяет, включена ли прокрутка
@@ -2048,7 +2048,7 @@ bool CRealBuffer::CheckBufferSize()
 	if (!this)
 		return false;
 
-	if (mb_BuferModeChangeLocked)
+	if (bufferModeChangeLocked_)
 		return false;
 
 	//if (con.m_sbi.dwSize.X>(con.m_sbi.srWindow.Right-con.m_sbi.srWindow.Left+1)) {
@@ -2586,7 +2586,7 @@ void CRealBuffer::ApplyConsoleInfo(const CESERVER_REQ* pInfo, bool& bSetApplyFin
 				}
 
 				// #SIZE_TODO buffer mode may be changing at the moment by cmdStartStop, use mutex?
-				if (!mb_BuferModeChangeLocked)
+				if (!bufferModeChangeLocked_)
 				{
 					CheckBufferSize();
 					lbBufferChecked = true;
@@ -3546,14 +3546,17 @@ bool CRealBuffer::OnMouse(UINT messg, WPARAM wParam, int x, int y, COORD crMouse
 
 	if (bSelAllowed)
 	{
+		const bool tripleClick = (messg == WM_LBUTTONDOWN) && (con.m_sel.dwFlags & CONSOLE_DBLCLICK_SELECTION)
+			&& ((GetTickCount() - con.m_SelDblClickTick) <= GetDoubleClickTime());
 		// Click outside selection region - would reset active selection
-		if (((messg == WM_LBUTTONDOWN) || ((messg == WM_LBUTTONUP) && !(con.m_sel.dwFlags & CONSOLE_MOUSE_DOWN)))
+		if ((((messg == WM_LBUTTONDOWN) && !tripleClick)
+			|| ((messg == WM_LBUTTONUP) && !(con.m_sel.dwFlags & (CONSOLE_MOUSE_DOWN | CONSOLE_DBLCLICK_SELECTION | CONSOLE_TRIPLE_CLICK_SELECTION))))
 			&& gpSet->isCTSIntelligent // Only intelligent mode?
 			&& isSelectionPresent()
 			&& !isMouseClickExtension()
 			)
 		{
-			bool bInside = isMouseInsideSelection(x, y);
+			const bool bInside = isMouseInsideSelection(x, y);
 			if (!bInside)
 			{
 				DEBUGSTRSEL(L"Selection: DoSelectionFinalize#L");
@@ -3940,6 +3943,7 @@ void CRealBuffer::SetSelectionFlags(const DWORD flags)
 			else
 				OnMouseSelectionStopped();
 		}
+
 		con.m_sel.dwFlags = flags;
 	}
 }
@@ -4000,8 +4004,75 @@ bool CRealBuffer::OnMouseSelection(UINT messg, WPARAM wParam, int x, int y)
 		if (tripleClick)
 		{
 			cr.X = 0;
-			crTo.X = GetBufferWidth()-1;
-		}
+			crTo.X = GetBufferWidth() - 1;
+			CRConDataGuard data;
+			if (GetData(data))
+			{
+				ConsoleLinePtr prev{};
+				ConsoleLinePtr next{};
+				const AppSettings* pApp = gpSet->GetAppSettings(mp_RCon->GetActiveAppSettingsId());
+				const bool bBash = pApp ? pApp->CTSBashMargin() : false;
+				const bool bTrimTrailingSpaces = pApp ? pApp->CTSTrimTrailing() : true;
+				auto isOneLine = [&prev, &next, this, bBash]()
+				{
+					// some heuristics - no more than one space is allowed at the beginning of the next line
+					if (next.pChar[0] == L' ' && next.pChar[1] == L' ')
+						return false;
+					// If right or left edge of screen is "Frame" - force to line break!
+					if (IsForceLineBreakChar(prev.pChar[prev.nLen - 1]) || IsForceLineBreakChar(next.pChar[0]))
+						return false;
+					// no more than one-two spaces at the end of current line
+					if (prev.pChar[prev.nLen - 1] == L' '
+						&& ((prev.pChar[prev.nLen - 2] == L' ')
+							|| (bBash && (prev.pChar[prev.nLen - 2] == L' ' && prev.pChar[prev.nLen - 3] == L' '))))
+						return false;
+					return true;
+				};
+
+				// #TODO check with alternative buffer (full backscroll)
+				const int shiftY = data->m_sbi.srWindow.Top;
+				// go down
+				if (data->GetConsoleLine(crTo.Y - shiftY, prev) && prev.nLen > 4)
+				{
+					for (int checkY = static_cast<int>(crTo.Y); checkY < static_cast<int>(con.m_sbi.srWindow.Bottom);)
+					{
+						if (!data->GetConsoleLine((++checkY) - shiftY, next) || next.nLen <= 4)
+							break;
+						if (!isOneLine())
+							break;
+						// Ok, let's expand selection
+						crTo.Y = static_cast<SHORT>(checkY);
+						prev = next;
+					}
+				}
+				// go up
+				if (data->GetConsoleLine(cr.Y - shiftY, next) && next.nLen > 4)
+				{
+					for (int checkY = static_cast<int>(cr.Y); checkY > static_cast<int>(con.m_sbi.srWindow.Top);)
+					{
+						if (!data->GetConsoleLine((--checkY) - shiftY, prev) || prev.nLen <= 4)
+							break;
+						if (!isOneLine())
+							break;
+						// Ok, let's expand selection
+						cr.Y = static_cast<SHORT>(checkY);
+						next = prev;
+					}
+				}
+				// Trip trailing spaces
+				if (bTrimTrailingSpaces && data->GetConsoleLine(crTo.Y - shiftY, next) && next.nLen > 2)
+				{
+					int lastPos = std::max<int>(0, std::min<int>(next.nLen - 1, crTo.X));
+					while (lastPos > 0 && next.pChar[lastPos] == L' ')
+					{
+						--lastPos;
+					}
+					crTo.X = static_cast<SHORT>(lastPos);
+				}
+			} // if (GetData(data))
+			// unexpected selection change on LBtnUp
+			SetSelectionFlags(con.m_sel.dwFlags | CONSOLE_TRIPLE_CLICK_SELECTION);
+		} // if (tripleClick)
 
 		#ifdef _DEBUG
 		wchar_t szLog[200]; swprintf_c(szLog, L"Selection: %s %s",
@@ -4071,8 +4142,9 @@ bool CRealBuffer::OnMouseSelection(UINT messg, WPARAM wParam, int x, int y)
 			&& ((((con.m_sel.dwFlags & CONSOLE_MOUSE_SELECTION)
 					&& ((GetTickCount() - con.m_SelClickTick) <= GetDoubleClickTime()))
 				|| ((con.m_sel.dwFlags & CONSOLE_DBLCLICK_SELECTION)
-					&& ((GetTickCount() - con.m_SelDblClickTick) <= GetDoubleClickTime())))
-				)
+					&& ((GetTickCount() - con.m_SelDblClickTick) <= GetDoubleClickTime()))
+				|| ((con.m_sel.dwFlags & CONSOLE_TRIPLE_CLICK_SELECTION))
+				))
 			)
 			//&& ((messg == WM_LBUTTONUP)
 			//	|| ((messg == WM_MOUSEMOVE)
@@ -4104,12 +4176,14 @@ bool CRealBuffer::OnMouseSelection(UINT messg, WPARAM wParam, int x, int y)
 			if (gpSet->isCTSAutoCopy)
 			{
 				//if ((con.m_sel.srSelection.Left != con.m_sel.srSelection.Right) || (con.m_sel.srSelection.Top != con.m_sel.srSelection.Bottom))
-				const DWORD nPrevTick = (con.m_sel.dwFlags & CONSOLE_DBLCLICK_SELECTION) ? con.m_SelDblClickTick : con.m_SelClickTick;
+				const DWORD nPrevTick = (con.m_sel.dwFlags & (CONSOLE_DBLCLICK_SELECTION | CONSOLE_TRIPLE_CLICK_SELECTION))
+					? con.m_SelDblClickTick
+					: con.m_SelClickTick;
 				if ((GetTickCount() - nPrevTick) > GetDoubleClickTime())
 				{
 					// If duration of dragging/marking with mouse key pressed
 					// exceeds DblClickTime we may (and must) do copy immediately
-					_ASSERTE(nPrevTick!=0);
+					_ASSERTE(nPrevTick != 0);
 					_ASSERTE(gpSet->isCTSAutoCopy && mp_RCon && mp_RCon->isSelectionPresent());
 					mp_RCon->AutoCopyTimer();
 				}
@@ -4163,6 +4237,24 @@ bool CRealBuffer::OnMouseSelection(UINT messg, WPARAM wParam, int x, int y)
 	}
 
 	return false;
+}
+
+bool CRealBuffer::IsForceLineBreakChar(const wchar_t c) const
+{
+	static wchar_t sPreLineBreak[] =
+	{
+		ucBox25,ucBox50,ucBox75,ucBox100,ucUpScroll,ucDnScroll,ucLeftScroll,ucRightScroll,ucArrowUp,ucArrowDown,
+		//ucNoBreakSpace, -- this is space, why it was blocked?
+		ucBoxDblVert,ucBoxSinglVert,ucBoxDblDownRight,ucBoxDblDownLeft,ucBoxDblUpRight,ucBoxDblUpLeft,ucBoxSinglDownRight,
+		ucBoxSinglDownLeft,ucBoxSinglUpRight,ucBoxSinglUpLeft,ucBoxSinglDownDblHorz,ucBoxSinglUpDblHorz,ucBoxDblDownDblHorz,
+		ucBoxDblUpDblHorz,ucBoxSinglDownHorz,ucBoxSinglUpHorz,ucBoxDblDownSinglHorz,ucBoxDblUpSinglHorz,ucBoxDblVertRight,
+		ucBoxDblVertLeft,ucBoxDblVertSinglRight,ucBoxDblVertSinglLeft,ucBoxSinglVertRight,ucBoxSinglVertLeft,
+		ucBoxDblHorz,ucBoxSinglHorz,ucBoxDblVertHorz,
+		// End
+		0 /*ASCIIZ!!!*/
+	};
+	const auto* found = wcschr(sPreLineBreak, c);
+	return (found != nullptr);
 }
 
 void CRealBuffer::DoCopyPaste(bool abCopy, bool abPaste)
@@ -5086,19 +5178,6 @@ bool CRealBuffer::DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int 
 	bool bDetectLines = pApp->CTSDetectLineEnd();
 	bool bBash = pApp->CTSBashMargin();
 
-	wchar_t sPreLineBreak[] =
-		{
-			ucBox25,ucBox50,ucBox75,ucBox100,ucUpScroll,ucDnScroll,ucLeftScroll,ucRightScroll,ucArrowUp,ucArrowDown,
-			//ucNoBreakSpace, -- this is space, why it was blocked?
-			ucBoxDblVert,ucBoxSinglVert,ucBoxDblDownRight,ucBoxDblDownLeft,ucBoxDblUpRight,ucBoxDblUpLeft,ucBoxSinglDownRight,
-			ucBoxSinglDownLeft,ucBoxSinglUpRight,ucBoxSinglUpLeft,ucBoxSinglDownDblHorz,ucBoxSinglUpDblHorz,ucBoxDblDownDblHorz,
-			ucBoxDblUpDblHorz,ucBoxSinglDownHorz,ucBoxSinglUpHorz,ucBoxDblDownSinglHorz,ucBoxDblUpSinglHorz,ucBoxDblVertRight,
-			ucBoxDblVertLeft,ucBoxDblVertSinglRight,ucBoxDblVertSinglLeft,ucBoxSinglVertRight,ucBoxSinglVertLeft,
-			ucBoxDblHorz,ucBoxSinglHorz,ucBoxDblVertHorz,
-			// End
-			0 /*ASCIIZ!!!*/
-		};
-
 	// Pre validations
 	if (srSelection_X1 > (srSelection_X2+(srSelection_Y2-srSelection_Y1)*nTextWidth))
 	{
@@ -5191,12 +5270,12 @@ bool CRealBuffer::DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int 
 
 			if (m_Type == rbt_Primary)
 			{
-				pszCon = pszDataStart + con.nTextWidth*(Y+srSelection_Y1) + srSelection_X1;
+				pszCon = pszDataStart + con.nTextWidth * (Y + srSelection_Y1) + srSelection_X1;
 			}
 			else if (pszDataStart && (Y < nTextHeight))  // -V560
 			{
 				WARNING("Проверить для режима с прокруткой!");
-				pszCon = pszDataStart + dump.crSize.X*(Y+srSelection_Y1) + srSelection_X1;
+				pszCon = pszDataStart + dump.crSize.X * (Y + srSelection_Y1) + srSelection_X1;
 			}
 
 			//LPCWSTR pszDstStart = pch;
@@ -5314,8 +5393,8 @@ bool CRealBuffer::DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int 
 					// Allow maximum one space on the next line
 					&& ((pszNextLine[0] != L' ') || (pszNextLine[0] == L' ' && pszNextLine[1] != L' '))  // -V728
 					// If right or left edge of screen is "Frame" - force to line break!
-					&& !wcschr(sPreLineBreak, *(pch - 1))
-					&& !wcschr(sPreLineBreak, *pszNextLine))
+					&& !IsForceLineBreakChar(*(pch - 1))
+					&& !IsForceLineBreakChar(*pszNextLine))
 				{
 					// Пытаемся определить, новая это строка или просто перенос в Prompt?
 					if ((*(pch - 1) != L' ')

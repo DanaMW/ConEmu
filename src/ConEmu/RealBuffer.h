@@ -149,6 +149,7 @@ private:
 	void OnMouseSelectionStopped();
 	uint32_t GetAutoscrollSelectionLines(int yDelta);
 	void SetSelectionFlags(DWORD flags);
+	void SetSelectionAnchor(int x, int y);
 	bool OnMouseSelection(UINT messg, WPARAM wParam, int x, int y);
 	bool IsForceLineBreakChar(wchar_t c) const;
 	bool DoSelectionCopyInt(CECopyMode CopyMode, bool bStreamMode, int srSelection_X1, int srSelection_Y1, int srSelection_X2, int srSelection_Y2, BYTE nFormat = CTSFormatDefault, LPCWSTR pszDstFile = nullptr, HGLOBAL* phUnicode = nullptr);
@@ -243,7 +244,7 @@ private:
 
 	void PrepareTransparent(wchar_t* pChar, CharAttr* pAttr, int nWidth, int nHeight);
 
-	ExpandTextRangeType ExpandTextRange(COORD& crFrom/*[In/Out]*/, COORD& crTo/*[Out]*/, ExpandTextRangeType etr, CEStr* psText = nullptr);
+	ExpandTextRangeType ExpandTextRange(const COORD crClick, COORD& crFrom/*[In/Out]*/, COORD& crTo/*[Out]*/, ExpandTextRangeType etr, CEStr* psText = nullptr);
 	bool StoreLastTextRange(ExpandTextRangeType etr);
 
 	void PrepareColorTable(const AppSettings* pApp, CharAttr** pcaTableExt, CharAttr** pcaTableOrg);
@@ -277,6 +278,7 @@ protected:
 		CONSOLE_SELECTION_INFO m_sel;
 		DWORD m_SelClickTick;
 		DWORD m_SelDblClickTick;
+		COORD m_SelDblClickRightAnchor;
 		DWORD m_SelLastScrollCheck; // last time when autoscrolling was done (to avoid too fast scroll)
 		DWORD m_SelScrollBurst; // set when autoscrolling is in progress (cursor is outside of console)
 		struct {

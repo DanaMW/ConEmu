@@ -34,7 +34,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ConEmu.h"
 #include "Match.h"
 #include "RConData.h"
-#include "RealConsole.h"
 #include <unordered_set>
 #include "../UnitTests/gtest.h"
 
@@ -42,29 +41,29 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NEED_FIX_FAILED_TEST L"\1"
 
 
-TEST(CMatch, UnitTests)
+TEST(Match, Hyperlinks)
 {
 	CEStr szDir;
 	GetDirectory(szDir);
 
-	std::wstring last_checked_file;
-	std::unordered_set<std::wstring> known_files = {
+	std::wstring lastCheckedFile;
+	std::unordered_set<std::wstring> knownFiles = {
 		L"license.txt", L"portable.txt", L"whatsnew-conemu.txt", L"abc.cpp", L"def.h",
-		L"c:\\abc.xls", L"file.ext", L"makefile", L"c:\\sources\\conemu\\realconsole.cpp"
-		L"defresolve.cpp", L"conemuc.cpp", L"1.c", L"file.cpp", L"common\\pipeserver.h",
-		L"c:\\sources\\farlib\\farctrl.pas", L"farctrl.pas", L"script.ps1", L"c:\\tools\\release.ps1",
-		L"abc.py", L"/src/class.c", L"c:\\vc\\unicode_far\\macro.cpp",
+		LR"(c:\abc.xls)", L"file.ext", L"makefile", LR"(c:\sources\conemu\realconsole.cpp)",
+		L"defresolve.cpp", L"conemuc.cpp", L"1.c", L"file.cpp", LR"(common\pipeserver.h)",
+		LR"(c:\sources\farlib\farctrl.pas)", L"farctrl.pas", L"script.ps1", LR"(c:\tools\release.ps1)",
+		L"abc.py", L"/src/class.c", LR"(c:\vc\unicode_far\macro.cpp)",
 	};
-	CMatch match([&known_files, &last_checked_file](LPCWSTR asSrc, CEStr&) {
-		last_checked_file = asSrc;
-		const auto found = known_files.count(last_checked_file);
+	CMatch match([&knownFiles, &lastCheckedFile](LPCWSTR asSrc, CEStr&) {
+		lastCheckedFile = asSrc;
+		const auto found = knownFiles.count(lastCheckedFile);
 		return found;
 	});
 	struct TestMatch {
-		LPCWSTR src; ExpandTextRangeType etr;
-		bool bMatch; LPCWSTR matches[5];
-		LPCWSTR pszTestCurDir;
-	} Tests[] = {
+		LPCWSTR src{ nullptr }; ExpandTextRangeType etr{};
+		bool bMatch{ false }; LPCWSTR matches[5]{};
+		LPCWSTR pszTestCurDir{ nullptr };
+	} tests[] = {
 		// Hyperlinks
 		// RA layer request failed: PROPFIND request failed on '/svn': PROPFIND of '/svn': could
 		// not connect to server (http://farmanager.googlecode.com) at /usr/lib/perl5/site_perl/Git/SVN.pm line 148
@@ -159,11 +158,31 @@ TEST(CMatch, UnitTests)
 			etr_AnyClickable, false, {}},
 		{L"\t" L"m_abc.func(1,2,3)" L"\t",
 			etr_AnyClickable, false, {}},
-		{nullptr}
 	};
 
-	auto UnitTestMatch = [&match](ExpandTextRangeType etr, LPCWSTR asLine, int anLineLen, int anMatchStart, int anMatchEnd, LPCWSTR asMatchText)
+	auto intersect = [](const int start1, const int end1, const int start2, const int end2)
 	{
+		// [1, 4) [4, 10)
+		if (end1 <= start2) return false;
+		if (end2 <= start1) return false;
+		if (start2 >= end1) return false;
+		if (start1 >= end2) return false;
+		// [1, 4) [3, 8)
+		// [4, 8) [1, 6)
+		// [4, 8) [1, 10)
+		// [1, 10) [4, 8)
+		return true;
+	};
+	EXPECT_FALSE(intersect(1, 4, 4, 10));
+	EXPECT_FALSE(intersect(4, 10, 1, 4));
+	EXPECT_TRUE(intersect(1, 4, 3, 8));
+	EXPECT_TRUE(intersect(4, 8, 1, 6));
+	EXPECT_TRUE(intersect(4, 8, 1, 10));
+	EXPECT_TRUE(intersect(1, 10, 4, 8));
+
+	auto unitTestMatch = [&match](ExpandTextRangeType etr, LPCWSTR asLine, int anLineLen, int anMatchStart, int anMatchEnd, LPCWSTR asMatchText)
+	{
+		// ReSharper disable CppJoinDeclarationAndAssignment
 		int iRc, iCmp;
 		CRConDataGuard data;
 
@@ -174,11 +193,13 @@ TEST(CMatch, UnitTests)
 			if (iRc <= 0)
 			{
 				FAIL() << L"Match: must be found; line=" << asLine << L"; match=" << asMatchText;
+				// ReSharper disable once CppUnreachableCode
 				break;
 			}
-			else if (match.mn_MatchLeft != anMatchStart || match.mn_MatchRight != anMatchEnd)
+			if (match.mn_MatchLeft != anMatchStart || match.mn_MatchRight != anMatchEnd)
 			{
 				FAIL() << L"Match: do not match required range; line=" << asLine << L"; match=" << asMatchText;
+				// ReSharper disable once CppUnreachableCode
 				break;
 			}
 
@@ -186,12 +207,13 @@ TEST(CMatch, UnitTests)
 			if (iCmp != 0)
 			{
 				FAIL() << L"Match: iCmp != 0; line=" << asLine << L"; match=" << asMatchText;
+				// ReSharper disable once CppUnreachableCode
 				break;
 			}
 		}
 	};
 
-	auto UnitTestNoMatch = [&match](ExpandTextRangeType etr, LPCWSTR asLine, int anLineLen, int anStart, int anEnd)
+	auto unitTestNoMatch = [&match, &intersect](ExpandTextRangeType etr, LPCWSTR asLine, int anLineLen, int anStart, int anEnd)
 	{
 		int iRc;
 		CRConDataGuard data;
@@ -200,58 +222,102 @@ TEST(CMatch, UnitTests)
 		{
 			iRc = match.Match(etr, asLine, anLineLen, i, data, 0);
 
-			if (iRc > 0)
+			if (etr == etr_AnyClickable && iRc > 0)
 			{
-				FAIL() << L"Match: must NOT be found; line=" << asLine;
+				FAIL() << L"Match: must NOT be found; line=" << asLine
+					<< L" in=[" << match.mn_MatchLeft << L"," << match.mn_MatchRight << L") from=" << i;
+				// ReSharper disable once CppUnreachableCode
 				break;
 			}
 		}
 	};
 
-	for (INT_PTR i = 0; Tests[i].src; i++)
+	for (const auto& test : tests)
 	{
-		if (Tests[i].src[0] == NEED_FIX_FAILED_TEST[0])
+		if (test.src[0] == NEED_FIX_FAILED_TEST[0])
 		{
-			wcdbg("FIX_ME") << (Tests[i].src + wcslen(NEED_FIX_FAILED_TEST)) << std::endl;
+			wcdbg("FIX_ME") << (test.src + wcslen(NEED_FIX_FAILED_TEST)) << std::endl;
 			continue;
 		}
 
-		INT_PTR nStartIdx;
-		int iSrcLen = lstrlen(Tests[i].src) - 1;
-		_ASSERTE(Tests[i].src && Tests[i].src[iSrcLen] == L'\t');
+		int nStartIdx;
+		const int iSrcLen = lstrlen(test.src) - 1;
+		_ASSERTE(test.src && test.src[iSrcLen] == L'\t');
 
 		// Loop through matches
 		int iMatchNo = 0, iPrevStart = 0;
 		while (true)
 		{
-			if (Tests[i].bMatch)
+			if (test.bMatch)
 			{
-				int iMatchLen = lstrlen(Tests[i].matches[iMatchNo]);
-				LPCWSTR pszFirst = wcsstr(Tests[i].src, Tests[i].matches[iMatchNo]);
+				const int iMatchLen = lstrlen(test.matches[iMatchNo]);
+				const auto* pszFirst = wcsstr(test.src, test.matches[iMatchNo]);
 				_ASSERTE(pszFirst);
-				nStartIdx = (pszFirst - Tests[i].src);
+				nStartIdx = static_cast<int>(pszFirst - test.src);
 
-				UnitTestNoMatch(Tests[i].etr, Tests[i].src, iSrcLen, iPrevStart, nStartIdx-1);
-				iPrevStart = nStartIdx+iMatchLen;
-				UnitTestMatch(Tests[i].etr, Tests[i].src, iSrcLen, nStartIdx, iPrevStart-1, Tests[i].matches[iMatchNo]);
+				unitTestNoMatch(test.etr, test.src, iSrcLen, iPrevStart, nStartIdx - 1);
+				iPrevStart = nStartIdx + iMatchLen;
+				unitTestMatch(test.etr, test.src, iSrcLen, nStartIdx, iPrevStart - 1, test.matches[iMatchNo]);
 			}
 			else
 			{
+				// ReSharper disable once CppAssignedValueIsNeverUsed
 				nStartIdx = 0;
-				UnitTestNoMatch(Tests[i].etr, Tests[i].src, iSrcLen, 0, iSrcLen);
+				unitTestNoMatch(test.etr, test.src, iSrcLen, 0, iSrcLen);
 				break;
 			}
 
 			// More matches waiting?
-			if (Tests[i].matches[++iMatchNo] == nullptr)
+			if (test.matches[++iMatchNo] == nullptr)
 			{
-				UnitTestNoMatch(Tests[i].etr, Tests[i].src, iSrcLen, iPrevStart, iSrcLen);
+				unitTestNoMatch(test.etr, test.src, iSrcLen, iPrevStart, iSrcLen);
 				break;
 			}
+			std::ignore = nStartIdx;
 		}
 		//_ASSERTE(iRc == lstrlen(p->txtMatch));
 		//_ASSERTE(match.m_Type == p->etrMatch);
 	}
 
 	::SetCurrentDirectoryW(szDir);
+}
+
+TEST(Match, Words)
+{
+	auto testMatch = [](const wchar_t* source, const int from, const int to, const wchar_t* expected)
+	{
+		CMatch match([](LPCWSTR asSrc, CEStr&) {return false; });
+		CRConDataGuard dummyData;
+
+		for (int i = from; i <= to; ++i)
+		{
+			const int rcLen = match.Match(etr_Word, source, lstrlen(source), i, dummyData, 0);
+			EXPECT_LT(0, rcLen);
+			EXPECT_STREQ(match.ms_Match.c_str(L""), expected) << L"source=" << source << L" from=" << i;
+		}
+	};
+
+	const wchar_t wxiWarning[] = LR"(test C:\SRC\Setup\ConEmu_Conditions.wxi(8): warning)";
+	// #TODO Should be without "(8)" ending
+	testMatch(wxiWarning, 6, 38, LR"(C:\SRC\Setup\ConEmu_Conditions.wxi(8))");
+
+	const wchar_t dirFolderInfo[] = L"15.03.2021  00:18    <DIR>          .del-git  ";
+	testMatch(dirFolderInfo, 0, 9, L"15.03.2021");
+	testMatch(dirFolderInfo, 12, 16, L"00:18");
+	// #TODO should be only "<"
+	testMatch(dirFolderInfo, 21, 21, L"<DIR>");
+	// #TODO should be only "DIR"
+	testMatch(dirFolderInfo, 22, 22, L"<DIR>");
+	// #TODO should be only "DIR"
+	testMatch(dirFolderInfo, 23, 24, L"DIR");
+	// #TODO should be either "<DIR>" or ">"
+	testMatch(dirFolderInfo, 25, 25, L"DIR");
+	// #TODO should be only " "
+	testMatch(dirFolderInfo, 26, 26, L"DIR> ");
+	testMatch(dirFolderInfo, 27, 34, L" ");
+	// #TODO should be only " "
+	testMatch(dirFolderInfo, 35, 35, L" .del-git");
+	testMatch(dirFolderInfo, 36, 43, L".del-git");
+	// #TODO should be only " "
+	testMatch(dirFolderInfo, 44, 44, L".del-git ");
 }
